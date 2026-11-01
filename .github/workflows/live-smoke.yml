@@ -16,7 +16,7 @@ jobs:
     if: github.repository != 'flamingbeing/app-starter' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
     uses: flamingbeing/app-devkit/.github/workflows/live-smoke.yml@v1.16.0
     with:
-      site-url: https://todo.flamingbeing.com
+      site-url: https://todo.anawj.com
       spec-path: e2e-live
       firebase-config-file: app/src/config.js
       checkout-ref: ${{ github.event.workflow_run.head_sha }}
