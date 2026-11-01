@@ -29,11 +29,12 @@
   hidden once installed, nothing prompts on load); a pass over every screen in light and dark against the references
   (row 74 pt, checkbox 22, add button 56, bars on the grouped ground, the sync chip only when it has news); row sizes
   now have a test (`e2e/metrics.spec.mjs`).
-- Known gaps: no auto-scroll while dragging near a list's edge (a board scrolls sideways); on Today and Upcoming a drag
-  moves a row within the flat day list only (no subtasks there); in a sorted or grouped list a drag does not reorder;
-  board cards have no swipe actions; Back on a tab other than Inbox goes to Inbox (the kit's first-tab rule) though the
-  app opens on Today; a tab tapped while a Settings page is open first closes that page; in dark mode the accent
-  buttons (+, Done) use the kit's lighter accent.
+- Known gaps: on Today and Upcoming a drag moves a row within the flat day list only (no subtasks there); a tab
+  tapped while a Settings page is open first closes that page.
+- Review fixes (2026-11-01): dark mode fills (+, Done, send) at full colour; top bar without the cloud while saved,
+  ring "…", bare-chevron Back, slimmer bar and title gaps, Browse's person and gear in the bar row; Upcoming's + adds
+  for the day in sight; the unused ensureInbox dropped. Settings pages as screens of their own are wired (shell.js
+  onPage) and wait for app-ui rc.80 (`menu.onPage`).
 - Startup and shared fixes (2026-10-28): no sign-in flash, last list painted at once, modulepreload, no pinch zoom, PNG
   icons and theme colours. On app-sync 1.5.5 and app-devkit 1.16.0 (2026-10-30).
 
@@ -43,8 +44,13 @@
 
 ## Next
 
+- Bump app-ui to rc.80 once released (Settings pages as their own screens; then drop the SettingsMenu cast in
+  shell.js).
 - Calendar layout; the import has been proven against route-mocked answers only (not the live service); a Deadline
   action in select mode.
+- Dragging: auto-scroll near a list's edge (a board scrolls sideways already); reorder in a sorted or grouped list.
+- Board cards: swipe actions.
+- Back on a tab other than Inbox goes to Inbox (the kit's first-tab rule) though the app opens on Today.
 
 ## Decisions (dated)
 
