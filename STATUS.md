@@ -2,7 +2,7 @@
 
 ## Now
 
-- A task manager for one person's own tasks, on app-ui 1.0.0-rc.79's kit shell (2026-11-01). Done so far (part 1 of 4):
+- A task manager for one person's own tasks, on app-ui 1.0.0-rc.80's kit shell (2026-11-01). Done so far (part 1 of 4):
   the data model (tasks with projects, sections, subtasks, priority 1-4, due dates with time and repeat rules, labels,
   filters; the Inbox is the project `inbox`), its rules and rules tests; five tabs (Inbox, Today, Upcoming, Search,
   Browse; opens on Today); the project page with sections; task rows, the quick add, the task sheet with subtasks, the
@@ -33,8 +33,8 @@
   tapped while a Settings page is open first closes that page.
 - Review fixes (2026-11-01): dark mode fills (+, Done, send) at full colour; top bar without the cloud while saved,
   ring "…", bare-chevron Back, slimmer bar and title gaps, Browse's person and gear in the bar row; Upcoming's + adds
-  for the day in sight; the unused ensureInbox dropped. Settings pages as screens of their own are wired (shell.js
-  onPage) and wait for app-ui rc.80 (`menu.onPage`).
+  for the day in sight; the unused ensureInbox dropped. Settings pages are screens of their own (shell.js
+  onPage, app-ui rc.80's `menu.onPage`).
 - Startup and shared fixes (2026-10-28): no sign-in flash, last list painted at once, modulepreload, no pinch zoom, PNG
   icons and theme colours. On app-sync 1.5.5 and app-devkit 1.16.0 (2026-10-30).
 
@@ -44,8 +44,6 @@
 
 ## Next
 
-- Bump app-ui to rc.80 once released (Settings pages as their own screens; then drop the SettingsMenu cast in
-  shell.js).
 - Calendar layout; the import has been proven against route-mocked answers only (not the live service); a Deadline
   action in select mode.
 - Dragging: auto-scroll near a list's edge (a board scrolls sideways already); reorder in a sorted or grouped list.

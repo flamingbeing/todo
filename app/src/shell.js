@@ -126,8 +126,7 @@ export function settingsPage(app) {
 
   settingsScreen($('settings-host'), {
     settings,
-    // (onPage is app-ui rc.80's; rc.79 ignores it and its types lack it: drop the cast at the bump)
-    menu: /** @type {import('app-ui/ui/settings-screen.js').SettingsMenu} */ ({ steps: createTransients({ history, location, events: window }), top: offBar, ...{ onPage } }),
+    menu: { steps: createTransients({ history, location, events: window }), top: offBar, onPage },
     sections: byGroup([
       ...SETTING_SECTIONS,
       { title: 'Tab bar', icon: ICONS.menu, sub: 'Order, and which tabs show', group: 'Look', find: 'arrange tabs', mount: host => {

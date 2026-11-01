@@ -241,8 +241,9 @@ export const openSettings = async (page, title) => {
     await page.locator('#browse-settings').click();
   }
   await expect(page.locator('#settings-host')).toBeVisible();
-  if (!title) return;
+  // (a page open, a screen of its own from app-ui rc.80: back to the menu first)
   await settingsBack(page);
+  if (!title) return;
   await page.locator('#settings-host .ui-settings-menu-groups .ui-settings-go').filter({ hasText: new RegExp(`^${title}`) }).click();
   await expect(page.locator('#settings-host .ui-settings-group:not([hidden])')).toBeVisible();
 };
