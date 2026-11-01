@@ -20,8 +20,11 @@ import { modules } from './modules.js';
 // The Settings menu's headings, in this order; a page whose group is not listed goes under 'Other' (last), so a new
 // page is never left out and a recipe never edits this list
 const SETTINGS_GROUPS = ['Tasks', 'Look', 'Sharing', 'Data', 'Advanced', 'Other'];
+// (a page whose visible() is false now is left out: the kit keeps a group's heading even when all its pages are hidden,
+// so an Advanced with no features showed an empty heading; a key-gated page stays, as it can turn on live)
 /** @param {import('app-ui/ui/settings-screen.js').SettingSection[]} sections */
 const byGroup = sections => sections
+  .filter(s => typeof s.visible !== 'function' || s.visible())
   .map(s => (SETTINGS_GROUPS.includes(s.group ?? '') ? s : { ...s, group: 'Other' }))
   .sort((a, b) => SETTINGS_GROUPS.indexOf(a.group ?? '') - SETTINGS_GROUPS.indexOf(b.group ?? ''));
 

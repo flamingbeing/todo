@@ -150,8 +150,9 @@ export function openQuickAdd(ctx, start, hold = null) {
     dateChip.setAttribute('aria-label', line ? `Date: ${line.text}${v.due?.rrule ? ', repeating' : ''}` : 'Date');
     if (line) dateC.box.dataset.tone = line.tone; else delete dateC.box.dataset.tone;
     setX(dateC, !!line, () => { if (fromWords(['date', 'recur'])) unmark(['date', 'recur']); manual.due = base.due ? null : undefined; });
-    const flag = icon(ICONS.flag);
+    const flag = icon(ICONS.flag, { class: `td-flag${v.priority < 4 ? ' is-filled' : ''}` });
     flag.style.color = PRIORITY_COLOR[v.priority];
+    prioC.box.style.color = v.priority < 4 ? PRIORITY_COLOR[v.priority] : '';
     prioChip.replaceChildren(flag, el('span', '', v.priority === 4 ? 'Priority' : `P${v.priority}`));
     prioChip.setAttribute('aria-label', v.priority === 4 ? 'Priority' : `Priority: P${v.priority}`);
     setX(prioC, v.priority !== 4, () => { unmark(['priority']); delete manual.priority; base.priority = undefined; });

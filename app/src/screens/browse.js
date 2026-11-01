@@ -63,11 +63,13 @@ export function drawBrowse(ctx, host) {
   // the top: the person, and the gear, in the bar's row (index.html #browse-top)
   const top = $('browse-top');
   const me = el('span', 'td-pill'), u = ctx.user();
+  // (a name, or an email's part before the @: short enough for the pill, cut with "…" if still long)
+  const who = String(u?.name ?? '').trim().split('@')[0];
   const face = el('span', 'td-avatar');
   if (u?.photo) { const img = Object.assign(document.createElement('img'), { src: u.photo, alt: '', referrerPolicy: 'no-referrer' }); face.append(img); }
-  else if (u?.name) face.textContent = u.name.trim().charAt(0).toUpperCase();
+  else if (who) face.textContent = who.charAt(0).toUpperCase();
   else face.append(icon(ICONS.user));
-  me.append(face, el('span', 'td-pill-name', u?.name || 'Signed out'));
+  me.append(face, el('span', 'td-pill-name', who || 'Signed out'));
   const gear = /** @type {HTMLButtonElement} */ (el('button', 'td-round'));
   gear.type = 'button';
   gear.id = 'browse-settings';

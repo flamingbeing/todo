@@ -10,7 +10,7 @@
 import { icon } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { INBOX } from '../items.js';
-import { dayKey, addDays, weekdayOf, timeText, dueOf, isDay, minutesText } from '../dates.js';
+import { dayKey, addDays, weekdayOf, timeText, dueOf, isDay, minutesText, dateTone } from '../dates.js';
 import { MORE } from '../icons-more.js';
 import { colorHex } from '../colors.js';
 import { parse } from '../parse.js';
@@ -163,7 +163,9 @@ export function pickDate(due, done, o = {}) {
   const pick = (key, set) => {
     for (const c of grid.querySelectorAll('[aria-selected="true"]')) c.setAttribute('aria-selected', 'false');
     const shown = key ?? today;
-    if (key) cells.get(key)?.setAttribute('aria-selected', 'true');
+    const cell = key ? cells.get(key) : null;
+    // (filled in its date's colour: green today, then tomorrow's and this week's; later days the accent)
+    if (cell) { cell.setAttribute('aria-selected', 'true'); cell.dataset.tone = dateTone({ date: /** @type {string} */ (key) }, today, '00:00'); }
     if (set && key) {
       pending = { ...(pending ?? {}), date: key };
       if (pending.rrule && libs) pending.date = firstDay(pending.rrule, key, libs.RRule) ?? key;
