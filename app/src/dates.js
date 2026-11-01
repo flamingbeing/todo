@@ -36,6 +36,8 @@ export const timeText = hhmm => {
   clock ??= new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
   return clock.format(new Date(2000, 0, 1, +hhmm.slice(0, 2), +hhmm.slice(3, 5)));
 };
+/** minutes after midnight in the person's own clock style (the calendar's blocks, now line, drop line) @param {number} min */
+export const minutesClock = min => timeText(`${pad(Math.floor(min / 60) % 24)}:${pad(min % 60)}`);
 
 /** @param {unknown} due @returns {Due | null} a usable due map, or null */
 export const dueOf = due => (due && typeof due === 'object' && isDay(/** @type {Due} */ (due).date) ? /** @type {Due} */ (due) : null);

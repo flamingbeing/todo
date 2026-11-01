@@ -13,7 +13,7 @@ import { MORE } from '../icons-more.js';
 import { INBOX, REFUSED } from '../items.js';
 import { isTask, dayOrder, priorityOf, projectOf, labelsOf, placeText } from '../tasks.js';
 import { narrowTasks, sorter } from '../arrange.js';
-import { dayKey, timeKey, addDays, dueOf } from '../dates.js';
+import { dayKey, timeKey, addDays, dueOf, minutesClock } from '../dates.js';
 import { colorHex } from '../colors.js';
 import { edgeScroll, edgeSpeed, shownSpan } from '../ui/edge-scroll.js';
 import { HOUR, columnCount, weekColumns, minutesOf, timeOf, yOf, minOf, snap, blockHeight, openAt, lanes, monthCells, dropPatch,
@@ -194,10 +194,10 @@ function tint(ctx, x, t, by) {
   if (hex) { x.classList.add('is-tinted'); x.style.setProperty('--td-cv-c', colorHex(hex)); } else x.dataset.priority = String(priorityOf(t));
 }
 
-/** "Pay rent, Tue 3 Nov 10:00 to 10:45, priority 1" @param {Task} t */
+/** "Pay rent, Tue 3 Nov 10:00 AM to 10:45 AM, priority 1" (the clock in the device's own style) @param {Task} t */
 function fullLabel(t) {
   const due = dueOf(t.due), start = minutesOf(due?.time);
-  const when = due ? `${dayText(due.date)}${start !== null ? ` ${timeOf(start)} to ${timeOf(Math.min(1439, start + (t.duration || 30)))}` : ''}` : 'no date';
+  const when = due ? `${dayText(due.date)}${start !== null ? ` ${minutesClock(start)} to ${minutesClock(Math.min(1439, start + (t.duration || 30)))}` : ''}` : 'no date';
   return `${t.title}, ${when}, priority ${priorityOf(t)}${t.done ? ', completed' : ''}`;
 }
 
@@ -354,7 +354,7 @@ function block(ctx, t, start, fill) {
   if ((t.duration ?? 0) >= 45) {
     // (drawn from CSS: the label says the time in words, and seen text not in it would not match what is read)
     const tm = el('span', 'td-cv-block-time');
-    tm.dataset.time = `${timeOf(start)}-${timeOf(Math.min(1439, start + /** @type {number} */ (t.duration)))}`;
+    tm.dataset.time = `${minutesClock(start)}–${minutesClock(Math.min(1439, start + /** @type {number} */ (t.duration)))}`;
     main.append(tm);
   }
   main.addEventListener('click', () => ctx.openTask(t));
@@ -385,7 +385,7 @@ function nowLine(grid, days, today, st) {
     if (dayKey() !== today) { st.redraw(); return; }
     const now = /** @type {number} */ (minutesOf(timeKey()));
     line.style.transform = `translateY(${yOf(now)}px)`;
-    time.textContent = timeOf(now);
+    time.textContent = minutesClock(now);
   };
   place(true);
   grid.append(line);
@@ -604,7 +604,7 @@ function holds(ctx, root, st) {
       if (typeof t.min === 'number') {
         mark = el('div', 'td-cv-drop');
         mark.style.transform = `translateY(${yOf(t.min)}px)`;
-        mark.append(el('span', 'td-cv-drop-time', timeOf(t.min)));
+        mark.append(el('span', 'td-cv-drop-time', minutesClock(t.min)));
         t.at.append(mark);
       } else t.at.classList.add('is-drop');
     };

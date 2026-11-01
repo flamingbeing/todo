@@ -69,8 +69,9 @@ test('week: blocks, all-day chips, the now line; a slot tap adds, the ring compl
   await expect(block).toBeVisible();
   expect((await box(block)).height).toBeCloseTo(HOUR * 45 / 60, 0);
   await expect(block).toHaveAttribute('data-priority', '1');
-  await expect(block.locator('.td-cv-open')).toHaveAttribute('aria-label', new RegExp(`^${rent}, .*10:00 to 10:45, priority 1$`));
-  await expect(block.locator('.td-cv-block-time')).toHaveAttribute('data-time', '10:00-10:45');
+  // times in the device's own clock style, as the rows and the hour gutter (the tests run en-US: 12-hour)
+  await expect(block.locator('.td-cv-open')).toHaveAttribute('aria-label', new RegExp(`^${rent}, .*10:00\\sAM to 10:45\\sAM, priority 1$`));
+  await expect(block.locator('.td-cv-block-time')).toHaveAttribute('data-time', /^10:00\sAM–10:45\sAM$/);
   // a task with no duration is half an hour
   // (other tests' tasks arriving draw the calendar anew: measure once it has settled)
   await expect(cal.locator(`.td-cv-block[data-cal-id="${ring}"]`)).toBeVisible();
@@ -91,7 +92,8 @@ test('week: blocks, all-day chips, the now line; a slot tap adds, the ring compl
   await expect(line).toHaveCount(1);
   const shown = await cal.locator('.td-cv-now-time').textContent();
   const clock = await page.evaluate(() => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); });
-  const [h, m] = String(shown).split(':').map(Number);
+  const [, hh, mm, ap] = /** @type {RegExpMatchArray} */ (String(shown).match(/^(\d{1,2}):(\d{2})\s(AM|PM)$/));
+  const h = (+hh % 12) + (ap === 'PM' ? 12 : 0), m = +mm;
   expect(Math.abs(h * 60 + m - clock)).toBeLessThanOrEqual(1);
   const col = cal.locator(`.td-cv-col[data-cal-slot="${now}"]`);
   const lineY = (await box(cal.locator('.td-cv-now-day'))).y - (await box(col)).y;
