@@ -24,7 +24,9 @@ accounts and task texts and checks only those; they run side by side.
   real touch (`fingers()`) right after sign-in waits for `gesturesReady()`, which also waits out the phase change's view
   transition (while one runs Chromium sends every touch to `<html>`). A gesture whose meaning hangs on time (a hold
   lifted before 500 ms) is timed in the page (`finger()`): a busy machine stretches the waits between real touches sent
-  from the test.
+  from the test. In the tests a toast with an action (Undo) stays until tapped or replaced (the seed in
+  `e2e/fixtures.mjs`): a test that first waits for the server can take longer than the app's 6 s. A check of order
+  among projects, labels or tasks compares only the test's own (others' may come first).
 
 ## UI kit gestures and the `/kit/` gallery (app-ui)
 
