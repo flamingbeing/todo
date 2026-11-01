@@ -49,6 +49,7 @@ const SHELL = [
   'src/screens/named-sheet.js',
   'src/screens/no-access.js',
   'src/screens/not-set-up.js',
+  'src/screens/page-menu.js',
   'src/screens/pick.js',
   'src/screens/project-sheet.js',
   'src/screens/quick-add.js',

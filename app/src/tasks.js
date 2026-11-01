@@ -187,6 +187,7 @@ export function cleanFields(f) {
   if (f.labels !== undefined) out.labels = [...new Set((f.labels ?? []).map(String).filter(Boolean))].slice(0, 20);
   if (f.due !== undefined) out.due = cleanDue(f.due);
   if (f.deadline !== undefined) out.deadline = isDay(f.deadline) ? f.deadline : null;
+  if (f.duration !== undefined) { const n = Math.round(Number(f.duration)); out.duration = f.duration && n >= 1 ? Math.min(1440, n) : null; }
   if (f.order !== undefined && typeof f.order === 'number') out.order = f.order;
   if (f.collapsed !== undefined) out.collapsed = !!f.collapsed;
   return /** @type {import('./items.js').Fields} */ (out);
@@ -207,7 +208,10 @@ export function labelsOf(t, labels) {
 }
 
 // ---- Display: a list's grouping, sorting, filter and completed switch (per view, this device; screens/display.js)
-/** @typedef {{ group: string, sort: string, dir: 'asc' | 'desc', completed: boolean, priority: number, label: string, date: string }} Display */
+// layout: '' (a project's own view, else list), list, board or calendar; cal: week, month or agenda (Today: its day;
+// Upcoming: no agenda); color: the calendar's fill (Inbox and projects: not by project); allDay: the all-day row open
+/** @typedef {{ group: string, sort: string, dir: 'asc' | 'desc', completed: boolean, priority: number, label: string, date: string,
+ *   layout: string, cal: string, color: string, allDay: boolean, future: boolean }} Display */
 export const GROUPS = ['none', 'date', 'priority', 'label', 'project'];
 export const SORTS = ['manual', 'name', 'date', 'priority', 'added'];
 export const DATE_FILTERS = ['', 'today', 'week', 'overdue', 'nodate'];
@@ -223,6 +227,11 @@ export function cleanDisplay(v, view) {
     priority: [1, 2, 3, 4].includes(Number(o.priority)) ? Number(o.priority) : 0,
     label: typeof o.label === 'string' ? o.label.slice(0, 64) : '',
     date: DATE_FILTERS.includes(str('date')) ? str('date') : '',
+    layout: ['list', 'calendar', ...(view.startsWith('project:') ? ['board'] : [])].includes(str('layout')) ? str('layout') : '',
+    cal: ['month', ...(view === 'upcoming' ? [] : ['agenda'])].includes(str('cal')) ? str('cal') : 'week',
+    color: ['label', ...(view === 'inbox' || view.startsWith('project:') ? [] : ['project'])].includes(str('color')) ? str('color') : 'priority',
+    allDay: o.allDay !== false,
+    future: o.future === true,
   };
 }
 /** whether a view's choices are the defaults @param {Display} d @param {string} view */

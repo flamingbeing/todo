@@ -4,7 +4,7 @@ process.env.TZ = 'Asia/Singapore';   // a fixed clock for the "Z" times (UTC+8, 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { mapImport, dueFrom, labelName } from '../src/import-map.js';
+import { mapImport, dueFrom, durationFrom, labelName } from '../src/import-map.js';
 
 const sync = JSON.parse(fs.readFileSync(new URL('./fixtures/import-sync.json', import.meta.url), 'utf8'));
 const today = '2026-11-01';
@@ -199,4 +199,15 @@ test('a subtask whose parent is left out stands on its own', () => {
   }, { id: counter() });
   assert.equal(m.writes.tasks.length, 1);
   assert.equal(m.writes.tasks[0].rec.parentId, null);
+});
+
+test('a duration in minutes comes over (up to a day); one in days, or none, does not', () => {
+  const m = run();
+  assert.equal(named(m, 'tasks', 'title', 'Call the plumber').duration, 45);
+  assert.equal(named(m, 'tasks', 'title', 'Buy stamps').duration, null);
+  assert.equal(named(m, 'tasks', 'title', 'Plant tulips').duration, null);
+  assert.equal(durationFrom({ amount: 2000, unit: 'minute' }), 1440);
+  assert.equal(durationFrom({ amount: 0, unit: 'minute' }), null);
+  assert.equal(durationFrom({ amount: 'x', unit: 'minute' }), null);
+  assert.equal(durationFrom(null), null);
 });

@@ -43,7 +43,7 @@ service cloud.firestore {
       allow read: if can(g, ['admin', 'member', 'viewer']);
       allow create, update: if writer(g)
         && request.resource.data.keys().hasOnly(['title', 'description', 'projectId', 'sectionId', 'parentId', 'order', 'dayOrder',
-          'priority', 'labels', 'due', 'deadline', 'collapsed', 'done', 'doneAt', 'extId', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
+          'priority', 'labels', 'due', 'deadline', 'duration', 'collapsed', 'done', 'doneAt', 'extId', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
         && text(request.resource.data, 'title', 500)
         && optText(request.resource.data, 'description', 16000)
         && text(request.resource.data, 'projectId', 64)
@@ -53,6 +53,9 @@ service cloud.firestore {
         && (gone(request.resource.data, 'labels') || (request.resource.data.labels is list && request.resource.data.labels.size() <= 20))
         && dueOk(request.resource.data)
         && (gone(request.resource.data, 'deadline') || day(request.resource.data.deadline))
+        // the planned length from due.time in whole minutes, up to a day (a calendar block's height)
+        && (gone(request.resource.data, 'duration') || (request.resource.data.duration is int
+          && request.resource.data.duration >= 1 && request.resource.data.duration <= 1440))
         && optBool(request.resource.data, 'collapsed')
         && request.resource.data.done is bool && optNum(request.resource.data, 'doneAt')
         && optId(request.resource.data, 'extId')

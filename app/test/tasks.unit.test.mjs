@@ -91,6 +91,7 @@ test('where a task is, in words; the cascades a delete takes', () => {
 test('what a save stores: trimmed text, a priority of 1 to 4, a due map of known parts, empty ids as null', () => {
   assert.deepEqual(cleanFields({ title: '  milk  and  eggs ', priority: 0 }), { title: 'milk and eggs', priority: 4 });
   assert.equal(cleanFields({ title: 'x'.repeat(600) }).title?.length, 500);
+  assert.deepEqual([30, 2000, 0, null, 12.6].map(n => cleanFields({ duration: n }).duration), [30, 1440, null, null, 13]);
   assert.deepEqual(cleanFields({ priority: 2, sectionId: '', parentId: undefined, projectId: '' }), { priority: 2, sectionId: null, projectId: 'inbox' });
   assert.deepEqual(cleanDue({ date: T, time: '25:00', rrule: '', zone: 'x' }), { date: T });
   assert.deepEqual(cleanDue({ date: T, time: '09:30', rrule: 'FREQ=DAILY', fromDone: true }), { date: T, time: '09:30', rrule: 'FREQ=DAILY', fromDone: true });
@@ -221,12 +222,30 @@ test('a task\'s labels: by id, or by name for older tasks; a deleted one is skip
 });
 
 test('Display: known choices only; Today groups by date, the rest by none', () => {
-  assert.deepEqual(cleanDisplay({}, 'today'), { group: 'date', sort: 'manual', dir: 'asc', completed: false, priority: 0, label: '', date: '' });
+  assert.deepEqual(cleanDisplay({}, 'today'), { group: 'date', sort: 'manual', dir: 'asc', completed: false, priority: 0, label: '', date: '', layout: '', cal: 'week', color: 'priority', allDay: true, future: false });
   assert.equal(cleanDisplay(null, 'inbox').group, 'none');
   assert.deepEqual(cleanDisplay({ group: 'x', sort: 'name', dir: 'desc', completed: true, priority: '2', date: 'week' }, 'p'),
-    { group: 'none', sort: 'name', dir: 'desc', completed: true, priority: 2, label: '', date: 'week' });
+    { group: 'none', sort: 'name', dir: 'desc', completed: true, priority: 2, label: '', date: 'week', layout: '', cal: 'week', color: 'priority', allDay: true, future: false });
   assert.ok(plainDisplay(cleanDisplay({}, 'today'), 'today'));
   assert.ok(!plainDisplay(cleanDisplay({ sort: 'name' }, 'today'), 'today'));
+});
+
+test('Display: the layout, the calendar\'s kind and colouring, the all-day row and future dates', () => {
+  for (const v of ['today', 'upcoming', 'inbox', 'project:p1', 'labels:l1', 'filters:f1']) assert.ok(plainDisplay(cleanDisplay({}, v), v), `${v} plain`);
+  const p = cleanDisplay({ layout: 'calendar', cal: 'month', color: 'label', allDay: false, future: true }, 'project:p1');
+  assert.deepEqual([p.layout, p.cal, p.color, p.allDay, p.future], ['calendar', 'month', 'label', false, true]);
+  assert.ok(!plainDisplay(p, 'project:p1'));
+  assert.equal(cleanDisplay({ layout: 'board' }, 'project:p1').layout, 'board');
+  assert.equal(cleanDisplay({ layout: 'board' }, 'inbox').layout, '', 'a board is a project\'s');
+  assert.equal(cleanDisplay({ layout: 'x' }, 'inbox').layout, '');
+  assert.equal(cleanDisplay({ cal: 'agenda' }, 'labels:l1').cal, 'agenda');
+  assert.equal(cleanDisplay({ cal: 'agenda' }, 'upcoming').cal, 'week', 'Upcoming has no agenda');
+  assert.equal(cleanDisplay({ cal: 'x' }, 'inbox').cal, 'week');
+  assert.equal(cleanDisplay({ color: 'project' }, 'filters:f1').color, 'project');
+  assert.equal(cleanDisplay({ color: 'project' }, 'inbox').color, 'priority', 'Inbox: not by project');
+  assert.equal(cleanDisplay({ color: 'project' }, 'project:p1').color, 'priority');
+  assert.equal(cleanDisplay({ allDay: 'no' }, 'today').allDay, true);
+  assert.equal(cleanDisplay({ future: 1 }, 'today').future, false);
 });
 
 const D = (o = {}) => ({ ...cleanDisplay({}, 'p'), ...o });

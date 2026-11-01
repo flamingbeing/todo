@@ -119,6 +119,24 @@ test('tasks: title, description, ids, order, priority, labels, deadline and done
   ['an extId over 64', { extId: 'x'.repeat(65) }, false],
 ]));
 
+test('tasks: a duration is whole minutes from 1 to 1440, or null', () => cases('tasks', [
+  ['30 minutes', { duration: 30 }, true],
+  ['a whole day', { duration: 1440 }, true],
+  ['null clears it', { duration: null }, true],
+  ['0 minutes', { duration: 0 }, false],
+  ['1441 minutes', { duration: 1441 }, false],
+  ['2.5 minutes', { duration: 2.5 }, false],
+  ['as text', { duration: '30' }, false],
+]));
+test('tasks: a duration changes on an update, and null clears it', async () => {
+  await emu.clear();
+  const path = 'spaces/_/tasks/d', base = { ...VALID.tasks, createdAt: 1 };
+  assert.equal((await as('member').set(path, { ...base, duration: 30 }, at)).ok, true, 'create with 30');
+  assert.equal((await as('member').set(path, { ...base, duration: 1440, updatedAt: 2 }, at)).ok, true, 'update to 1440');
+  assert.equal((await as('member').set(path, { ...base, duration: null, updatedAt: 3 }, at)).ok, true, 'update to null');
+  assert.equal((await as('member').set(path, { ...base, duration: 0, updatedAt: 4 }, at)).ok, false, 'update to 0');
+});
+
 test('tasks: a due date is a map of a day, and optionally a time, a repeat, its words and fromDone', () => cases('tasks', [
   ['a day', { due: { date: '2026-11-01' } }, true],
   ['every part', { due: { date: '2026-11-01', time: '09:30', rrule: 'FREQ=WEEKLY;BYDAY=MO,FR', string: 'every mon, fri', fromDone: false } }, true],

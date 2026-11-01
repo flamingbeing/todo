@@ -1,17 +1,59 @@
-// Upcoming's head (#upcoming-strip): the month of the week shown (a tap opens the month to pick a day) and Today, then
+// A list by day from today on (Upcoming, and a list's Agenda: screens/calendar.js): Overdue first (with Reschedule),
+// then each day with its tasks and an Add task row, more days drawn as the end comes near; over it the strip.
+// The strip (#upcoming-strip, or the Agenda's): the month of the week shown (a tap opens the month to pick a day) and Today, then
 // the week as seven days: the weekday's letter over the day's number, today's in the accent, the day picked
 // underlined, a dot under a day with tasks. A swipe sideways goes a week on or back (not before this week); a tap on
 // a day scrolls the list to it, and scrolling the list moves the pick. A task dragged onto a day moves to it
 // (row-drag.js reads data-drop-day). The week starts on the day the setting says.
 import { icon, drag, glide, haptic } from '@core/ui';
 import { ICONS } from '../icons.js';
-import { isTask } from '../tasks.js';
-import { dayKey, addDays, daysBetween, weekOf, monthGrid, monthTitle, weekdayName, dueOf } from '../dates.js';
+import { isTask, upcomingView, narrowTasks, sorter, dayOrder } from '../tasks.js';
+import { dayKey, addDays, daysBetween, weekOf, monthGrid, monthTitle, weekdayName, dueOf, dayTitle } from '../dates.js';
+import { rowList, addRow, groupHead } from './row.js';
 import { el, sheetHead } from '../screens/pick.js';
 import { underBar } from './stick.js';
 
 /** @typedef {import('../screens/views.js').Ctx} Ctx */
-/** @typedef {{ list: HTMLElement, days: () => number, more: (n: number) => void }} StripOptions */
+/** @typedef {import('../items.js').Task} Task */
+/** @typedef {{ list: HTMLElement, days: () => number, more: (n: number) => void, tasks?: () => Task[] }} StripOptions */
+/**
+ * @typedef {{ list: HTMLElement, strip: HTMLElement, tasks: Task[], d: import('../tasks.js').Display, place: boolean, projectId: string,
+ *   resched: (sec: HTMLElement, tasks: Task[]) => void }} DaysOptions
+ */
+
+const STEP = 28;
+/** how many days each list draws @type {WeakMap<HTMLElement, number>} */
+const shown = new WeakMap();
+
+/** @param {Ctx} ctx @param {DaysOptions} o */
+export function drawDays(ctx, o) {
+  const today = dayKey(), d = o.d, n = shown.get(o.list) ?? STEP;
+  const v = upcomingView(narrowTasks(o.tasks, d, ctx.data().labels, today), today, n, sorter(d.sort, d.dir, dayOrder)), parts = [];
+  o.list.toggleAttribute('data-sorted', d.sort !== 'manual');
+  if (v.overdue.length) {
+    const g = document.createElement('section'); g.className = 'td-group';
+    g.append(groupHead('Overdue'), rowList(v.overdue, ctx.rows({ place: o.place }), 'Overdue'));
+    o.resched(g, v.overdue.map(l => l.task));
+    parts.push(g);
+  }
+  for (const day of v.days) {
+    const g = document.createElement('section'); g.className = 'td-group td-day'; g.dataset.day = day.key;
+    const title = dayTitle(day.key, today);
+    g.append(groupHead(title));
+    if (day.lines.length) g.append(rowList(day.lines, ctx.rows({ place: o.place, own: day.key }), title));
+    if (ctx.canWrite()) g.append(addRow('Add task', () => ctx.openQuickAdd({ projectId: o.projectId, due: { date: day.key } })));
+    parts.push(g);
+  }
+  o.list.replaceChildren(...parts);
+  const more = (/** @type {number} */ m) => { shown.set(o.list, Math.max(shown.get(o.list) ?? STEP, m)); drawDays(ctx, o); };
+  drawStrip(ctx, o.strip, { list: o.list, days: () => shown.get(o.list) ?? STEP, more, tasks: () => o.tasks });
+  // near the end of the days drawn: draw more
+  const last = /** @type {HTMLElement | undefined} */ (parts.at(-3) ?? parts.at(-1));
+  if (last && 'IntersectionObserver' in window) {
+    const io = new IntersectionObserver(es => { if (es.some(x => x.isIntersecting)) { io.disconnect(); more(n + STEP); } });
+    io.observe(last);
+  }
+}
 
 const LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -55,7 +97,7 @@ function build(host, s) {
   const count = () => {
     /** @type {Map<string, number>} */
     const by = new Map();
-    for (const t of s.ctx.data().tasks) { const d = isTask(t) && !t.done ? dueOf(t.due) : null; if (d) by.set(d.date, (by.get(d.date) ?? 0) + 1); }
+    for (const t of s.o.tasks?.() ?? s.ctx.data().tasks) { const d = isTask(t) && !t.done ? dueOf(t.due) : null; if (d) by.set(d.date, (by.get(d.date) ?? 0) + 1); }
     return by;
   };
   s.draw = () => {
