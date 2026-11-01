@@ -1,11 +1,10 @@
 // The small sheets the task sheet, quick add and the project sheet open over themselves (#pick-sheet): a list to pick
-// one from (a project and section, a colour, a parent project) and the date sheet (a day, a time, or none).
+// one from (a project and section, a colour, a parent project). Dates have their own sheet (scheduler.js).
 import { icon } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { INBOX } from '../items.js';
 import { projectTree } from '../tasks.js';
 import { colorHex } from '../colors.js';
-import { dayKey, addDays, weekdayOf, dayWords, timeText } from '../dates.js';
 import { byOrder } from '../order.js';
 
 /** @typedef {{ label: string, icon?: import('app-ui/icons/lucide.js').IconNodes, color?: string, depth?: number, checked?: boolean, run: () => unknown }} Choice */
@@ -74,49 +73,4 @@ export function pickPlace(data, now, done) {
     sectionsOf(p.id, depth);
   }
   pickOne('Move to', choices);
-}
-
-/**
- * The date sheet: Today, Tomorrow, the weekend, next week or no date, or a day and a time of one's own.
- * @param {import('../dates.js').Due | null | undefined} due @param {(due: import('../dates.js').Due | null) => unknown} done
- */
-export function pickDate(due, done) {
-  const d = sheet(), body = /** @type {HTMLElement} */ (d.querySelector('[data-fill]')), today = dayKey();
-  const sat = addDays(today, (6 - weekdayOf(today) + 7) % 7 || 7), mon = addDays(today, (8 - weekdayOf(today)) % 7 || 7);
-  const keep = (/** @type {string} */ date) => ({ ...(due ?? {}), date });
-  const quick = /** @type {[string, import('app-ui/icons/lucide.js').IconNodes, string, string | null][]} */ ([
-    ['Today', ICONS.calendar, 'today', today], ['Tomorrow', ICONS.sun, 'tomorrow', addDays(today, 1)],
-    ['This weekend', ICONS.sofa, 'weekend', sat], ['Next week', ICONS.calendarArrowUp, 'week', mon], ['No date', ICONS.ban, 'none', null],
-  ]);
-  const list = el('ul', 'td-card td-choices');
-  list.setAttribute('aria-label', 'Quick dates');
-  list.append(...quick.map(([label, ic, tone, date]) => {
-    const li = el('li', ''), b = /** @type {HTMLButtonElement} */ (el('button', 'td-choice'));
-    b.type = 'button';
-    const i = icon(ic, { class: 'td-choice-icon' });
-    i.dataset.tone = tone;
-    b.append(i, el('span', 'td-choice-label', label));
-    if (date) b.append(el('span', 'td-choice-side', dayWords(date, today) === label ? '' : dayWords(date, today)));
-    b.addEventListener('click', () => { d.close(); void done(date ? keep(date) : null); });
-    li.append(b);
-    return li;
-  }));
-  const form = /** @type {HTMLFormElement} */ (el('form', 'td-card td-date-form'));
-  const day = Object.assign(document.createElement('input'), { type: 'date', value: due?.date ?? today, required: true });
-  const time = Object.assign(document.createElement('input'), { type: 'time', value: due?.time ?? '' });
-  const dl = el('label', 'td-field', 'Day'), tl = el('label', 'td-field', 'Time');
-  dl.append(day); tl.append(time);
-  const set = /** @type {HTMLButtonElement} */ (el('button', 'td-primary', 'Set date'));
-  set.type = 'submit';
-  form.append(dl, tl, set);
-  form.addEventListener('submit', e => {
-    e.preventDefault();
-    if (!day.value) return;
-    const next = { ...(due ?? {}), date: day.value };
-    if (time.value) next.time = time.value; else delete next.time;
-    d.close(); void done(next);
-  });
-  const now = due?.time ? ` ${timeText(due.time)}` : '';
-  body.replaceChildren(sheetHead(due ? `${dayWords(due.date, today)}${now}` : 'Date', d), list, form);
-  if (!d.open) d.showModal();
 }

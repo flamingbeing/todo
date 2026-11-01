@@ -40,10 +40,12 @@ export function projectView(tasks, sections, projectId) {
   };
 }
 
-/** a day's order: timed tasks first by time, then by priority, then by their own order @param {Task} a @param {Task} b */
+/** a day's order: as dragged when both were placed on the day by hand (dayOrder), else timed tasks first by time, then
+ * by priority, then by their own order @param {Task} a @param {Task} b */
 export function dayOrder(a, b) {
   const da = dueOf(a.due), db = dueOf(b.due);
   if (da && db && da.date !== db.date) return da.date < db.date ? -1 : 1;
+  if (typeof a.dayOrder === 'number' && typeof b.dayOrder === 'number' && a.dayOrder !== b.dayOrder) return a.dayOrder - b.dayOrder;
   const ta = isTime(da?.time) ? /** @type {string} */ (da?.time) : '~', tb = isTime(db?.time) ? /** @type {string} */ (db?.time) : '~';
   if (ta !== tb) return ta < tb ? -1 : 1;
   return priorityOf(a) - priorityOf(b) || num(a.dayOrder ?? a.order) - num(b.dayOrder ?? b.order) || num(a.createdAt) - num(b.createdAt);

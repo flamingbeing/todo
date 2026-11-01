@@ -13,7 +13,8 @@ import { flatten, descendants, canNest } from '../tree.js';
 import { byOrder } from '../order.js';
 import { rowList } from '../ui/row.js';
 import { openMenu } from '../ui/menu.js';
-import { el, pickPlace, pickDate } from './pick.js';
+import { el, pickPlace } from './pick.js';
+import { pickDate } from './scheduler.js';
 
 /** @typedef {import('../items.js').Task} Task */
 /** @typedef {import('./views.js').Ctx} Ctx */
@@ -126,7 +127,7 @@ function draw(ctx) {
     if (at && await ctx.app.moveTask(at, { ...to, parentId: null })) ctx.toast(REFUSED);
   }); };
   place.addEventListener('click', move);
-  date.addEventListener('click', () => pickDate(current(ctx)?.due, due => save({ due })));
+  date.addEventListener('click', () => pickDate(current(ctx)?.due, due => save({ due }), { data: ctx.data() }));
   prio.addEventListener('click', () => openMenu(prio, [1, 2, 3, 4].map(p => ({ label: `Priority ${p}`, icon: ICONS.flag, color: PRIORITY_COLOR[p],
     checked: priorityOf(/** @type {Task} */ (current(ctx))) === p, run: () => save({ priority: p }) })), { label: 'Priority' }));
   rows.append(place, date, prio, labels);

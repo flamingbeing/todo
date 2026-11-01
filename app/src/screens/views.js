@@ -2,7 +2,7 @@
 // heard (tasks.js says what goes where; ui/row.js draws a row). Only the page on screen is drawn at once; the others
 // when they come up (or are asked to draw ahead for a swipe). The task sheet, quick add, Browse, the project sheet and
 // Completed load the first time they are needed (lazyModules), then in idle moments after the first screen.
-import { conflictSheet, refusedList, toaster, undoToast, loadState, confirmModal, lazyModules, glide, plural } from '@core/ui';
+import { conflictSheet, refusedList, toaster, undoToast, loadState, confirmModal, lazyModules, glide, plural, holdKeyboard } from '@core/ui';
 import { COLL, REFUSED, INBOX, itemText } from '../items.js';
 import { projectView, todayView, upcomingView, isTask, placeText, projectCascade, projectOf, priorityOf } from '../tasks.js';
 import { dayKey, dayTitle, dueLine } from '../dates.js';
@@ -80,7 +80,7 @@ export function views(app) {
 
   const lazy = lazyModules({
     sheet: () => import('./task-sheet.js'),
-    add: () => import('./add-sheet.js'),
+    add: () => import('./quick-add.js'),
     browse: () => import('./browse.js'),
     projectSheet: () => import('./project-sheet.js'),
     completed: () => import('./completed.js'),
@@ -107,16 +107,27 @@ export function views(app) {
     onFold: t => { void app.editTask(t, { collapsed: !t.collapsed }).then(r => r && toast(REFUSED)); }, ...o });
 
   /** done: the box fills, the row fades out, then the save and the undo toast @param {Task} t @param {HTMLElement | null} [row] */
+  // A repeating task stays open and moves to its next date (recur.js, loaded then); past its last one it is done.
   const complete = async (t, row) => {
     if (!canWrite) return;
+    let next = /** @type {string | null} */ (null);
+    if (t.due?.rrule) {
+      try {
+        const { nextDay, dateLibs } = await import('../recur.js'), today = dayKey();
+        next = nextDay(t.due, { done: today, today }, (await dateLibs()).RRule);
+      } catch { /* offline before the library was kept: done for good is wrong, so leave it */ toast('Could not work out the next date'); redraw(); return; }
+    }
     if (row) {
       await new Promise(r => setTimeout(r, 150));
-      const g = glide([[row, x => ({ opacity: String(1 - x), transform: `translateX(${x * 12}px)` })]], 0, 1);
-      await g.done;
+      if (!next) await glide([[row, x => ({ opacity: String(1 - x), transform: `translateX(${x * 12}px)` })]], 0, 1).done;
     }
-    const { refused, ticked } = await app.complete(t);
+    const { refused, ticked, moved } = await app.complete(t, { next });
     if (refused) { toast(REFUSED); redraw(); return; }
-    undo.show('Task completed', async () => { if (await app.untick(ticked)) toast(REFUSED); });
+    if (moved) undo.show('Task completed', async () => {
+      const now = data.tasks.find(x => x.id === t.id) ?? t;
+      if (await app.editTask(now, { due: moved })) toast(REFUSED);
+    });
+    else undo.show('Task completed', async () => { if (await app.untick(ticked)) toast(REFUSED); });
   };
 
   // ---- where the person is: the tab page, and the screen pushed over it
@@ -132,7 +143,7 @@ export function views(app) {
   const addContext = () => top === 'project-page' ? { projectId }
     : top === 'today-page' || top === 'upcoming-page' ? { projectId: INBOX, due: { date: dayKey() } } : { projectId: INBOX };
   const fab = $('fab'), more = $('more-btn');
-  fab.addEventListener('click', () => ctx.openQuickAdd());
+  fab.addEventListener('click', () => { if (canWrite) { const hold = holdKeyboard(); void lazy.withMod('add', m => m.openQuickAdd(ctx, addContext(), hold)); } });
   more.addEventListener('click', () => pageMenu());
   const onScreen = () => {
     const lists = ['inbox-page', 'today-page', 'upcoming-page', 'project-page'];

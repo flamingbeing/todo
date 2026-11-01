@@ -260,7 +260,7 @@ export const clickOpens = async (button, dialog) => { await button.dispatchEvent
 // (and the quick add and task sheet loaded, which the page fetches straight after its first draw: a test may go offline next)
 export const synced = async page => {
   await expect.poll(() => page.evaluate(() => window.starter.status), { timeout: 15_000 }).toBe('synced');
-  await page.waitForFunction(() => performance.getEntriesByType('resource').filter(e => /add-sheet|task-sheet/.test(e.name)).length >= 2, null, { timeout: 15_000 });
+  await page.waitForFunction(() => performance.getEntriesByType('resource').filter(e => /quick-add|task-sheet/.test(e.name)).length >= 2, null, { timeout: 15_000 });
 };
 // cloud{
 export const serverHas = text => expect.poll(async () => (await db.list('spaces/_/tasks')).some(d => d.title === text), { timeout: 15_000 }).toBe(true);

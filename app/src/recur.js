@@ -319,3 +319,8 @@ export function ruleChoices(rrule) {
   const until = p.UNTIL && /^\d{8}/.test(p.UNTIL) ? `${p.UNTIL.slice(0, 4)}-${p.UNTIL.slice(4, 6)}-${p.UNTIL.slice(6, 8)}` : null;
   return { unit, every: Math.max(1, +(p.INTERVAL ?? 1)), days, until };
 }
+
+/** @type {Promise<{ chrono: import('chrono-node').Chrono, RRule: RRuleClass }> | undefined} */
+let libs;
+/** the date libraries (vendored, tools/vendor-lib.mjs), fetched the first time a screen needs them */
+export const dateLibs = () => (libs ??= Promise.all([import('chrono-node'), import('rrule')]).then(([c, r]) => ({ chrono: c.casual, RRule: r.RRule })));

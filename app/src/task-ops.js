@@ -3,7 +3,7 @@
 // queued, or to the reason when one was refused at once (app-sync rejects then; the copy waits in the refused list).
 // A tick, move or delete takes a task's subtasks along; a project's delete takes its sub-projects, sections and tasks.
 import { COLL, PROJECTS, SECTIONS, LABELS, FILTERS, INBOX } from './items.js';
-import { cleanFields, cleanColor, projectCascade, sectionCascade, projectOf } from './tasks.js';
+import { cleanFields, cleanColor, cleanDue, projectCascade, sectionCascade, projectOf } from './tasks.js';
 import { descendants } from './tree.js';
 import { orderAtEnd } from './order.js';
 
@@ -40,9 +40,11 @@ export function taskOps({ save, id, data, now = Date.now, drop = () => {} }) {
     const order = typeof f.order === 'number' ? f.order : orderAtEnd(siblings(/** @type {string} */ (f.projectId), f.sectionId, f.parentId));
     return put(COLL, { id: id(), done: false, ...f, order, createdAt: now() }, null);
   };
-  /** a task and its open subtasks, done (doneAt now) -> '' or the reason, and the tasks it ticked (an undo unticks them)
-   * @param {Task} task @returns {Promise<{ refused: string, ticked: Task[] }>} */
-  const complete = async task => {
+  /** a task and its open subtasks, done (doneAt now) -> '' or the reason, and the tasks it ticked (an undo unticks them).
+   * A repeating task with a next date (next) stays open and moves to it instead: moved is the date it had (an undo puts it back).
+   * @param {Task} task @param {{ next?: string | null }} [o] @returns {Promise<{ refused: string, ticked: Task[], moved?: import('./dates.js').Due }>} */
+  const complete = async (task, { next } = {}) => {
+    if (next && task.due?.rrule) return { refused: await put(COLL, { ...task, due: cleanDue({ ...task.due, date: next }) }, task), ticked: [], moved: task.due };
     const ticked = [task, ...descendants(task.id, data().tasks).filter(t => !t.done)], at = now();
     return { refused: await first(ticked.map(t => put(COLL, { ...t, done: true, doneAt: at }, t))), ticked };
   };
@@ -73,6 +75,28 @@ export function taskOps({ save, id, data, now = Date.now, drop = () => {} }) {
       return first([put(COLL, { ...task, projectId, sectionId, parentId, order }, task),
         ...under.map(t => put(COLL, { ...t, projectId, sectionId }, t))]);
     },
+    /**
+     * a dragged task in its new place: its parent, section and order there (its subtasks follow to the project and
+     * section), a new day when dropped on one, and the records to renumber first (from order.js placeAt)
+     * @param {Task} task @param {{ projectId?: string, sectionId?: string | null, parentId?: string | null, order?: number,
+     *   dayOrder?: number, date?: string }} to @param {{ item: { id: string }, order: number }[]} [renumber] @param {'order' | 'dayOrder'} [key]
+     */
+    placeTask: (task, to, renumber = [], key = 'order') => {
+      const all = data().tasks;
+      const projectId = to.projectId ?? projectOf(task), sectionId = to.sectionId === undefined ? task.sectionId ?? null : to.sectionId;
+      const next = { ...task, projectId, sectionId, ...(to.parentId !== undefined ? { parentId: to.parentId } : {}),
+        ...(typeof to.order === 'number' ? { order: to.order } : {}), ...(typeof to.dayOrder === 'number' ? { dayOrder: to.dayOrder } : {}),
+        ...(to.date && task.due ? { due: cleanDue({ ...task.due, date: to.date }) } : to.date ? { due: { date: to.date } } : {}) };
+      const moved = projectId !== projectOf(task) || sectionId !== (task.sectionId ?? null);
+      const under = moved ? descendants(task.id, all) : [];
+      const others = renumber.filter(r => r.item.id !== task.id).map(r => {
+        const t = all.find(x => x.id === r.item.id);
+        return t ? put(COLL, { ...t, [key]: r.order }, t) : Promise.resolve('');
+      });
+      return first([...others, put(COLL, next, task), ...under.map(t => put(COLL, { ...t, projectId, sectionId }, t))]);
+    },
+    /** projects in a new order (Manage projects): each whose order or parent changes @param {{ item: Project, order: number, parentId?: string | null }[]} list */
+    orderProjects: list => first(list.map(({ item, order, parentId }) => put(PROJECTS, { ...item, order, ...(parentId !== undefined ? { parentId } : {}) }, item))),
     /** a copy of a task (and its subtasks) right after it @param {Task} task */
     duplicateTask: async task => {
       const all = data().tasks, map = new Map([[task.id, id()]]);

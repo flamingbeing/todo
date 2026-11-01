@@ -4,6 +4,9 @@ import { cleanTabs } from '@core/ui';
 import { ICONS } from './icons.js';
 
 export const SETTINGS_COLL = 'settings';
+const SWIPES = ['complete', 'schedule', 'delete', 'none'];
+/** @type {[unknown, string][]} */
+const SWIPE_CHOICES = [['complete', 'Complete'], ['schedule', 'Schedule'], ['delete', 'Delete'], ['none', 'None']];
 
 /** @type {Record<string, import('app-ui/settings/types').OptionSpec>} */
 export const OPTIONS = {
@@ -13,6 +16,11 @@ export const OPTIONS = {
   showCounts: { scope: 'account', default: false },
   // the tab bar's order and the tabs off it (this device; Settings, Tab bar)
   tabs: { scope: 'device', default: { order: [], hidden: [] }, clean: cleanTabs },
+  // quick add and the scheduler read dates, times and repeats in the words typed (this device)
+  smartDates: { scope: 'device', default: true },
+  // what a row does when swiped right or left (this device): 'complete', 'schedule', 'delete' or 'none'
+  swipeRight: { scope: 'device', default: 'complete', clean: v => (SWIPES.includes(String(v)) ? v : 'complete') },
+  swipeLeft: { scope: 'device', default: 'schedule', clean: v => (SWIPES.includes(String(v)) ? v : 'schedule') },
   // add: options
 };
 
@@ -25,6 +33,11 @@ const FEATURES = [
 /** The Settings pages (src/shell.js: @core/ui settingsScreen with its menu): a row is a switch for a yes/no option; icon,
  * sub and group are the page's row in the menu. */
 export const SETTING_SECTIONS = [
+  { title: 'General', icon: ICONS.settings, sub: 'Smart dates and swipes', group: 'Tasks', rows: [
+    { key: 'smartDates', label: 'Smart date recognition', sub: 'Read dates, times and repeats as you type a task' },
+    { key: 'swipeRight', label: 'Swipe right', sub: 'This device', choices: SWIPE_CHOICES },
+    { key: 'swipeLeft', label: 'Swipe left', sub: 'This device', choices: SWIPE_CHOICES },
+  ] },
   { title: 'Tasks', icon: ICONS.listChecks, sub: 'Counts and row size', group: 'Tasks', rows: [
     { key: 'showCounts', label: 'Show task counts in Browse', sub: 'Every device; sign in to change it' },
     { key: 'bigRows', label: 'Larger rows', sub: 'This device' },
