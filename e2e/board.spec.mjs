@@ -4,7 +4,7 @@
 // columns are the priorities (no Add section), and a card dragged to another column takes that priority. A column's
 // "…" > Add section after opens the name field between the columns; a change synced in meanwhile keeps it open.
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, db, openTab, finger, gesturesReady, still, press, slide, letGo } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, db, openTab, finger, gesturesReady, still, press, slide, letGo, boxOf } from './fixtures.mjs';
 
 const now = () => ({ createdAt: Date.now(), updatedAt: Date.now() });
 
@@ -47,7 +47,7 @@ test('Display > Board: a column per section, a card dragged to the next one move
   await page.waitForTimeout(300);
   const box = await board.boundingBox();
   const right = box.x + box.width - 20;
-  const card = await page.locator(`#project .td-row[data-id="${a}"]`).boundingBox();
+  const card = await boxOf(page, `#project .td-row[data-id="${a}"]`);
   const dx = Math.round(right - (card.x + card.width / 2));
   const path = [...Array.from({ length: 8 }, (_, i) => [Math.round(dx * (i + 1) / 8), 0]), ...Array.from({ length: 40 }, () => [dx, 2])];
   await finger(page, `#project .td-row[data-id="${a}"]`, path, { hold: 650, wait: 120 });

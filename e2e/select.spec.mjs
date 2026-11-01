@@ -2,7 +2,7 @@
 // them, and the bottom bar sets their priority; the "…" menu's Select tasks, Select all, then Complete N with Undo
 // and Delete N (asked first) with Undo. The menu and both bars pass axe.
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, today, db, finger, fingers, line, gesturesReady, openTab } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, today, db, finger, fingers, line, gesturesReady, openTab, boxOf } from './fixtures.mjs';
 
 const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
 const get = id => db.get(`spaces/_/tasks/${id}`);
@@ -109,7 +109,7 @@ test('two fingers dragged down over three rows select those three', async ({ pho
   await page.locator('#browse').getByRole('button', { name: new RegExp(`^${name}`) }).click();
   await expect(page.locator(rowIn('project', ids[3]))).toBeVisible();
   await page.evaluate(() => Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().endTime !== Infinity).map(a => a.finished.catch(() => {}))));
-  const mid = async id => { const r = await page.locator(rowIn('project', id)).boundingBox(); return r.y + r.height / 2; };
+  const mid = async id => { const r = await boxOf(page, rowIn('project', id)); return r.y + r.height / 2; };
   const y0 = await mid(ids[0]), y2 = await mid(ids[2]);
   await fingers(page, [line(120, y0, 0, y2 - y0, 14), line(260, y0, 0, y2 - y0, 14)], { wait: 24 });
   await expect(page.locator('.td-select-count')).toHaveText('3 selected');
