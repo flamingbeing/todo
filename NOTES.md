@@ -8,8 +8,15 @@ See README, "Tests". The browser tests use one shared list (`spaces/_/tasks`), s
 accounts and task texts and checks only those; they run side by side.
 
 - A screen as a picture (iPhone size, 3x, light or dark, signed in on the emulators with made-up data, no real sign-in):
-  `node tools/shot.mjs out.png [--dark] [--tab upcoming-page] [--settings About] [--click <selector>]...` (needs Java and
-  `PW_CHROMIUM`; it starts and stops the emulators and the e2e server, seeds `tools/shot-seed.json`; `--seed` for another).
+  `node tools/shot.mjs out.png [--dark] [--tab upcoming-page] [--project <name>] [--task <title>] [--settings About]
+  [--click <selector>] [--eval <js>] [--keep]...` (needs Java and `PW_CHROMIUM`; it starts the emulators and the e2e
+  server unless already up, and stops them unless `--keep`; seeds `tools/shot-seed.json`, `--seed` for another).
+  `--tab` takes a tab page id (`inbox-page`, `today-page`, `upcoming-page`, `search-page`, `browse-page`); `--project`
+  opens a project from Browse's rows; `--task` opens a task's sheet; `--settings` opens Settings from Browse's gear.
+- The icon: `node tools/icons.mjs` writes `app/public/icons/icon.svg` and renders the PNGs (192, 512, maskable, Apple
+  touch) with Playwright's Chromium; run it again after a change of colour or mark.
+- The browser tests start on Today, the second tab: Back from another tab goes to the first, Inbox (`back.spec`).
+  `synced()` also waits for the quick add and task sheet modules, which load straight after the first draw.
 
 ## UI kit gestures and the `/kit/` gallery (app-ui)
 
