@@ -1,15 +1,16 @@
 // Dev tool: a PNG of one of the app's screens at iPhone size (390x844, 3x), signed in as a made-up account on the
 // Firestore emulator with sample data, no real sign-in and no network but the UI kit (served from node_modules/app-ui).
 //
-//   node tools/shot.mjs <out.png> [--dark] [--tab <page id>] [--settings <page title>] [--seed <file.json>]
+//   node tools/shot.mjs <out.png> [--dark] [--tab <page id>] [--project <name>] [--task <title>] [--settings <page title>] [--seed <file.json>]
 //                       [--click <selector or text=...>]... [--eval <js in the page>]... [--wait <ms>] [--full]
 //                       [--width 390 --height 844 --dpr 3] [--ui <app-ui dir>] [--keep]
 //
-// --tab: a tab's page id (today-page, upcoming-page, done-page, settings-page; default the first screen).
-// --settings: after --tab settings-page, open that Settings page (About shows "Install this app").
+// --tab: a tab's page id (inbox-page, today-page, upcoming-page, search-page, browse-page; default the first screen).
+// --project: open that project's page from Browse (its name). --task: open that task's sheet (its title, on the
+// screen shown). --settings: open Settings from Browse's gear, then that page (About shows "Install this app").
 // --click / --eval run in order after that (a sheet, a swipe, a menu); --wait pauses; --full is the whole page.
 // --seed: { "<firestore doc path>": { fields } }; "{{today}}" and "{{today+3}}" in a string become that day (YYYY-MM-DD),
-//   "{{now}}" the time in ms (default tools/shot-seed.json, the app's data model, kept in step with it).
+//   "{{now}}" alone the time in ms, a number (default tools/shot-seed.json, the app's data model, kept in step with it).
 // Starts the emulators (a temp folder, so no log files land in the repo) and the e2e server unless already up, and stops
 // what it started. Needs Java, PW_CHROMIUM (tools/dev-setup.sh) and `npm ci`. Made-up data only; never a live project.
 import fs from 'node:fs';
@@ -84,7 +85,8 @@ try {
   await context.route('https://design.flamingbeing.com/**', route => route.fulfill({ status: 200, contentType: 'text/css', body: '' }));
   await context.route(/^https:\/\/(apis|www)\.google\.com\//, route => route.abort('blockedbyclient'));
   const page = await context.newPage();
-  page.on('pageerror', e => console.error('page error:', e.message));
+  page.on('pageerror', e => console.error('page error:', e.message, process.env.SHOT_STACK ? e.stack : ''));
+  page.on('console', m => { if (m.type() === 'error') console.error('console:', m.text()); });
 
   // sign in as a made-up member
   const db = fsAdmin('demo-todo');
@@ -98,12 +100,12 @@ try {
 
   // sample data (documents under spaces/_/...), then wait for the app to hear it
   const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
-  const fill = v => typeof v === 'string' ? v.replace(/\{\{today(?:\+(-?\d+))?\}\}/g, (_, n) => day(Number(n || 0))).replace(/\{\{now\}\}/g, String(Date.now()))
+  const fill = v => v === '{{now}}' ? Date.now() : typeof v === 'string' ? v.replace(/\{\{today(?:\+(-?\d+))?\}\}/g, (_, n) => day(Number(n || 0))).replace(/\{\{now\}\}/g, String(Date.now()))
     : Array.isArray(v) ? v.map(fill) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, fill(x)])) : v;
   const seed = JSON.parse(fs.readFileSync(path.resolve(opts.seed || path.join(ROOT, 'tools/shot-seed.json')), 'utf8'));
   for (const [p, doc] of Object.entries(seed)) {
     const f = fill(doc);
-    await db.put(p, { done: false, createdAt: Date.now(), updatedAt: Date.now(), ...f });
+    await db.put(p, { ...(p.includes('/tasks/') ? { done: false } : {}), createdAt: Date.now(), updatedAt: Date.now(), ...f });
   }
   await page.waitForFunction(() => window.starter.ready === true);
   await page.waitForTimeout(800);
@@ -115,7 +117,24 @@ try {
     await page.locator(`.ui-tab[data-tab-page="#${tab}"]:visible, .ui-side-link[data-tab-page="#${tab}"]:visible`).first().click();
     await page.waitForTimeout(500);
   }
+  const browse = async () => {
+    await page.locator('.ui-tab[data-tab-page="#browse-page"]:visible, .ui-side-link[data-tab-page="#browse-page"]:visible').first().click();
+    await page.waitForSelector('#browse-settings', { state: 'visible' });
+  };
+  if (opts.project) {
+    await browse();
+    await page.locator('#browse .td-browse-row').filter({ hasText: new RegExp(`^${opts.project}`) }).first().click();
+    await page.waitForTimeout(600);
+  }
+  if (opts.task) {
+    await page.locator('.ui-screen:not([hidden]) .td-row-main:visible').filter({ hasText: opts.task }).first().click();
+    await page.waitForSelector('#task-sheet[open]');
+    await page.waitForTimeout(600);
+  }
   if (opts.settings) {
+    await browse();
+    await page.locator('#browse-settings').click();
+    await page.waitForTimeout(500);
     const back = page.locator('#settings-host .ui-settings-back:visible');
     if (await back.count()) await back.click();
     await page.locator('#settings-host .ui-settings-menu-groups .ui-settings-go').filter({ hasText: new RegExp(`^${opts.settings}`) }).click();
