@@ -2,7 +2,12 @@
 // dist/ with the same layout the Worker serves (index.html, public/ at the root), and CI runs the whole browser suite
 // on dist/ too, so the switch stays one small PR. Everything the import map names stays external: the page still
 // loads core, Firebase (vendored) and register.js through the map, at the versions it pins.
+import fs from 'node:fs';
 import { defineConfig } from 'vite';
+import { importMap } from './tools/sw-files.mjs';
+
+// every bare name the import map gives a file (the vendored libraries too) stays the map's
+const MAPPED = new Set(Object.keys(importMap(fs.readFileSync(new URL('./app/index.html', import.meta.url), 'utf8'))));
 
 // Where each local module's source is, for builds that bundle core from source (tools/vite-pieces.mjs); this build
 // keeps them external like the rest of core. Generated from modules.json's "alias" fields: node tools/modules.mjs.
@@ -19,6 +24,6 @@ export default defineConfig({
     outDir: '../dist',
     emptyOutDir: true,
     target: 'es2022',
-    rollupOptions: { external: id => /^(@core\/|firebase\/|app-update\/|https:\/\/)/.test(id) },
+    rollupOptions: { external: id => MAPPED.has(id) || /^(@core\/|firebase\/|app-update\/|https:\/\/)/.test(id) },
   },
 });
