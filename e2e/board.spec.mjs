@@ -1,7 +1,8 @@
 // A project as a board: Display > Board turns it on (kept with the project); each section is a column with its name,
 // count and cards, "No section" first when it has tasks; a card held and dragged to the next column moves to that
 // section (the board scrolls when the finger nears its side) and stays there. Passes axe. Grouped by priority, the
-// columns are the priorities (no Add section), and a card dragged to another column takes that priority.
+// columns are the priorities (no Add section), and a card dragged to another column takes that priority. A column's
+// "…" > Add section after opens the name field between the columns; a change synced in meanwhile keeps it open.
 import AxeBuilder from './axe.mjs';
 import { test, expect, signIn, synced, uniq, db, openTab, finger, gesturesReady, still, press, slide, letGo } from './fixtures.mjs';
 
@@ -108,7 +109,16 @@ test('a column\'s "…" > Add section after: the name field opens between the co
   // (the field's column sits right after First)
   await expect(page.locator(`#project .td-col[data-id="${s1}"] + .td-col-new input`)).toBeVisible();
   expect(await AxeBuilder(page)).toEqual([]);
-  await field.fill(made);
+  // (a change synced in while naming, from another device or here another test, draws the board again: the field
+  // stays open and focused with what was typed, and nothing is saved until Enter)
+  await field.fill(made.slice(0, 3));
+  const card = uniq('card');
+  await db.put(`spaces/_/tasks/${card}`, { title: card, projectId: pid, sectionId: s2, order: 1, priority: 4, done: false, ...now() });
+  await expect(page.locator(`#project .td-col[data-id="${s2}"]`)).toContainText(card);
+  await expect(field).toBeFocused();
+  await expect(field).toHaveValue(made.slice(0, 3));
+  expect((await db.list('spaces/_/sections')).filter(d => d.projectId === pid)).toHaveLength(2);
+  await field.pressSequentially(made.slice(3));
   await field.press('Enter');
   await expect(page.locator('#project .td-col-title')).toHaveText(['First', made, 'Last']);
   await expect.poll(async () => (await db.list('spaces/_/sections')).find(d => d.name === made)?.order, { timeout: 15_000 }).toBe(1.5);

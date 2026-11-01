@@ -207,9 +207,20 @@ export function views(app) {
   /** @param {string} pid @param {string} [after] @param {number} [order] */
   const newSection = (pid, after, order) => { naming = { projectId: pid, sectionId: '', after, order }; fresh.clear(); paint(top); focusNaming(); };
   const focusNaming = () => requestAnimationFrame(() => /** @type {HTMLInputElement | null} */ (document.querySelector(`#${top} .td-name-field input`))?.focus());
+  // (the page is drawn again on every change, synced ones too: the open field is the same element each time, so what
+  // was typed stays; the browser blurs a focused element it takes out, so that blur is not the person leaving it)
+  /** @type {{ for: object | null, form: HTMLFormElement, moving: boolean } | null} */
+  let shown = null;
   /** @param {string} value @param {import('../items.js').Section | null} section @param {string} pid */
   const nameField = (value, section, pid) => {
+    if (shown && naming && shown.for === naming) {
+      const was = shown, input = /** @type {HTMLInputElement} */ (was.form.elements[0]);
+      was.moving = document.activeElement === input;
+      queueMicrotask(() => { was.moving = false; });
+      return was.form;
+    }
     const form = document.createElement('form'), input = document.createElement('input');
+    const me = shown = { for: naming, form, moving: false };
     form.className = 'td-name-field';
     input.value = value; input.maxLength = 120; input.placeholder = 'Name this section';
     input.setAttribute('aria-label', section ? `New name for ${section.name}` : 'Name of the new section');
@@ -218,6 +229,7 @@ export function views(app) {
     const finish = async (/** @type {boolean} */ save) => {
       if (done) return;
       done = true; naming = null;
+      if (shown === me) shown = null;
       const name = input.value.trim();
       if (save && name) {
         const r = section ? await app.renameSection(section, name) : (await app.addSection(pid, name, at)).refused;
@@ -226,7 +238,12 @@ export function views(app) {
       fresh.clear(); paint(top);
     };
     form.addEventListener('submit', e => { e.preventDefault(); void finish(true); });
-    input.addEventListener('blur', () => { void finish(true); });
+    input.addEventListener('blur', () => {
+      if (!me.moving) { void finish(true); return; }
+      // (moved by a redraw: focus it again where the caret was)
+      const [a, b] = [input.selectionStart, input.selectionEnd];
+      queueMicrotask(() => { if (input.isConnected && !done) { input.focus({ preventScroll: true }); input.setSelectionRange(a, b); } });
+    });
     input.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); void finish(false); } });
     form.append(input);
     return form;
