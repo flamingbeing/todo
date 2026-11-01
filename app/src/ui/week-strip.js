@@ -8,6 +8,7 @@
 // day the setting says.
 import { icon, drag, glide, haptic } from '@core/ui';
 import { ICONS } from '../icons.js';
+import { MORE } from '../icons-more.js';
 import { isTask, dayOrder } from '../tasks.js';
 import { upcomingView, narrowTasks, sorter } from '../arrange.js';
 import { dayKey, addDays, daysBetween, weekOf, monthGrid, monthTitle, weekdayName, dueOf, dayTitle } from '../dates.js';
@@ -225,7 +226,7 @@ export function pickMonth(s, done) {
       b.addEventListener('click', () => { month = next; draw(); });
       return b;
     };
-    nav.append(name, step(-1, 'Last month', ICONS.chevronLeft ?? ICONS.chevronRight), step(1, 'Next month', ICONS.chevronRight));
+    nav.append(name, step(-1, 'Last month', MORE.chevronLeft ?? ICONS.chevronRight), step(1, 'Next month', ICONS.chevronRight));
     const grid = el('div', 'td-mon');
     grid.setAttribute('role', 'grid');
     grid.setAttribute('aria-label', monthTitle(`${month}-01`));

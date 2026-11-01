@@ -93,9 +93,9 @@ export function pickDate(due, done, o = {}) {
   const mon = addDays(today, ((8 - wd) % 7) || 7);
   /** @type {[string, import('app-ui/icons/lucide.js').IconNodes, string, string | null][]} */
   const quick = [
-    ['Today', ICONS.calendar, 'today', today], ['Tomorrow', ICONS.sun, 'tomorrow', addDays(today, 1)],
-    ...(wd >= 1 && wd <= 3 ? [/** @type {[string, import('app-ui/icons/lucide.js').IconNodes, string, string | null]} */ (['Later this week', ICONS.calendarRange, 'week', addDays(today, 2)])] : []),
-    ['This weekend', ICONS.sofa, 'weekend', sat], ['Next week', ICONS.calendarArrowUp, 'week', mon], [o.dateOnly ? 'No deadline' : 'No date', ICONS.circleSlash, 'none', null],
+    ['Today', ICONS.calendar, 'today', today], ['Tomorrow', MORE.sun, 'tomorrow', addDays(today, 1)],
+    ...(wd >= 1 && wd <= 3 ? [/** @type {[string, import('app-ui/icons/lucide.js').IconNodes, string, string | null]} */ (['Later this week', MORE.calendarRange, 'week', addDays(today, 2)])] : []),
+    ['This weekend', MORE.sofa, 'weekend', sat], ['Next week', MORE.calendarArrowUp, 'week', mon], [o.dateOnly ? 'No deadline' : 'No date', MORE.circleSlash, 'none', null],
   ];
   // Postpone: the day after the task's own (tomorrow at the earliest, so an overdue one comes forward)
   const was = dueOf(due);
@@ -194,7 +194,7 @@ export function pickDate(due, done, o = {}) {
   const timeIn = Object.assign(document.createElement('input'), { type: 'time', className: 'td-sched-time-in' });
   timeIn.setAttribute('aria-label', 'Time');
   const timeSide = el('span', 'td-choice-side');
-  timeRow.append(icon(ICONS.clock, { class: 'td-choice-icon' }), el('span', 'td-choice-label', 'Time'), timeSide, icon(ICONS.chevronRight, { class: 'td-sched-chev' }), timeIn);
+  timeRow.append(icon(MORE.clock, { class: 'td-choice-icon' }), el('span', 'td-choice-label', 'Time'), timeSide, icon(ICONS.chevronRight, { class: 'td-sched-chev' }), timeIn);
   timeIn.addEventListener('change', () => {
     pending = { ...(pending ?? { date: today }) };
     if (timeIn.value) pending.time = timeIn.value; else delete pending.time;
@@ -203,7 +203,7 @@ export function pickDate(due, done, o = {}) {
   });
   const timeX = textButton('', 'td-sched-x');
   timeX.setAttribute('aria-label', 'Clear the time');
-  timeX.append(icon(ICONS.x));
+  timeX.append(icon(MORE.x));
   timeX.addEventListener('click', () => { if (pending) { delete pending.time; timeIn.value = ''; words.value = shownWords(); drawRows(); } });
   timeLi.append(timeRow, timeX);
   const repeatRow = /** @type {HTMLButtonElement} */ (el('button', 'td-choice td-sched-row'));
@@ -268,7 +268,7 @@ export function pickDate(due, done, o = {}) {
     const page = el('div', 'td-custom');
     const top = el('div', 'td-sheet-head td-sched-head');
     const back = textButton('', 'td-text-btn td-back-btn');
-    back.append(icon(ICONS.chevronLeft), el('span', '', 'Date'));
+    back.append(icon(MORE.chevronLeft), el('span', '', 'Date'));
     back.addEventListener('click', () => { body.replaceChildren(...main); });
     const ht = el('h2', 'td-sheet-title', 'Custom repeat');
     const save = textButton('Save', 'td-text-btn td-text-btn-strong');

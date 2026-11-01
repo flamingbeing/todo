@@ -44,7 +44,7 @@ export function openDisplay(ctx, view, project) {
 
   const head = el('div', 'td-sheet-head');
   const x = /** @type {HTMLButtonElement} */ (el('button', 'td-round td-sheet-x'));
-  x.type = 'button'; x.setAttribute('aria-label', 'Close'); x.append(icon(ICONS.x));
+  x.type = 'button'; x.setAttribute('aria-label', 'Close'); x.append(icon(MORE.x));
   x.classList.add('td-sheet-grey');
   x.addEventListener('click', () => sheet.close());
   const h = el('h2', 'td-sheet-title', 'Display');
@@ -144,7 +144,7 @@ export function openDisplay(ctx, view, project) {
     const label = labels.find(l => l.id === d.label);
     const filter = el('div', 'td-card td-attrs');
     filter.append(
-      row(ICONS.flag, 'Priority', d.priority ? `Priority ${d.priority}` : 'All', () => choose('Priority', [[0, 'All'], [1, 'Priority 1'], [2, 'Priority 2'], [3, 'Priority 3'], [4, 'Priority 4']], d.priority, v => save({ priority: v }))),
+      row(MORE.flag, 'Priority', d.priority ? `Priority ${d.priority}` : 'All', () => choose('Priority', [[0, 'All'], [1, 'Priority 1'], [2, 'Priority 2'], [3, 'Priority 3'], [4, 'Priority 4']], d.priority, v => save({ priority: v }))),
       row(ICONS.tag, 'Label', label?.name ?? 'All', () => choose('Label', [['', 'All'], ...labels.map(l => /** @type {const} */ ([l.id, l.name]))], d.label, v => save({ label: v }))),
       row(MORE.calendarClock, 'Date', word(DATE_WORDS, d.date), () => choose('Date', DATE_WORDS, d.date, v => save({ date: v }))));
     parts.push(el('h3', 'td-display-h', 'Filter'), filter);

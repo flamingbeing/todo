@@ -1,16 +1,12 @@
 // The app's own icons (Lucide, https://lucide.dev, ISC licence): [tag, attributes] pairs, drawn by @core/ui's icon().
-// Add one by copying its nodes from lucide.dev; never an emoji or a text glyph.
+// Only the icons the first screen draws (startup budget); the later screens' are in icons-more.js. Add one by copying its
+// nodes from lucide.dev; never an emoji or a text glyph.
 /** @typedef {import('app-ui/icons/lucide.js').IconNodes} IconNodes */
 
 /** @type {Record<string, IconNodes>} */
 export const ICONS = {
   inbox: [['polyline', { points: '22 12 16 12 14 15 10 15 8 12 2 12' }], ['path', { d: 'M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z' }]],
   calendar: [['path', { d: 'M8 2v4' }], ['path', { d: 'M16 2v4' }], ['rect', { width: '18', height: '18', x: '3', y: '4', rx: '2' }], ['path', { d: 'M3 10h18' }]],
-  calendarDays: [['path', { d: 'M8 2v4' }], ['path', { d: 'M16 2v4' }], ['rect', { width: '18', height: '18', x: '3', y: '4', rx: '2' }], ['path', { d: 'M3 10h18' }], ['path', { d: 'M8 14h.01' }], ['path', { d: 'M12 14h.01' }], ['path', { d: 'M16 14h.01' }], ['path', { d: 'M8 18h.01' }], ['path', { d: 'M12 18h.01' }], ['path', { d: 'M16 18h.01' }]],
-  search: [['circle', { cx: '11', cy: '11', r: '8' }], ['path', { d: 'm21 21-4.3-4.3' }]],
-  squareMenu: [['rect', { width: '18', height: '18', x: '3', y: '3', rx: '2' }], ['path', { d: 'M7 8h10' }], ['path', { d: 'M7 12h10' }], ['path', { d: 'M7 16h10' }]],
-  slidersHorizontal: [['path', { d: 'M21 4h-7' }], ['path', { d: 'M10 4H3' }], ['path', { d: 'M21 12h-9' }], ['path', { d: 'M8 12H3' }],
-    ['path', { d: 'M21 20h-5' }], ['path', { d: 'M12 20H3' }], ['path', { d: 'M14 2v4' }], ['path', { d: 'M8 10v4' }], ['path', { d: 'M16 18v4' }]],
   plus: [['path', { d: 'M5 12h14' }], ['path', { d: 'M12 5v14' }]],
   // (Lucide's ellipsis as three rings, not dots: r 2, a thinner line)
   ellipsis: [['circle', { cx: '12', cy: '12', r: '2', 'stroke-width': '1.5' }], ['circle', { cx: '19', cy: '12', r: '2', 'stroke-width': '1.5' }], ['circle', { cx: '5', cy: '12', r: '2', 'stroke-width': '1.5' }]],
@@ -20,34 +16,12 @@ export const ICONS = {
   listTree: [['path', { d: 'M21 12h-8' }], ['path', { d: 'M21 6H8' }], ['path', { d: 'M21 18h-8' }], ['path', { d: 'M3 6v4c0 1.1.9 2 2 2h3' }], ['path', { d: 'M3 10v6c0 1.1.9 2 2 2h3' }]],
   chevronDown: [['path', { d: 'm6 9 6 6 6-6' }]],
   chevronRight: [['path', { d: 'm9 18 6-6-6-6' }]],
-  chevronLeft: [['path', { d: 'm15 18-6-6 6-6' }]],
-  flag: [['path', { d: 'M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z' }], ['line', { 'x1': '4', 'x2': '4', 'y1': '22', 'y2': '15' }]],
   settings: [['path', { d: 'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z' }], ['circle', { cx: '12', cy: '12', r: '3' }]],
   circleCheck: [['circle', { cx: '12', cy: '12', r: '10' }], ['path', { d: 'm9 12 2 2 4-4' }]],
-  x: [['path', { d: 'M18 6 6 18' }], ['path', { d: 'm6 6 12 12' }]],
-  arrowUp: [['path', { d: 'm5 12 7-7 7 7' }], ['path', { d: 'M12 19V5' }]],
-  layoutGrid: [['rect', { width: '7', height: '7', x: '3', y: '3', rx: '1' }], ['rect', { width: '7', height: '7', x: '14', y: '3', rx: '1' }], ['rect', { width: '7', height: '7', x: '14', y: '14', rx: '1' }], ['rect', { width: '7', height: '7', x: '3', y: '14', rx: '1' }]],
-  pencil: [['path', { d: 'M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z' }], ['path', { d: 'm15 5 4 4' }]],
-  trash2: [['path', { d: 'M3 6h18' }], ['path', { d: 'M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6' }], ['path', { d: 'M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2' }], ['line', { 'x1': '10', 'x2': '10', 'y1': '11', 'y2': '17' }], ['line', { 'x1': '14', 'x2': '14', 'y1': '11', 'y2': '17' }]],
-  copy: [['rect', { width: '14', height: '14', x: '8', y: '8', rx: '2', ry: '2' }], ['path', { d: 'M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2' }]],
-  arrowRightLeft: [['path', { d: 'm16 3 4 4-4 4' }], ['path', { d: 'M20 7H4' }], ['path', { d: 'm8 21-4-4 4-4' }], ['path', { d: 'M4 17h16' }]],
   check: [['path', { d: 'M20 6 9 17l-5-5' }]],
-  circlePlus: [['circle', { cx: '12', cy: '12', r: '10' }], ['path', { d: 'M8 12h8' }], ['path', { d: 'M12 8v8' }]],
   folderInput: [['path', { d: 'M2 9V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-1' }], ['path', { d: 'M2 13h10' }], ['path', { d: 'm9 16 3-3-3-3' }]],
-  heart: [['path', { d: 'M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z' }]],
   listChecks: [['path', { d: 'm3 17 2 2 4-4' }], ['path', { d: 'm3 7 2 2 4-4' }], ['path', { d: 'M13 6h8' }], ['path', { d: 'M13 12h8' }], ['path', { d: 'M13 18h8' }]],
   menu: [['line', { 'x1': '4', 'x2': '20', 'y1': '12', 'y2': '12' }], ['line', { 'x1': '4', 'x2': '20', 'y1': '6', 'y2': '6' }], ['line', { 'x1': '4', 'x2': '20', 'y1': '18', 'y2': '18' }]],
   smartphone: [['rect', { width: '14', height: '20', x: '5', y: '2', rx: '2', ry: '2' }], ['path', { d: 'M12 18h.01' }]],
-  sun: [['circle', { cx: '12', cy: '12', r: '4' }], ['path', { d: 'M12 2v2' }], ['path', { d: 'M12 20v2' }], ['path', { d: 'm4.93 4.93 1.41 1.41' }], ['path', { d: 'm17.66 17.66 1.41 1.41' }], ['path', { d: 'M2 12h2' }], ['path', { d: 'M20 12h2' }], ['path', { d: 'm6.34 17.66-1.41 1.41' }], ['path', { d: 'm19.07 4.93-1.41 1.41' }]],
-  sofa: [['path', { d: 'M20 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v3' }], ['path', { d: 'M2 16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z' }], ['path', { d: 'M4 18v2' }], ['path', { d: 'M20 18v2' }], ['path', { d: 'M12 4v9' }]],
-  ban: [['circle', { cx: '12', cy: '12', r: '10' }], ['path', { d: 'm4.9 4.9 14.2 14.2' }]],
-  calendarArrowUp: [['path', { d: 'm14 18 4-4 4 4' }], ['path', { d: 'M16 2v4' }], ['path', { d: 'M18 22v-8' }], ['path', { d: 'M21 11.343V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9' }], ['path', { d: 'M3 10h18' }], ['path', { d: 'M8 2v4' }]],
-  star: [['path', { d: 'M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z' }]],
-  user: [['path', { d: 'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2' }], ['circle', { cx: '12', cy: '7', r: '4' }]],
-  clock: [['circle', { cx: '12', cy: '12', r: '10' }], ['polyline', { points: '12 6 12 12 16 14' }]],
-  calendarRange: [['rect', { width: '18', height: '18', x: '3', y: '4', rx: '2' }], ['path', { d: 'M16 2v4' }], ['path', { d: 'M3 10h18' }], ['path', { d: 'M8 2v4' }], ['path', { d: 'M17 14h-6' }], ['path', { d: 'M13 18H7' }], ['path', { d: 'M7 14h.01' }], ['path', { d: 'M17 18h.01' }]],
-  circleSlash: [['circle', { cx: '12', cy: '12', r: '10' }], ['path', { d: 'M22 2 2 22' }]],
-  gripVertical: [['circle', { cx: '9', cy: '12', r: '1' }], ['circle', { cx: '9', cy: '5', r: '1' }], ['circle', { cx: '9', cy: '19', r: '1' }], ['circle', { cx: '15', cy: '12', r: '1' }], ['circle', { cx: '15', cy: '5', r: '1' }], ['circle', { cx: '15', cy: '19', r: '1' }]],
   target: [['circle', { cx: '12', cy: '12', r: '10' }], ['circle', { cx: '12', cy: '12', r: '6' }], ['circle', { cx: '12', cy: '12', r: '2' }]],
-  squareCheck: [['path', { d: 'M21 10.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12.5' }], ['path', { d: 'm9 11 3 3L22 4' }]],
 };

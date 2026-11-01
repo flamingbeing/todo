@@ -6,12 +6,13 @@
 // "Swipe board cards" is on (off: a sideways move scrolls the columns).
 import { drag, glide, haptic, icon } from '@core/ui';
 import { ICONS } from '../icons.js';
+import { MORE } from '../icons-more.js';
 
 /** @typedef {'complete' | 'schedule' | 'delete' | 'none'} Swipe */
 const LOOK = /** @type {Record<Exclude<Swipe, 'none'>, { color: string, ic: import('app-ui/icons/lucide.js').IconNodes }>} */ ({
   complete: { color: '#058527', ic: ICONS.check },
   schedule: { color: '#692EC2', ic: ICONS.calendar },
-  delete: { color: '#DC4C3E', ic: ICONS.trash2 },
+  delete: { color: '#DC4C3E', ic: MORE.trash2 },
 });
 const FLING = 0.6;   // px/ms
 

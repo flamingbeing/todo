@@ -2,6 +2,7 @@
 // one from (a project and section, a colour, a parent project). Dates have their own sheet (scheduler.js).
 import { icon } from '@core/ui';
 import { ICONS } from '../icons.js';
+import { MORE } from '../icons-more.js';
 import { INBOX } from '../items.js';
 import { projectTree } from '../arrange.js';
 import { colorHex } from '../colors.js';
@@ -17,7 +18,7 @@ export const el = (tag, cls, text) => { const e = document.createElement(tag); e
 export function sheetHead(title, d, done = null) {
   const head = el('div', 'td-sheet-head');
   const x = /** @type {HTMLButtonElement} */ (el('button', 'td-round td-sheet-x'));
-  x.type = 'button'; x.setAttribute('aria-label', 'Close'); x.append(icon(ICONS.x));
+  x.type = 'button'; x.setAttribute('aria-label', 'Close'); x.append(icon(MORE.x));
   x.addEventListener('click', () => d.close());
   const h = el('h2', 'td-sheet-title', title);
   h.id = `${d.id}-title`;

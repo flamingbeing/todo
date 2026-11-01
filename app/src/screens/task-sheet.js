@@ -69,13 +69,13 @@ function draw(ctx) {
   // head: close, the parent's name (a subtask), "…"
   const head = el('div', 'td-sheet-head');
   const x = /** @type {HTMLButtonElement} */ (el('button', 'td-round td-sheet-x'));
-  x.type = 'button'; x.setAttribute('aria-label', 'Close'); x.append(icon(ICONS.x));
+  x.type = 'button'; x.setAttribute('aria-label', 'Close'); x.append(icon(MORE.x));
   x.addEventListener('click', () => d().close());
   const parent = t.parentId ? ctx.data().tasks.find(p => p.id === t.parentId) : null;
   const up = el(parent ? 'button' : 'span', 'td-sheet-parent');
   if (parent) {
     /** @type {HTMLButtonElement} */ (up).type = 'button';
-    up.append(icon(ICONS.chevronLeft), el('span', '', parent.title));
+    up.append(icon(MORE.chevronLeft), el('span', '', parent.title));
     up.setAttribute('aria-label', `Back to ${parent.title}`);
     up.addEventListener('click', () => { showing = parent.id; draw(ctx); });
   }
@@ -87,11 +87,11 @@ function draw(ctx) {
     try { await navigator.clipboard.writeText(url); ctx.toast('Link copied'); } catch { ctx.toast('Could not copy the link'); }
   } };
   more.addEventListener('click', () => openMenu(more, writable ? [
-    { label: 'Duplicate', icon: ICONS.copy, run: async () => { const now = current(ctx); if (now && await ctx.app.duplicateTask(now)) ctx.toast(REFUSED); else ctx.toast('Duplicated'); } },
+    { label: 'Duplicate', icon: MORE.copy, run: async () => { const now = current(ctx); if (now && await ctx.app.duplicateTask(now)) ctx.toast(REFUSED); else ctx.toast('Duplicated'); } },
     { label: 'Move to…', icon: ICONS.folderInput, run: () => move() },
     copyLink,
     null,
-    { label: 'Delete', icon: ICONS.trash2, danger: true, run: () => remove() },
+    { label: 'Delete', icon: MORE.trash2, danger: true, run: () => remove() },
   ] : [copyLink], { label: 'Task' }));
   head.append(x, up, more);
 
@@ -144,7 +144,7 @@ function draw(ctx) {
 
   // the rows: project, date, priority, labels
   const rows = el('div', 'td-card td-attrs');
-  const place = attrRow(ICONS.hash, 'Project', []), date = attrRow(ICONS.calendar, 'Date', []), prio = attrRow(ICONS.flag, 'Priority', []);
+  const place = attrRow(ICONS.hash, 'Project', []), date = attrRow(ICONS.calendar, 'Date', []), prio = attrRow(MORE.flag, 'Priority', []);
   const labels = attrRow(ICONS.tag, 'Labels', []), deadline = attrRow(ICONS.target, 'Deadline', []);
   for (const b of [place, date, deadline, prio, labels]) b.disabled = !writable;
   const move = () => { const now = current(ctx); if (now) pickPlace(ctx.data(), { projectId: projectOf(now), sectionId: now.sectionId }, async to => {
@@ -157,7 +157,7 @@ function draw(ctx) {
   deadline.addEventListener('click', () => { const now = current(ctx); if (now) pickDate(now.deadline ? { date: now.deadline } : null, d => save({ deadline: d?.date ?? null }),
     { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1), dateOnly: true }); });
   labels.addEventListener('click', () => { const now = current(ctx); if (now) pickLabels(ctx, ticksOf(now, ctx.data().labels), ticks => save({ labels: onIds(ticks) })); });
-  prio.addEventListener('click', () => openMenu(prio, [1, 2, 3, 4].map(p => ({ label: `Priority ${p}`, icon: ICONS.flag, color: PRIORITY_COLOR[p],
+  prio.addEventListener('click', () => openMenu(prio, [1, 2, 3, 4].map(p => ({ label: `Priority ${p}`, icon: MORE.flag, color: PRIORITY_COLOR[p],
     checked: priorityOf(/** @type {Task} */ (current(ctx))) === p, run: () => save({ priority: p }) })), { label: 'Priority' }));
   rows.append(place, date, deadline, prio, labels);
 
@@ -203,7 +203,7 @@ function draw(ctx) {
     deadline.replaceChildren(icon(ICONS.target, { class: 'td-attr-icon td-deadline-icon' }), el('span', `td-attr-text${dl ? '' : ' td-attr-empty'}`, dl ? dl.text : 'Deadline'));
     if (dl) /** @type {HTMLElement} */ (deadline.lastElementChild).dataset.tone = dl.tone;
     deadline.setAttribute('aria-label', dl ? `Deadline: ${dl.text}` : 'Deadline');
-    const flag = icon(ICONS.flag, { class: `td-attr-icon td-flag${p < 4 ? ' is-filled' : ''}` });
+    const flag = icon(MORE.flag, { class: `td-attr-icon td-flag${p < 4 ? ' is-filled' : ''}` });
     flag.style.color = PRIORITY_COLOR[p];
     prio.replaceChildren(flag, el('span', 'td-attr-text', `Priority ${p}`));
     prio.setAttribute('aria-label', `Priority ${p}`);

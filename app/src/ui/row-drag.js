@@ -13,7 +13,6 @@
 // column under the finger; near the board's side it scrolls to the next column. Only transforms and opacity move
 // (and the list's own scroll); the arbiter's 'drag' owns the touch while lifted.
 import { claim, release, haptic, glide, icon } from '@core/ui';
-import { ICONS } from '../icons.js';
 import { MORE } from '../icons-more.js';
 import { REFUSED } from '../items.js';
 import { placeInTree, placeAt, renumbered } from '../order.js';
@@ -421,7 +420,7 @@ export function dragFab(fab, ctx, o) {
     const x = document.createElement('div');
     x.className = 'td-fab-cancel';
     x.setAttribute('aria-hidden', 'true');
-    x.append(icon(ICONS.x));
+    x.append(icon(MORE.x));
     x.style.transform = `translate(${r.left + r.width / 2 - 20}px, ${r.top + r.height / 2 - 20}px)`;
     document.body.append(x);
     p.cancel = x;

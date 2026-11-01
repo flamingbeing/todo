@@ -131,7 +131,7 @@ export function openQuickAdd(ctx, start, hold = null) {
    * @param {string} label @returns {{ box: HTMLElement, main: HTMLButtonElement, x: HTMLButtonElement }} */
   const chip = label => {
     const box = el('div', 'td-chip'), main = button('td-chip-main', label), x = button('td-chip-x', `Clear ${label.toLowerCase()}`);
-    x.append(icon(ICONS.x));
+    x.append(icon(MORE.x));
     box.append(main, x);
     return { box, main, x };
   };
@@ -150,7 +150,7 @@ export function openQuickAdd(ctx, start, hold = null) {
     dateChip.setAttribute('aria-label', line ? `Date: ${line.text}${v.due?.rrule ? ', repeating' : ''}` : 'Date');
     if (line) dateC.box.dataset.tone = line.tone; else delete dateC.box.dataset.tone;
     setX(dateC, !!line, () => { if (fromWords(['date', 'recur'])) unmark(['date', 'recur']); manual.due = base.due ? null : undefined; });
-    const flag = icon(ICONS.flag, { class: `td-flag${v.priority < 4 ? ' is-filled' : ''}` });
+    const flag = icon(MORE.flag, { class: `td-flag${v.priority < 4 ? ' is-filled' : ''}` });
     flag.style.color = PRIORITY_COLOR[v.priority];
     prioC.box.style.color = v.priority < 4 ? PRIORITY_COLOR[v.priority] : '';
     prioChip.replaceChildren(flag, el('span', '', v.priority === 4 ? 'Priority' : `P${v.priority}`));
@@ -189,7 +189,7 @@ export function openQuickAdd(ctx, start, hold = null) {
     reparse(); title.focus();
   }, { data: ctx.data(), weekStart: Number(settings.get('weekStart') ?? 1), duration: value().duration }));
   prioChip.addEventListener('click', () => openMenu(prioChip, [1, 2, 3, 4].map(p => ({
-    label: `Priority ${p}`, icon: ICONS.flag, color: PRIORITY_COLOR[p], checked: value().priority === p,
+    label: `Priority ${p}`, icon: MORE.flag, color: PRIORITY_COLOR[p], checked: value().priority === p,
     run: () => { unmark(['priority']); manual.priority = p; reparse(); title.focus(); } })), { label: 'Priority' }));
   // the labels: the picker (from the chip, or the "…" chip's menu); typed @names count too
   const openLabels = () => {
@@ -265,7 +265,7 @@ export function openQuickAdd(ctx, start, hold = null) {
   const send = /** @type {HTMLButtonElement} */ (el('button', 'td-send'));
   send.type = 'submit';
   send.setAttribute('aria-label', 'Add task');
-  send.append(icon(ICONS.arrowUp));
+  send.append(icon(MORE.arrowUp));
   const ready = () => { send.disabled = !parsed.title; };
   foot.append(place, send);
 

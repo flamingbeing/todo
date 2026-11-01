@@ -107,7 +107,7 @@ export function rescheduleTasks(ctx, tasks) {
 /** A priority for tasks, from a menu at anchor @param {Ctx} ctx @param {HTMLElement} anchor @param {Task[]} tasks @param {() => void} [after] */
 function priorityMenu(ctx, anchor, tasks, after) {
   const now = new Set(tasks.map(priorityOf));
-  openMenu(anchor, /** @type {(1 | 2 | 3 | 4)[]} */ ([1, 2, 3, 4]).map(p => ({ label: `Priority ${p}`, icon: ICONS.flag, color: PRIORITY_COLOR[p], checked: now.size === 1 && now.has(p),
+  openMenu(anchor, /** @type {(1 | 2 | 3 | 4)[]} */ ([1, 2, 3, 4]).map(p => ({ label: `Priority ${p}`, icon: MORE.flag, color: PRIORITY_COLOR[p], checked: now.size === 1 && now.has(p),
     run: async () => {
       for (const t of tasks) if (priorityOf(t) !== p && await ctx.app.editTask(t, { priority: p })) { ctx.toast(REFUSED); break; }
       after?.();
@@ -160,12 +160,12 @@ export function holdMenu(ctx, task, row, host) {
   haptic('long');
   const anchor = /** @type {HTMLElement} */ (row.querySelector('.td-row-main') ?? row);
   openMenu(anchor, [
-    { label: 'Select task', icon: ICONS.squareCheck, run: () => startSelect(ctx, host, [task.id]) },
+    { label: 'Select task', icon: MORE.squareCheck, run: () => startSelect(ctx, host, [task.id]) },
     { label: 'Schedule', icon: ICONS.calendar, run: () => scheduleTasks(ctx, [task]) },
-    { label: 'Priority', icon: ICONS.flag, run: () => priorityMenu(ctx, anchor, [task]) },
+    { label: 'Priority', icon: MORE.flag, run: () => priorityMenu(ctx, anchor, [task]) },
     { label: 'Move to', icon: ICONS.hash, run: () => moveTasks(ctx, [task]) },
     null,
-    { label: 'Delete', icon: ICONS.trash2, danger: true, run: () => { void deleteTasks(ctx, [task]); } },
+    { label: 'Delete', icon: MORE.trash2, danger: true, run: () => { void deleteTasks(ctx, [task]); } },
   ], { label: task.title });
 }
 
@@ -211,9 +211,9 @@ export function startSelect(ctx, host, ids = [], { done = false } = {}) {
   bar.setAttribute('role', 'toolbar');
   bar.setAttribute('aria-label', 'Actions for the selected tasks');
   const date = button('Date', 'td-select-act', ICONS.calendar), move = button('Move', 'td-select-act', ICONS.hash);
-  const prio = button('Priority', 'td-select-act', ICONS.flag), more = button('More actions', 'td-select-act td-select-more', ICONS.ellipsis, true);
+  const prio = button('Priority', 'td-select-act', MORE.flag), more = button('More actions', 'td-select-act td-select-more', ICONS.ellipsis, true);
   more.setAttribute('aria-haspopup', 'menu');
-  const back = button('Not done', 'td-select-act', MORE.history), gone = button('Delete', 'td-select-act', ICONS.trash2);
+  const back = button('Not done', 'td-select-act', MORE.history), gone = button('Delete', 'td-select-act', MORE.trash2);
   bar.append(...(done ? [back, gone] : [date, move, prio, more]));
   document.body.append(top, bar);
 
@@ -285,7 +285,7 @@ export function startSelect(ctx, host, ids = [], { done = false } = {}) {
   more.addEventListener('click', () => {
     const list = chosen(), n = list.length;
     openMenu(more, [
-      { label: `Duplicate ${n}`, icon: ICONS.copy, run: async () => {
+      { label: `Duplicate ${n}`, icon: MORE.copy, run: async () => {
         for (const t of list) if (await ctx.app.duplicateTask(t)) { ctx.toast(REFUSED); break; }
         stop();
       } },
@@ -293,7 +293,7 @@ export function startSelect(ctx, host, ids = [], { done = false } = {}) {
       { label: 'Labels', icon: ICONS.tag, run: () => labelTasks(ctx, list, stop) },
       { label: `Complete ${n}`, icon: ICONS.circleCheck, run: () => { stop(); void completeTasks(ctx, list); } },
       null,
-      { label: `Delete ${n}`, icon: ICONS.trash2, danger: true, run: async () => { if (await deleteTasks(ctx, list)) stop(); } },
+      { label: `Delete ${n}`, icon: MORE.trash2, danger: true, run: async () => { if (await deleteTasks(ctx, list)) stop(); } },
     ], { label: 'More actions' });
   });
 

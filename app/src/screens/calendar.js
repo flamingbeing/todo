@@ -182,7 +182,7 @@ function top(ctx, o, st, p) {
     row.append(b);
   };
   const word = p.kind === 'month' ? 'month' : st.n === 1 ? 'day' : st.n === 3 ? 'days' : 'week';
-  step(-1, `Last ${word}`, ICONS.chevronLeft);
+  step(-1, `Last ${word}`, MORE.chevronLeft);
   step(1, `Next ${word}`, ICONS.chevronRight);
   return row;
 }
@@ -457,7 +457,7 @@ const calSheet = () => { const s = /** @type {HTMLDialogElement} */ (document.ge
 function head(s, title, action) {
   const h = el('div', 'td-sheet-head');
   const x = /** @type {HTMLButtonElement} */ (el('button', 'td-round td-sheet-x td-sheet-grey'));
-  x.type = 'button'; x.setAttribute('aria-label', 'Close'); x.append(icon(ICONS.x));
+  x.type = 'button'; x.setAttribute('aria-label', 'Close'); x.append(icon(MORE.x));
   x.addEventListener('click', () => s.close());
   const t = el('h2', 'td-sheet-title', title);
   t.id = 'cal-sheet-title';
