@@ -282,7 +282,8 @@ export async function itemIdOf(text) {
 // top left), held `hold` ms, moved by each [dx, dy] in turn (a frame apart, the last one ending `wait` ms before the
 // lift), then lifted. The rows' gestures load after the first screen: wait for them first (gesturesReady).
 export async function finger(page, selector, steps = [], { hold = 0, at = null, wait = 16 } = {}) {
-  await page.locator(selector).first().scrollIntoViewIfNeeded();
+  // (again if the list was drawn anew meanwhile, as it is after a swipe ends)
+  await expect(() => page.locator(selector).first().scrollIntoViewIfNeeded({ timeout: 2_000 })).toPass({ timeout: 10_000 });
   await page.evaluate(async ([selector, steps, hold, at, wait]) => {
     const el = /** @type {HTMLElement} */ (document.querySelector(selector));
     const r = el.getBoundingClientRect();
