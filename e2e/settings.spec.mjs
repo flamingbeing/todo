@@ -105,3 +105,15 @@ test('a direct switch from one account to another follows the new account\'s set
   await synced(b);
   await expect(chip(a)).toHaveText(/ \d+$/, { timeout: 15_000 });
 });
+
+test('Settings > About offers "Install this app" as a button, (a tap shows how, nothing prompts unasked)', async ({ phone }) => {
+  const a = await phone();
+  await signIn(a, 'member');
+  await open(a, 'About');
+  const row = a.locator('#settings-host .ui-setting').filter({ hasText: 'Install this app' });
+  await expect(row).toBeVisible();
+  await expect(row.getByRole('button', { name: 'Install this app' })).toBeVisible();
+  // no browser prompt kept here, so a tap says how to install from the browser's menu
+  await row.getByRole('button', { name: 'Install this app' }).click();
+  await expect(a.locator('dialog[open]')).toContainText(/Add to Home screen|Install app/i);
+});
