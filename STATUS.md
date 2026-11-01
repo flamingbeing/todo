@@ -29,6 +29,14 @@
   hidden once installed, nothing prompts on load); a pass over every screen in light and dark against the references
   (row 74 pt, checkbox 22, add button 56, bars on the grouped ground, the sync chip only when it has news); row sizes
   now have a test (`e2e/metrics.spec.mjs`).
+- Calendar layout (2026-11-01): every list can show as a calendar (Display > Layout, per device). A week is 3 days on
+  a phone and 7 from 600 px (Today is its own day): an hour grid with blocks as long as each task's new duration
+  (overlaps side by side), an all-day row (two, then "+N", or all), a now line that moves each minute; a tap on an empty
+  half hour adds a 30-minute task there, the ring completes, a held task drags to another time, day or the all-day row
+  (one save, Undo). Month shows chips per day with "+N more" (a day sheet with Add task) and drags between days;
+  Agenda is Upcoming's day list for any list. The top row has the month (a picker), counts for "No date" and "Overdue"
+  (each a sheet to tick tasks and schedule them), the arrows and Today; sideways swipes page. Future repeats show
+  faded when asked for. The calendar's maths is in `app/src/cal.js` (unit tested); the screen loads only when used.
 - Known gaps: on Today and Upcoming a drag moves a row within the flat day list only (no subtasks there); a tab
   tapped while a Settings page is open first closes that page.
 - Review fixes (2026-11-01): dark mode fills (+, Done, send) at full colour; top bar without the cloud while saved,
@@ -44,9 +52,11 @@
 
 ## Next
 
-- Calendar layout; the import has been proven against route-mocked answers only (not the live service); a Deadline
+- Calendar: resizing a block to change its duration; tapping a faded future repeat; a block's title in a narrow
+  overlap lane breaks mid-word; the kit asks in the owner's private notes (gesture rank, edge auto-scroll).
+- The import has been proven against route-mocked answers only (not the live service); a Deadline
   action in select mode.
-- Dragging: auto-scroll near a list's edge (a board scrolls sideways already); reorder in a sorted or grouped list.
+- Dragging: auto-scroll near a list's edge (the calendar does; a board scrolls sideways already); reorder in a sorted or grouped list.
 - Board cards: swipe actions.
 - Back on a tab other than Inbox goes to Inbox (the kit's first-tab rule) though the app opens on Today.
 
