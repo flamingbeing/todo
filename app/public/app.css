@@ -80,6 +80,9 @@ html.glass { --glass-tint: 0%; }
    27 px below this full-width bar and blurs the top of the large title at rest (a grey smudge over every page's name).
    The bar turns to glass itself once collapsed, so the edge is not needed here. Drop once the kit skips it under .ui-bar. */
 html.glass body::before { content: none; }
+/* over a calendar the collapsed bar is solid ground: the calendar's sticky head sits right under it, and words passing
+   under the glass read as stray text above the month row */
+body:has(.ui-screen:not([hidden]) .td-cv) .ui-bar.is-collapsed { background: var(--td-ground); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
 /* a round button's own blur inside the glass bar draws a square ghost around it (a blur over a blur): the bar's is enough */
 .glass .ui-bar.is-collapsed .td-round { -webkit-backdrop-filter: none; backdrop-filter: none; }
 /* Browse and Settings sit on the grouped ground: the bar takes it too */
@@ -758,7 +761,7 @@ body {
 .td-cv-now-day { position: absolute; top: -.5px; height: 1px; background: var(--td-cv-red);
   left: calc(54px + (100% - 54px) / var(--n) * var(--i)); width: calc((100% - 54px) / var(--n)); }
 .td-cv-now-day::before { content: ""; position: absolute; left: -3.5px; top: -3px; width: 7px; height: 7px; border-radius: 50%; background: var(--td-cv-red); }
-.td-cv-now-time { position: absolute; top: -8px; right: calc(100% - 50px); padding-inline: 2px; background: var(--td-ground); color: var(--td-cv-red-text); font-size: 12px; font-weight: 700; line-height: 16px; }
+.td-cv-now-time { position: absolute; top: -8px; right: calc(100% - 52px); padding-inline: 2px; background: var(--td-ground); color: var(--td-cv-red-text); font-size: 11px; font-weight: 700; line-height: 16px; letter-spacing: -.02em; white-space: nowrap; }
 
 /* month: weekday letters (28 px), then the weeks; a day's number at its top right (today in a red square) */
 .td-cv-wk { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); height: 28px; align-items: center; border-bottom: .5px solid var(--td-hair); font-size: 12px; color: var(--td-text-2); text-align: center; }
