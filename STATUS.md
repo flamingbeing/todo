@@ -14,10 +14,19 @@
   Schedule, Priority, Move to, Delete) and select mode with bulk Date, Move, Priority, Duplicate, Complete and Delete;
   dragging a held row to reorder it or (pulled right) to make it a subtask, Today's own order, the + button dragged to
   add a task at a place or a new section; Browse > Manage projects to put projects in order.
-- Known gaps: no auto-scroll while dragging near a list's edge; on Today and Upcoming a drag moves a row within the
-  flat day list only (no subtasks there); Today and Upcoming have no "Select tasks" in their menu (a held row starts it);
-  the labels row in the task sheet only shows them; Back on a tab other than Inbox goes to Inbox (the kit's first-tab
-  rule) though the app opens on Today; a tab tapped while a Settings page is open first closes that page.
+- Part 3 of 4 (2026-11-01): Browse > Filters & Labels (each held and dragged into order, each with its page); labels
+  picked in the task sheet and the quick add; saved filters with a query language (dates, priorities, #project,
+  /section, @label, words, & | ! and brackets, commas for one list per part) whose sheet counts the matches as typed or
+  says what is wrong; favourite labels and filters in Browse; the Search tab (results as tasks, projects, labels and
+  filters; recent searches on this device); a project as a board (a column per section, cards dragged between them);
+  Display per list on this device (layout, completed tasks, grouping, sorting, direction, a priority, label or date
+  filter); Reschedule on Overdue (Today and Upcoming, with Undo); Upcoming's month and week strip (swipes by week,
+  dots, tap goes to the day, a task dragged onto a day moves to it; the month opens a month picker).
+- Known gaps: no auto-scroll while dragging near a list's edge (a board scrolls sideways); on Today and Upcoming a drag
+  moves a row within the flat day list only (no subtasks there); in a sorted or grouped list a drag does not reorder;
+  board cards have no swipe actions; Back on a tab other than Inbox goes to Inbox (the kit's first-tab rule) though the
+  app opens on Today; a tab tapped while a Settings page is open first closes that page; in dark mode the accent
+  buttons (+, Done) use the kit's lighter accent.
 - Startup and shared fixes (2026-10-28): no sign-in flash, last list painted at once, modulepreload, no pinch zoom, PNG
   icons and theme colours. On app-sync 1.5.5 and app-devkit 1.16.0 (2026-10-30).
 
@@ -27,7 +36,7 @@
 
 ## Next
 
-- Part 3: labels and filters pages, the label picker. Part 4: views (board), import, the rest of Settings.
+- Part 4: import, the rest of Settings, Calendar layout.
 
 ## Decisions (dated)
 
