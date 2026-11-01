@@ -2,7 +2,7 @@
 // Schedule, Priority, Move to and Delete. Select task (or "Select tasks" in a page's "…") starts select mode on that
 // page: a tap ticks a row on or off (its background goes grey), the top bar reads Cancel, "N selected" and Select all,
 // and a glass bar at the bottom (in the tab bar's place) sets a Date, a project (Move), a Priority, or under "…"
-// duplicates, completes or deletes them (the last two with Undo). Esc or Cancel ends it, as does each action.
+// duplicates, sets a Deadline or Labels, completes or deletes them (the last two with Undo). Esc or Cancel ends it, as does each action.
 // (The kit's select mode is for one list; a page here has a list per section or day, and a hold here lifts a row for a
 // drag, so this one is the app's own.)
 import { confirmModal, plural, haptic, icon } from '@core/ui';
@@ -54,6 +54,30 @@ export function scheduleTasks(ctx, tasks, after) {
     for (const t of tasks) if (await ctx.app.editTask(t, { due: due ? { ...due } : null })) { ctx.toast(REFUSED); break; }
     after?.();
   }, { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1) });
+}
+
+/** A deadline for tasks (the scheduler's date-only sheet, "No deadline" clears it); one save each, one Undo for them all
+ * @param {Ctx} ctx @param {Task[]} tasks @param {() => void} [after] */
+export function deadlineTasks(ctx, tasks, after) {
+  if (!tasks.length) return;
+  const first = tasks[0].deadline;
+  pickDate(first && tasks.every(t => t.deadline === first) ? { date: first } : null, async due => {
+    const next = due?.date ?? null;
+    /** @type {[Task, string | null][]} */
+    const was = [];
+    for (const t of tasks) {
+      if ((t.deadline ?? null) === next) continue;
+      if (await ctx.app.editTask(t, { deadline: next })) { ctx.toast(REFUSED); break; }
+      was.push([t, t.deadline ?? null]);
+    }
+    if (was.length) ctx.undo.show(`Deadline ${next ? 'set' : 'cleared'} on ${plural(was.length, 'task')}`, async () => {
+      for (const [t, before] of was) {
+        const now = ctx.data().tasks.find(x => x.id === t.id) ?? t;
+        if (await ctx.app.editTask(now, { deadline: before })) { ctx.toast(REFUSED); return; }
+      }
+    });
+    after?.();
+  }, { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1), dateOnly: true });
 }
 
 /** Today's Reschedule: a new day for every overdue task at once (recur.js rescheduled: a timed one keeps its time unless
@@ -147,12 +171,20 @@ export function holdMenu(ctx, task, row, host) {
 }
 
 // ---- select mode
-/** @type {{ host: HTMLElement, ids: Set<string>, stop: () => void } | null} */
+/** @type {{ host: HTMLElement, ids: Set<string>, stop: () => void, draw: () => void } | null} */
 let on = null;
 /** select mode is on (a row's tap ticks it, swipes and holds stand down) */
 export const selecting = () => !!on;
 /** ends select mode */
 export const endSelect = () => on?.stop();
+
+/** Ticks rows by id, starting select mode on the page's list if it is not on (a two-finger drag, ui/two-finger.js)
+ * @param {Ctx} ctx @param {HTMLElement} host @param {string[]} ids */
+export function tickRows(ctx, host, ids) {
+  if (on?.host !== host) { startSelect(ctx, host, ids); return; }
+  for (const id of ids) on.ids.add(id);
+  on.draw();
+}
 
 /**
  * Starts select mode on a page's list. @param {Ctx} ctx @param {HTMLElement} host @param {string[]} [ids] ticked to start
@@ -226,7 +258,7 @@ export function startSelect(ctx, host, ids = []) {
     for (const r of rowsOf()) { r.classList.remove('is-selected'); r.querySelector('.td-row-main')?.removeAttribute('aria-pressed'); }
     top.remove(); bar.remove();
   };
-  on = { host, ids: picked, stop };
+  on = { host, ids: picked, stop, draw };
   cancel.addEventListener('click', stop);
   all.addEventListener('click', () => {
     const ids = shownIds();
@@ -243,6 +275,7 @@ export function startSelect(ctx, host, ids = []) {
         for (const t of list) if (await ctx.app.duplicateTask(t)) { ctx.toast(REFUSED); break; }
         stop();
       } },
+      { label: 'Deadline', icon: ICONS.target, run: () => deadlineTasks(ctx, list, stop) },
       { label: 'Labels', icon: ICONS.tag, run: () => labelTasks(ctx, list, stop) },
       { label: `Complete ${n}`, icon: ICONS.circleCheck, run: () => { stop(); void completeTasks(ctx, list); } },
       null,
