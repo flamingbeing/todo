@@ -163,3 +163,30 @@ test('a start with nothing kept for Today: the early skeleton goes once the task
   await expect(page.locator('#today-state .load-row')).toHaveCount(0);
   await expect(page.locator('#today-state')).not.toHaveAttribute('aria-busy', 'true');
 });
+
+test('the task sheet shows the words\' marks (bold, code, struck, a link to a new tab) until the field is tapped', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const t = uniq('md');
+  await put(t, { title: `Read **${t}** guide`, description: 'Run `npm test`, ~~old~~ [notes](https://example.com/n) <b>x</b>', due: { date: day(0) } });
+  await synced(page);
+  await clickOpens(row(page, '#today', t).locator('.td-row-main'), page.locator('#task-sheet'));
+  // the row: the marks too, a link's words underlined (the row is a button: no link inside)
+  await expect(row(page, '#today', t).locator('.td-title strong')).toHaveText(t);
+  await expect(row(page, '#today', t).locator('.td-title')).toHaveText(`Read ${t} guide`);
+  const title = page.locator('#task-sheet .td-md-title'), desc = page.locator('#task-sheet .td-md-desc');
+  await expect(title.locator('strong')).toHaveText(t);
+  await expect(desc.locator('code')).toHaveText('npm test');
+  await expect(desc.locator('s')).toHaveText('old');
+  await expect(desc.locator('b')).toHaveCount(0);
+  await expect(desc).toContainText('<b>x</b>');
+  const link = desc.locator('a');
+  await expect(link).toHaveAttribute('href', 'https://example.com/n');
+  await expect(link).toHaveAttribute('target', '_blank');
+  await expect(link).toHaveAttribute('rel', /noopener/);
+  expect(await AxeBuilder(page)).toEqual([]);
+  // tapped: the field as typed, marks and all
+  await page.locator('#task-sheet .td-task-title').click();
+  await expect(title).toBeHidden();
+  await expect(page.locator('#task-sheet .td-task-title')).toHaveValue(`Read **${t}** guide`);
+});

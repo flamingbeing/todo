@@ -16,6 +16,7 @@ import { openMenu } from '../ui/menu.js';
 import { el, pickPlace } from './pick.js';
 import { pickDate } from './scheduler.js';
 import { pickLabels, ticksOf, onIds } from './labels.js';
+import { hasMarks, showMarks } from '../markdown.js';
 
 /** @typedef {import('../items.js').Task} Task */
 /** @typedef {import('./views.js').Ctx} Ctx */
@@ -114,8 +115,25 @@ function draw(ctx) {
     if (v !== current(ctx)?.title) void save({ title: v });
   });
   desc.addEventListener('change', () => { if (desc.value !== (current(ctx)?.description ?? '')) void save({ description: desc.value }); });
+  // the words with their marks (bold, links: markdown.js) laid over each field while it is not being edited; a tap
+  // between links reaches the field below (the layer lets taps through, but not on its links)
+  const views = [title, desc].map(a => {
+    const v = el('div', `td-md ${a === title ? 'td-md-title' : 'td-md-desc'}`);
+    v.setAttribute('aria-hidden', 'true');
+    a.addEventListener('focus', () => marks(a, v));
+    a.addEventListener('blur', () => marks(a, v));
+    return v;
+  });
+  const marks = (/** @type {HTMLTextAreaElement} */ a, /** @type {HTMLElement} */ v) => {
+    const on = document.activeElement !== a && hasMarks(a.value);
+    a.classList.toggle('has-md', on);
+    v.hidden = !on;
+    if (!on) { v.replaceChildren(); return; }
+    showMarks(v, a.value);
+    for (const link of v.querySelectorAll('a')) link.tabIndex = -1;
+  };
   const words = el('div', 'td-task-words');
-  words.append(title, desc);
+  words.append(title, views[0], desc, views[1]);
   card.append(box, words);
 
   // the rows: project, date, priority, labels
@@ -160,6 +178,7 @@ function draw(ctx) {
     box.setAttribute('aria-label', `${now.done ? 'Not done' : 'Complete'}: ${now.title}`);
     if (document.activeElement !== title) { title.value = now.title; grow(title); }
     if (document.activeElement !== desc) { desc.value = String(now.description ?? ''); grow(desc); }
+    marks(title, views[0]); marks(desc, views[1]);
     const data = c.data(), pid = projectOf(now), proj = data.projects.find(x => x.id === pid);
     const hash = icon(pid === 'inbox' ? ICONS.inbox : ICONS.hash, { class: 'td-attr-icon' });
     hash.style.color = pid === 'inbox' ? 'var(--td-text-2)' : colorHex(proj?.color);

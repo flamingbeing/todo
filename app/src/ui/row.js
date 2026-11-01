@@ -23,6 +23,7 @@ import { INBOX } from '../items.js';
  * @property {(t: Task) => void} onOpen
  * @property {(t: Task, row: HTMLElement) => void} onComplete
  * @property {(t: Task) => void} [onFold]
+ * @property {(span: HTMLElement, text: string) => void} [marks]  shows a title's markdown (markdown.js, loaded when a title has some)
  */
 
 /** a title starting "* " is a note in the list: no box to tick (shown without the "* ") @param {Task} t */
@@ -108,7 +109,10 @@ export function taskRow(line, c) {
 
   const main = /** @type {HTMLButtonElement} */ (el('button', 'td-row-main'));
   main.type = 'button';
-  main.append(el('span', 'td-title', plainRow(t) ? t.title.slice(2) : t.title));
+  const name = plainRow(t) ? t.title.slice(2) : t.title, head = el('span', 'td-title', name);
+  // (a title that may have marks: drawn again with them once markdown.js is in)
+  if (c.marks && /[*_`~]|https?:\/\//.test(name)) c.marks(head, name);
+  main.append(head);
   if (t.description) main.append(el('span', 'td-desc', String(t.description).split('\n')[0]));
   const m = meta(line, c);
   if (m) main.append(m);

@@ -775,3 +775,13 @@ body {
 /* a "* " row: a note in the list, its box kept for the line-up but not shown (select mode shows its circle) */
 .td-row.is-plain > .td-check { visibility: hidden; }
 .is-selecting .td-row.is-plain > .td-check { visibility: visible; }
+/* the task's words with their marks, over the field while it is not edited (taps reach the field, links excepted) */
+.td-task-title, .td-md-title { grid-area: 1 / 1; }
+.td-task-desc, .td-md-desc { grid-area: 2 / 1; }
+.td-md { padding-top: 8px; white-space: pre-wrap; overflow-wrap: anywhere; pointer-events: none; }
+.td-md[hidden] { display: none; }
+.td-md-title { font-size: 20px; font-weight: 600; line-height: 26px; }
+.td-md-desc { padding-top: 2px; font-size: 16px; line-height: 21px; color: var(--td-text-2); }
+.td-md a { color: var(--td-accent-text); text-decoration: underline; pointer-events: auto; }
+:is(.td-md, .td-title) code { padding: 0 4px; border-radius: 4px; background: var(--td-selected); font: .9em ui-monospace, monospace; }
+textarea.has-md { color: transparent; }

@@ -100,6 +100,7 @@ export function views(app) {
     select: () => import('./select.js'),
     menus: () => import('./page-menu.js'),
     calendar: () => import('./calendar.js'),
+    marks: () => import('../markdown.js'),
   });
   /** a list's Display choices on this device @param {string} view */
   const disp = view => cleanDisplay(/** @type {any} */ (app.settings.get('display'))?.[view], view);
@@ -127,7 +128,8 @@ export function views(app) {
 
   /** @param {Partial<import('../ui/row.js').RowContext>} o @returns {import('../ui/row.js').RowContext} */
   const rowCtx = o => ({ today: dayKey(), data, canWrite, changed, onOpen: ctx.openTask, onComplete: (t, row) => (t.done ? void app.untick([t]).then(r => r && toast(REFUSED)) : complete(t, row)),
-    onFold: t => { void app.editTask(t, { collapsed: !t.collapsed }).then(r => r && toast(REFUSED)); }, ...o });
+    onFold: t => { void app.editTask(t, { collapsed: !t.collapsed }).then(r => r && toast(REFUSED)); },
+    marks: (span, text) => { void lazy.withMod('marks', m => m.showMarks(span, text, { links: false })); }, ...o });
 
   /** done: the box fills, the row fades out, then the save and the undo toast @param {Task} t @param {HTMLElement | null} [row] */
   // A repeating task stays open and moves to its next date (recur.js, loaded then); past its last one it is done.

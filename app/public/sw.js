@@ -34,6 +34,7 @@ const SHELL = [
   'src/icons.js',
   'src/import-map.js',
   'src/items.js',
+  'src/markdown.js',
   'src/modules.js',
   'src/options.js',
   'src/order.js',
