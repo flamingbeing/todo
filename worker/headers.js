@@ -11,7 +11,7 @@ export const CSP_ENFORCE = false;
 
 // The page's import map (app/index.html), the one inline script, allowed by its hash (worker/test/headers.test.mjs
 // says the new one when the map changes).
-export const IMPORT_MAP = "'sha256-3RtIO21VyOxuBW/5YHZRuc/T/B6RZeWMnfM+V1zjgUU='";
+export const IMPORT_MAP = "'sha256-KRMFxmRA+GB2bIctf9Rz7CT5scSi/FR5XIfXoRyp17I='";
 // Shared modules (app-sync, app-update, app-ui: its scripts and style sheets) are served at exact versions from here.
 const CORE = 'https://core.anawj.com';
 // Firebase: the SDK is vendored (app/public/vendor/firebase/<ver>/, served as 'self'); Google sign-in, Firestore and
@@ -19,6 +19,8 @@ const CORE = 'https://core.anawj.com';
 const GOOGLE_API = 'https://apis.google.com';
 const FONTS_CSS = 'https://fonts.googleapis.com';
 const FONTS = 'https://fonts.gstatic.com';
+// Settings > Import reads the person's account from the page itself (one fetch with their token)
+const IMPORT_API = 'https://api.todoist.com';
 // where the browser sends what the policy blocked (or would have)
 const REPORTS = '/api/csp';
 
@@ -33,7 +35,7 @@ export function csp({ kit = KIT, project = '', local = false, framedBySelf = fal
     'style-src': ["'self'", CORE, kit, FONTS_CSS],
     'font-src': ["'self'", CORE, kit, FONTS],
     'img-src': ["'self'", 'data:', 'blob:', kit, 'https://lh3.googleusercontent.com', 'https://www.google.com'],   // (the SDK's connectivity ping)
-    'connect-src': ["'self'", CORE, kit, FONTS_CSS, FONTS, 'https://*.googleapis.com', GOOGLE_API, ...emulators],
+    'connect-src': ["'self'", CORE, kit, FONTS_CSS, FONTS, 'https://*.googleapis.com', GOOGLE_API, IMPORT_API, ...emulators],
     'frame-src': frames,
     'worker-src': ["'self'"],
     'manifest-src': ["'self'"],

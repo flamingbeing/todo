@@ -1,97 +1,142 @@
-// The three tabs and what moves a task between them: due days, no day, ticking (with Undo), lists, Clear; each tab passes axe.
+// The views and what moves a task between them: due days, no day, completing (with Undo) and Completed; the quick add,
+// the task sheet's priority and subtasks; a new project with a section; Reschedule, which moves every overdue task (so
+// this file's tests run one after another: an overdue task of one would be moved by another). Each view passes axe.
 import AxeBuilder from './axe.mjs';
 import { test, expect, clickOpens, signIn, synced, serverHas, uniq, today, openToday, openTab, db } from './fixtures.mjs';
 
 const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return today(d); };
-const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
+const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
+test.describe.configure({ mode: 'default' });
+const row = (page, host, title) => page.locator(`${host} .td-row`).filter({ hasText: title });
 
-test('a task goes to Today, Upcoming (by day, then No date) or Done by its day and tick', async ({ phone }) => {
+test('a task shows on Today, Upcoming (under its day) or the Inbox by its date, and in Completed once done', async ({ phone }) => {
   const page = await phone();
   await signIn(page, 'member');
   const [now, late, soon, none] = [uniq('now'), uniq('late'), uniq('soon'), uniq('none')];
-  await put(now, { text: now, due: day(0) });
-  await put(late, { text: late, due: day(-2) });
-  await put(soon, { text: soon, due: day(3) });
-  await put(none, { text: none });
+  await put(now, { title: now, due: { date: day(0) } });
+  await put(late, { title: late, due: { date: day(-2) } });
+  await put(soon, { title: soon, due: { date: day(3) } });
+  await put(none, { title: none });
   await expect(page.locator('#today')).toContainText(now);
   await expect(page.locator('#today')).toContainText(late);
   await expect(page.locator('#today')).not.toContainText(soon);
-  await expect(page.locator('#today li', { hasText: late }).locator('.overdue')).toBeVisible();
+  await expect(row(page, '#today', late).locator('.td-date[data-tone="overdue"]')).toBeVisible();
   expect(await AxeBuilder(page)).toEqual([]);
 
   await openTab(page, 'upcoming');
-  await expect(page.locator('#upcoming')).toContainText(soon);
-  await expect(page.locator('#upcoming')).not.toContainText(now);
-  // tasks with no day sit in a trailing "No date" group
-  const titles = await page.locator('#upcoming .task-group-title').allTextContents();
-  expect(titles.at(-1)).toBe('No date');
-  await expect(page.locator('#upcoming .task-group', { hasText: 'No date' })).toContainText(none);
+  await expect(page.locator(`#upcoming .td-day[data-day="${day(3)}"]`)).toContainText(soon);
+  await expect(page.locator('#upcoming')).not.toContainText(none);
+  expect(await AxeBuilder(page)).toEqual([]);
+
+  await openTab(page, 'inbox');
+  await expect(page.locator('#inbox')).toContainText(none);
   expect(await AxeBuilder(page)).toEqual([]);
 
   await openToday(page);
-  await page.getByRole('checkbox', { name: `Done: ${now}` }).click();
+  await page.getByRole('checkbox', { name: `Complete: ${now}` }).click();
   await expect(page.locator('#today')).not.toContainText(now);
-  await openTab(page, 'done');
-  await expect(page.locator('#done')).toContainText(now);
+  await openTab(page, 'browse');
   expect(await AxeBuilder(page)).toEqual([]);
+  await page.locator('#browse .td-browse-row', { hasText: 'Completed' }).click();
+  await expect(page.locator('#completed')).toContainText(now);
   await page.getByRole('checkbox', { name: `Not done: ${now}` }).click();
-  await expect(page.locator('#done')).not.toContainText(now);
+  await expect(page.locator('#completed')).not.toContainText(now);
   await openToday(page);
   await expect(page.locator('#today')).toContainText(now);
 });
 
-test('ticking shows Undo, which puts the task back', async ({ phone }) => {
+test('completing shows Undo, which puts the task back', async ({ phone }) => {
   const page = await phone();
   await signIn(page, 'member');
   const t = uniq('undo');
-  await put(t, { text: t, due: day(0) });
-  await page.getByRole('checkbox', { name: `Done: ${t}` }).click();
+  await put(t, { title: t, due: { date: day(0) } });
+  await page.getByRole('checkbox', { name: `Complete: ${t}` }).click();
   await expect(page.locator('#today')).not.toContainText(t);
   await page.locator('.toast').last().getByRole('button', { name: 'Undo' }).click();
   await expect(page.locator('#today')).toContainText(t);
 });
 
-test('the task sheet sets a day, time, notes and list; New defaults to today on Today', async ({ phone }) => {
+test('Reschedule on Overdue moves every overdue task to the day picked; Undo puts them back', async ({ phone }) => {
   const page = await phone();
   await signIn(page, 'member');
-  await page.evaluate(() => window.starter.add('x'));   // (a first task so the page has settled)
-  const list = uniq('list'), t = uniq('sheet');
-  await page.click('#today-page .list-edit');
-  await page.fill('#list-name', list);
-  await page.click('#list-add button[type=submit]');
-  await expect(page.locator('#lists-manage').getByLabel(`Name of the list ${list}`)).toHaveValue(list);   // (the lists are shared: look for this one)
-  await page.locator('#lists-sheet').getByRole('button', { name: 'Done' }).click();
-  await page.click('#new-task');
-  await expect(page.locator('#task-due')).toHaveValue(day(0));
-  await page.fill('#task-text', t);
-  await page.fill('#task-notes', 'bring the form');
-  await page.fill('#task-due', day(1));
-  await page.fill('#task-time', '14:30');
-  await page.selectOption('#task-list', { label: list });
-  await expect(page.locator('#task-sheet')).toBeVisible();
+  const [a, b] = [uniq('over-a'), uniq('over-b')];
+  await put(a, { title: a, due: { date: day(-1) } });
+  await put(b, { title: b, due: { date: day(-3), time: '09:00' } });
+  await synced(page);
+  await expect(page.locator('#today')).toContainText(a);
+  await expect(page.locator('#today')).toContainText(b);
+  const button = page.locator('#today .td-resched');
+  await expect(button).toHaveText('Reschedule');
   expect(await AxeBuilder(page)).toEqual([]);
-  await page.click('#task-save');
-  await openTab(page, 'upcoming');
-  await expect(page.locator('#upcoming li', { hasText: t })).toContainText(`Tomorrow 14:30 · ${list}`);
-  await serverHas(t);
-  // the picked list narrows every tab, and is where a new quick add goes
-  await page.locator('#upcoming-page .list-chip', { hasText: list }).click();
-  await expect(page.locator('#upcoming')).toContainText(t);
-  await page.locator('#upcoming-page .list-chip', { hasText: 'Inbox' }).click();
-  await expect(page.locator('#upcoming')).not.toContainText(t);
+  await button.click();
+  await expect(page.locator('#schedule-sheet')).toBeVisible();
+  await page.locator('#schedule-sheet .td-sched-row').filter({ hasText: 'Tomorrow' }).click();
+  await expect(page.locator('#schedule-sheet')).toBeHidden();
+  const dueOf = async id => (await db.get(`spaces/_/tasks/${id}`))?.due;
+  await expect.poll(() => dueOf(a), { timeout: 15_000 }).toEqual({ date: day(1) });
+  await expect.poll(() => dueOf(b), { timeout: 15_000 }).toEqual({ date: day(1), time: '09:00' });
+  await expect(page.locator('#today')).not.toContainText(a);
+  await expect(page.locator('#today .td-resched')).toHaveCount(0);
+  await page.locator('.toast').last().getByRole('button', { name: 'Undo' }).click();
+  await expect.poll(() => dueOf(a), { timeout: 15_000 }).toEqual({ date: day(-1) });
+  await expect.poll(() => dueOf(b), { timeout: 15_000 }).toEqual({ date: day(-3), time: '09:00' });
+  await expect(page.locator('#today')).toContainText(a);
 });
 
-test('Clear deletes the done tasks after a question', async ({ phone }) => {
+test('a day\'s Add task on Upcoming dates the new task; the sheet sets its priority and adds a subtask', async ({ phone }) => {
   const page = await phone();
   await signIn(page, 'member');
-  const t = uniq('clear');
-  await put(t, { text: t, done: true, doneAt: Date.now() });
-  await openTab(page, 'done');
-  await expect(page.locator('#done')).toContainText(t);
-  await page.click('#clear-done');
-  await page.getByRole('button', { name: 'Delete' }).last().click();
-  await expect(page.locator('#done')).not.toContainText(t);
   await synced(page);
+  const t = uniq('sheet'), sub = uniq('sub');
+  await openTab(page, 'upcoming');
+  await page.locator(`#upcoming .td-day[data-day="${day(1)}"] .td-add-row`).click();
+  await expect(page.locator('#add-sheet')).toBeVisible();
+  expect(await AxeBuilder(page)).toEqual([]);
+  await page.fill('#add-sheet .td-add-title', t);
+  await page.press('#add-sheet .td-add-title', 'Enter');
+  await page.keyboard.press('Escape');
+  await expect(page.locator(`#upcoming .td-day[data-day="${day(1)}"]`)).toContainText(t);
+  await serverHas(t);
+
+  await clickOpens(row(page, '#upcoming', t).locator('.td-row-main'), page.locator('#task-sheet'));
+  await page.locator('#task-sheet .td-attr[aria-label^="Priority"]').click();
+  await page.getByRole('menuitemradio', { name: 'Priority 1' }).click();
+  await expect(row(page, '#upcoming', t)).toHaveAttribute('data-priority', '1');
+  await page.fill('#task-sheet .td-add-sub input', sub);
+  await page.press('#task-sheet .td-add-sub input', 'Enter');
+  await expect(page.locator('#task-sheet .td-subtasks')).toContainText(sub);
+  expect(await AxeBuilder(page)).toEqual([]);
+  await expect.poll(async () => {
+    const all = await db.list('spaces/_/tasks');
+    return all.find(d => d.title === t)?.priority === 1 && all.some(d => d.title === sub && typeof d.parentId === 'string');
+  }, { timeout: 15_000 }).toBe(true);
+});
+
+test('a new project from Browse opens on its page; a section and a task in it', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  await synced(page);
+  const name = uniq('proj'), sec = uniq('sec'), t = uniq('intask');
+  await openTab(page, 'browse');
+  await page.locator('#browse .td-browse-add').click();
+  await expect(page.locator('#project-sheet')).toBeVisible();
+  await page.fill('#project-sheet .td-project-name', name);
+  await page.press('#project-sheet .td-project-name', 'Enter');
+  await expect(page.locator('#project-page')).toBeVisible();
+  await expect(page.locator('#project-title')).toHaveText(name);
+
+  await page.locator('#project .td-add-section').click();
+  await page.fill('#project .td-name-field input', sec);
+  await page.press('#project .td-name-field input', 'Enter');
+  const section = page.locator('#project .td-section', { hasText: sec });
+  await expect(section).toBeVisible();
+  await section.locator('.td-add-row').click();
+  await page.fill('#add-sheet .td-add-title', t);
+  await page.press('#add-sheet .td-add-title', 'Enter');
+  await page.keyboard.press('Escape');
+  await expect(section).toContainText(t);
+  expect(await AxeBuilder(page)).toEqual([]);
+  await serverHas(t);
 });
 
 test('a start with nothing kept for Today: the early skeleton goes once the tasks arrive', async ({ phone }) => {

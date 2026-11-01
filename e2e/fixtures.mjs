@@ -214,45 +214,112 @@ export async function signIn(page, role = 'member', { path = APP } = {}) {
 }
 }static */
 
+// Add a task for today with the + button's quick add (the sheet stays open for the next one: Escape closes it)
 export async function add(page, text) {
-  await page.fill('#new-text', text);
-  await page.click('#add button[type=submit]');
+  await openToday(page);
+  await page.locator('#fab').click();
+  await expect(page.locator('#add-sheet')).toBeVisible();
+  await page.fill('#add-sheet .td-add-title', text);
+  await page.press('#add-sheet .td-add-title', 'Enter');
+  await expect(page.locator('#add-sheet .td-add-title')).toHaveValue('');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#add-sheet')).toBeHidden();
   await expect(page.locator('#today')).toContainText(text);
 }
 // Open a dialog from its button and wait for the dialog. The list redraws its buttons whenever a snapshot lands (the files
 // snapshot follows the first list one); a pointer click whose button is swapped out between press and release is dropped
 // (Firefox). The click event is sent in one step instead, to the button as it is now: nothing in between to be swapped.
-// The Settings page (a tab on a phone, a side-bar link from 600 px) and back to the list
+// The Settings page (from the gear at the top of Browse, a tab on a phone or a side-bar link from 600 px)
 const tabLink = id => `.ui-tab[data-tab-page="#${id}"]:visible, .ui-side-link[data-tab-page="#${id}"]:visible`;
 // (the tab bar folds its other tabs away once the page scrolls down: back at the top they show)
 const toTop = page => page.evaluate(() => { scrollTo(0, 0); document.querySelector('.ui-tabbar')?.classList.remove('is-minimised'); });
 // (Settings opens on its menu; given a page's title, that page opens, from the menu or from another page via its Back)
 export const openSettings = async (page, title) => {
   await toTop(page);
-  await page.locator(tabLink('settings-page')).first().click();
+  if (!(await page.locator('#settings-host').isVisible())) {
+    await page.locator(tabLink('browse-page')).first().click();
+    await page.locator('#browse-settings').click();
+  }
   await expect(page.locator('#settings-host')).toBeVisible();
+  // (a page open, a screen of its own from app-ui rc.80: back to the menu first)
+  await settingsBack(page);
   if (!title) return;
-  const back = page.locator('#settings-host .ui-settings-back:visible');
-  if (await back.count()) await back.click();
   await page.locator('#settings-host .ui-settings-menu-groups .ui-settings-go').filter({ hasText: new RegExp(`^${title}`) }).click();
-  await expect(page.locator('#settings-host .ui-settings-back:visible')).toBeVisible();
+  await expect(page.locator('#settings-host .ui-settings-group:not([hidden])')).toBeVisible();
 };
-export const openToday = async page => { await toTop(page); await page.locator(tabLink('today-page')).first().click(); await expect(page.locator('#today-page')).toBeVisible(); };
-export const openTab = async (page, name) => { await toTop(page); await page.locator(tabLink(`${name}-page`)).first().click(); await expect(page.locator(`#${name}-page`)).toBeVisible(); };
+// From a Settings page back to its menu (nothing when the menu shows): the page's own Back, or (app-ui rc.80+, the page
+// as a screen of its own: shell.js onPage) the bar's
+export const settingsBack = async page => {
+  const own = page.locator('#settings-host .ui-settings-back:visible');
+  if (await own.count()) await own.click();
+  else if (await page.locator('#settings-page.is-sub').count()) await page.locator('.ui-bar .ui-bar-back').click();
+  else return;
+  await expect(page.locator('#settings-host .ui-settings-menu')).toBeVisible();
+};
+// (a tab tapped while a Settings page is open over Browse first closes that page: then a second tap goes)
+export const openTab = async (page, name) => {
+  await toTop(page);
+  await expect(async () => {
+    await page.locator(tabLink(`${name}-page`)).first().click();
+    await expect(page.locator(`#${name}-page`)).toBeVisible({ timeout: 1500 });
+  }).toPass({ timeout: 15_000 });
+};
+export const openToday = page => openTab(page, 'today');
 export const clickOpens = async (button, dialog) => { await button.dispatchEvent('click'); await expect(dialog).toBeVisible(); };
-export const synced = page => expect.poll(() => page.evaluate(() => window.starter.status), { timeout: 15_000 }).toBe('synced');
+// (and the quick add and task sheet loaded, which the page fetches straight after its first draw: a test may go offline next)
+export const synced = async page => {
+  await expect.poll(() => page.evaluate(() => window.starter.status), { timeout: 15_000 }).toBe('synced');
+  // (the page says so itself: a bundled page's files have other names)
+  await page.waitForFunction(() => window.starter.warm === true, null, { timeout: 15_000 });
+};
 // cloud{
-export const serverHas = text => expect.poll(async () => (await db.list('spaces/_/tasks')).some(d => d.text === text), { timeout: 15_000 }).toBe(true);
-// The id of the shared item with this text (db.list leaves document ids out).
+export const serverHas = text => expect.poll(async () => (await db.list('spaces/_/tasks')).some(d => d.title === text), { timeout: 15_000 }).toBe(true);
+// The id of the shared task with this title (db.list leaves document ids out).
 export async function itemIdOf(text) {
   const host = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
   // (every page: the shared list grows over a long --repeat-each soak, past one page)
   for (let token = ''; ;) {
     const r = await fetch(`http://${host}/v1/projects/demo-todo/databases/(default)/documents/spaces/_/tasks?pageSize=300${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`, { headers: { Authorization: 'Bearer owner' } });
     const j = await r.json();
-    const d = (j.documents || []).find(x => x.fields?.text?.stringValue === text);
+    const d = (j.documents || []).find(x => x.fields?.title?.stringValue === text);
     if (d) return d.name.split('/').pop();
     if (!(token = j.nextPageToken || '')) return undefined;
   }
 }
 // }cloud
+
+// A finger on an element (pointer events, as a touch screen sends them): down at its middle (or at `at`, from its
+// top left), held `hold` ms, moved by each [dx, dy] in turn (a frame apart, the last one ending `wait` ms before the
+// lift), then lifted. The rows' gestures load after the first screen: wait for them first (gesturesReady).
+/** the list has slid in and not been drawn again for 400 ms (a row drawn anew under the finger never hears it) */
+export const still = (page, sel) => page.evaluate(sel => new Promise(done => {
+  const host = /** @type {HTMLElement} */ (document.querySelector(sel));
+  let t = setTimeout(() => { o.disconnect(); done(null); }, 400);
+  const o = new MutationObserver(() => { clearTimeout(t); t = setTimeout(() => { o.disconnect(); done(null); }, 400); });
+  o.observe(host, { childList: true, subtree: true });
+}).then(() => Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().endTime !== Infinity).map(a => a.finished.catch(() => {})))), sel);
+export async function finger(page, selector, steps = [], { hold = 0, at = null, wait = 16 } = {}) {
+  // (again if the list was drawn anew meanwhile, as it is after a swipe ends)
+  await expect(() => page.locator(selector).first().scrollIntoViewIfNeeded({ timeout: 2_000 })).toPass({ timeout: 10_000 });
+  await page.evaluate(async ([selector, steps, hold, at, wait]) => {
+    const el = /** @type {HTMLElement} */ (document.querySelector(selector));
+    const r = el.getBoundingClientRect();
+    const x = at ? r.left + at[0] : r.left + r.width / 2, y = at ? r.top + at[1] : r.top + r.height / 2;
+    const target = el.querySelector('.td-row-main') ?? el;
+    const sleep = ms => new Promise(f => setTimeout(f, ms));
+    const fire = (type, dx, dy) => target.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, composed: true, pointerId: 41,
+      pointerType: 'touch', isPrimary: true, clientX: x + dx, clientY: y + dy, button: 0, buttons: type === 'pointerup' ? 0 : 1 }));
+    fire('pointerdown', 0, 0);
+    if (hold) await sleep(hold);
+    for (const [dx, dy] of steps) { await sleep(16); fire('pointermove', dx, dy); }
+    await sleep(wait);
+    const [lx, ly] = steps.at(-1) ?? [0, 0];
+    fire('pointerup', lx, ly);
+    // (a quick lift with no move is a tap as well; after a long press a phone sends no click)
+    if (!steps.length && hold < 500) target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+  }, [selector, steps, hold, at, wait]);
+}
+// (wired last: the + button's drag, which takes its touches whole)
+export const gesturesReady = page => page.waitForFunction(() => document.getElementById('fab')?.style.touchAction === 'none', null, { timeout: 15_000 });
+/** [dx, dy] steps from 0 to (x, y) in n moves */
+export const steps = (x, y, n = 10) => Array.from({ length: n }, (_, i) => [Math.round(x * (i + 1) / n), Math.round(y * (i + 1) / n)]);

@@ -15,13 +15,13 @@ export function setHint(yes) {
   try { if (yes) localStorage.setItem(KEY, '1'); else { localStorage.removeItem(KEY); localStorage.removeItem(LIST); } } catch { /* no storage: no hint */ }
 }
 
-/** @typedef {{ id: string, text: string, createdAt?: number, updatedAt?: number }} Row */
+/** @typedef {{ id: string, title: string, priority: number, date?: string, tone?: string, place?: string, color?: string }} Row  a Today row as drawn */
 
-/** @param {import('./items.js').Item[]} items  the list as it was drawn, in order */
-export function keepList(items) {
+/** @param {Row[]} rows  Today as it was drawn, in order */
+export function keepList(rows) {
   try {
-    const rows = items.slice(0, LIMIT).map(({ id, text, createdAt, updatedAt }) => ({ id, text, createdAt, updatedAt }));
-    localStorage.setItem(LIST, JSON.stringify(rows));
+    const keep = rows.slice(0, LIMIT).map(({ id, title, priority, date, tone, place, color }) => ({ id, title, priority, date, tone, place, color }));
+    localStorage.setItem(LIST, JSON.stringify(keep));
   } catch { /* no storage, or full: the next start waits for the real list */ }
 }
 
@@ -29,6 +29,6 @@ export function keepList(items) {
 export function keptList() {
   try {
     const rows = JSON.parse(localStorage.getItem(LIST) || '[]');
-    return Array.isArray(rows) ? rows.filter(r => r && typeof r.id === 'string' && typeof r.text === 'string') : [];
+    return Array.isArray(rows) ? rows.filter(r => r && typeof r.id === 'string' && typeof r.title === 'string') : [];
   } catch { return []; }
 }

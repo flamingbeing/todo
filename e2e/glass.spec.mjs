@@ -2,7 +2,7 @@
 // the modules run), solid where the device asks for less transparency or more contrast, axe on glass, the screen
 // switch as a view transition. Screenshots of the sample in light, dark, OLED and Solid go to test-results/ for the PR.
 import AxeBuilder, { byTool } from './axe.mjs';
-import { test, expect, clickOpens, signIn, add, APP, openSettings, openToday } from './fixtures.mjs';
+import { test, expect, clickOpens, signIn, APP, openSettings, openToday } from './fixtures.mjs';
 
 /** @param {import('@playwright/test').Page} page @param {string} sel @param {string} prop */
 const style = (page, sel, prop) => page.locator(sel).first().evaluate((e, p) => getComputedStyle(e).getPropertyValue(p), prop);
@@ -64,6 +64,9 @@ test('asked for more contrast: solid card colour, no blur', async ({ phone }) =>
   await expect.poll(async () => style(page, '.ui-bar', 'background-color')).toBe(await surface(page));   // (the bar fades to it)
 });
 
+// a task's name on Today, exactly
+const title = (page, t) => page.locator('#today .td-title').getByText(t, { exact: true });
+
 // (the springs finished, so axe and the screenshots see the parts at rest, not mid fade-in)
 const settled = page => page.evaluate(() => Promise.all(document.getAnimations().map(a => a.finished.catch(() => {}))));
 
@@ -82,24 +85,24 @@ for (const [name, pick] of MODES) test(`the sample in ${name}: axe on the bar, a
   const run = Math.random().toString(36).slice(2, 6);
   for (let i = 1; i <= 14; i++) await page.evaluate(t => window.starter.add(t), `Sample item ${i} ${run}`);
   // (other tests add to the same list in parallel: wait for this test's last item, not a total)
-  await expect(page.getByRole('button', { name: `Sample item 14 ${run}`, exact: true })).toBeVisible();
+  await expect(title(page, `Sample item 14 ${run}`)).toBeVisible();
   await openSettings(page, 'Look');
   await page.getByLabel('Theme').selectOption(pick.theme);
   await page.getByLabel('Dark style').selectOption(pick.dark);
   await page.getByLabel('Bars and sheets').selectOption(pick.material);
   await openToday(page);
-  await add(page, `Toast for ${name} ${run}`);
+  await page.getByRole('checkbox', { name: `Complete: Sample item 1 ${run}`, exact: true }).click();   // (its Undo toast)
   await expect(page.locator('.toast').last()).toBeVisible();
   await page.evaluate(() => scrollTo(0, 260));   // (content under the bar, so the scroll edge and the glass show)
   await settled(page);
   expect(await AxeBuilder(page), `${name}: page with a toast`).toEqual([]);
   await byTool(page, () => page.screenshot({ path: info.outputPath(`glass-${name}.png`) }));
 
-  await clickOpens(page.getByRole('button', { name: `Sample item 3 ${run}`, exact: true }), page.locator('#task-sheet'));
+  await clickOpens(page.locator('#today .td-row-main').filter({ has: page.locator('.td-title').getByText(`Sample item 3 ${run}`, { exact: true }) }), page.locator('#task-sheet'));
   await settled(page);
   expect(await AxeBuilder(page), `${name}: the item sheet`).toEqual([]);
   await byTool(page, () => page.screenshot({ path: info.outputPath(`glass-${name}-sheet.png`) }));
-  await page.locator('#task-sheet').getByRole('button', { name: 'Cancel' }).click();
+  await page.locator('#task-sheet').getByRole('button', { name: 'Close' }).click();
   await expect(page.locator('#task-sheet')).toBeHidden();
 });
 

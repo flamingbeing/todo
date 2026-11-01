@@ -72,7 +72,7 @@ test('resolveSource: a bare name is the template\'s recipe at the app\'s commit,
 
 // the lean base takes a module in and out again: no trace left, the same files back, a second add changes nothing
 for (const [module, gone, grep] of [
-  ['search', ['app/public/search/index.js', 'app/src/screens/list-search.js', 'e2e/search.spec.mjs', 'app/public/vendor/minisearch'], /search/i],
+  ['search', ['app/public/search/index.js', 'app/src/screens/list-search.js', 'e2e/search.spec.mjs', 'app/public/vendor/minisearch'], /@core\/search|search\.css|list-search|listSearch/],
   ['backup', ['app/public/backup/index.js', 'app/src/screens/backup-settings.js', 'e2e/backup.spec.mjs', 'app/public/vendor/xlsx'], /@core\/backup|backupSettings/],
   // cloud{ the bin module needs the cloud (its data side and rules; a static app has no recipes/bin)
   ['bin', ['app/src/bin.js', 'app/src/bin-data.js', 'app/src/screens/bin-settings.js', 'app/rules/bin.rules'], /binSettings|binData/],

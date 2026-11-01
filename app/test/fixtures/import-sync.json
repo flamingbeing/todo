@@ -1,0 +1,41 @@
+{
+  "sync_token": "made-up-token-1",
+  "full_sync": true,
+  "projects": [
+    { "id": "p-inbox", "name": "Inbox", "color": "grey", "parent_id": null, "child_order": 0, "inbox_project": true, "view_style": "list", "is_favorite": false, "is_archived": false, "is_deleted": false, "is_collapsed": false },
+    { "id": "p-garden", "name": "Garden", "color": "lime_green", "parent_id": null, "child_order": 2, "view_style": "board", "is_favorite": true, "is_archived": false, "is_deleted": false, "is_collapsed": false },
+    { "id": "p-home", "name": "Home", "color": "berry_red", "parent_id": null, "child_order": 1, "view_style": "list", "is_favorite": false, "is_archived": false, "is_deleted": false, "is_collapsed": false },
+    { "id": "p-shed", "name": "Shed", "color": "no_such_colour", "parent_id": "p-garden", "child_order": 1, "view_style": "calendar", "is_favorite": false, "is_archived": false, "is_deleted": false, "is_collapsed": true },
+    { "id": "p-old", "name": "Old plans", "color": "taupe", "parent_id": null, "child_order": 3, "view_style": "list", "is_archived": true, "is_deleted": false },
+    { "id": "p-gone", "name": "Binned", "color": "red", "parent_id": null, "child_order": 4, "view_style": "list", "is_archived": false, "is_deleted": true }
+  ],
+  "sections": [
+    { "id": "s-later", "name": "Later", "project_id": "p-home", "section_order": 2, "is_collapsed": false, "is_archived": false, "is_deleted": false },
+    { "id": "s-now", "name": "Now", "project_id": "p-home", "section_order": 1, "is_collapsed": false, "is_archived": false, "is_deleted": false },
+    { "id": "s-seeds", "name": "Seeds", "project_id": "p-garden", "section_order": 1, "is_collapsed": true, "is_archived": false, "is_deleted": false },
+    { "id": "s-arch", "name": "Done with", "project_id": "p-home", "section_order": 3, "is_archived": true, "is_deleted": false },
+    { "id": "s-del", "name": "Deleted", "project_id": "p-home", "section_order": 4, "is_archived": false, "is_deleted": true }
+  ],
+  "labels": [
+    { "id": "l-errand", "name": "errand", "color": "orange", "item_order": 2, "is_favorite": true, "is_deleted": false },
+    { "id": "l-calls", "name": "calls", "color": "blue", "item_order": 1, "is_favorite": false, "is_deleted": false }
+  ],
+  "filters": [
+    { "id": "f-two", "name": "Soon and big", "query": "(today | overdue) & p1", "color": "red", "item_order": 2, "is_favorite": true, "is_deleted": false },
+    { "id": "f-one", "name": "Odd one", "query": "assigned to: me & !subtask", "color": "grape", "item_order": 1, "is_favorite": false, "is_deleted": false }
+  ],
+  "items": [
+    { "id": "t-b", "content": "Buy stamps", "description": "From the post office", "project_id": "p-inbox", "section_id": null, "parent_id": null, "child_order": 2, "priority": 1, "labels": ["errand"], "due": { "date": "2026-11-05", "string": "5 Nov", "is_recurring": false }, "deadline": null, "checked": false, "is_deleted": false, "added_at": "2026-10-01T08:00:00.000000Z" },
+    { "id": "t-a", "content": "Call the plumber", "description": "", "project_id": "p-inbox", "section_id": null, "parent_id": null, "child_order": 1, "priority": 4, "labels": ["calls", "urgent#now"], "due": { "date": "2026-11-03T09:30:00", "string": "3 Nov at 9:30", "is_recurring": false }, "deadline": null, "checked": false, "is_deleted": false },
+    { "id": "t-c", "content": "Water the ferns", "project_id": "p-home", "section_id": "s-now", "parent_id": null, "child_order": 1, "priority": 2, "labels": [], "due": { "date": "2026-11-04", "string": "every 3 days", "is_recurring": true }, "deadline": { "date": "2026-12-01", "lang": "en" }, "checked": false, "is_deleted": false },
+    { "id": "t-d", "content": "Check the mailbox", "project_id": "p-home", "section_id": "s-now", "parent_id": null, "child_order": 2, "priority": 3, "labels": [], "due": { "date": "2026-11-02T01:00:00Z", "string": "every weekday at 9am", "is_recurring": true }, "checked": false, "is_deleted": false },
+    { "id": "t-e", "content": "Sort the drawers", "project_id": "p-home", "section_id": "s-later", "parent_id": null, "child_order": 1, "priority": 1, "labels": [], "due": { "date": "2026-11-09", "string": "every blue moon", "is_recurring": true }, "checked": false, "is_deleted": false },
+    { "id": "t-e1", "content": "Start with the left one", "project_id": "p-home", "section_id": "s-later", "parent_id": "t-e", "child_order": 1, "priority": 1, "labels": [], "due": null, "checked": false, "is_deleted": false },
+    { "id": "t-e0", "content": "Empty the top one", "project_id": "p-home", "section_id": "s-later", "parent_id": "t-e", "child_order": 0, "priority": 3, "labels": [], "due": null, "checked": false, "is_deleted": false },
+    { "id": "t-f", "content": "Plant tulips", "project_id": "p-garden", "section_id": "s-seeds", "parent_id": null, "child_order": 1, "priority": 4, "labels": [], "due": null, "checked": false, "is_deleted": false },
+    { "id": "t-g", "content": "Already finished", "project_id": "p-home", "section_id": null, "parent_id": null, "child_order": 3, "priority": 4, "labels": [], "due": null, "checked": true, "is_deleted": false },
+    { "id": "t-h", "content": "Thrown away", "project_id": "p-home", "section_id": null, "parent_id": null, "child_order": 4, "priority": 4, "labels": [], "due": null, "checked": false, "is_deleted": true },
+    { "id": "t-i", "content": "In an archived project", "project_id": "p-old", "section_id": null, "parent_id": null, "child_order": 1, "priority": 4, "labels": [], "due": null, "checked": false, "is_deleted": false },
+    { "id": "t-j", "content": "Mow the shed roof", "project_id": "p-shed", "section_id": null, "parent_id": null, "child_order": 1, "priority": 2, "labels": [], "due": { "date": "2026-11-06", "string": "ev! fri", "is_recurring": true }, "checked": false, "is_deleted": false }
+  ]
+}

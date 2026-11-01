@@ -15,7 +15,9 @@
     "app-update/register.js": { "url": "https://core.anawj.com/update/0.2.0/register.js", "preload": true },
     "firebase/app": { "url": "./vendor/firebase/12.19.0/firebase-app.js", "preload": true },
     "firebase/auth": { "url": "./vendor/firebase/12.19.0/firebase-auth.js", "preload": true },
-    "firebase/firestore": { "url": "./vendor/firebase/12.19.0/firebase-firestore.js", "preload": true }
+    "firebase/firestore": { "url": "./vendor/firebase/12.19.0/firebase-firestore.js", "preload": true },
+    "chrono-node": { "url": "./vendor/chrono-node/2.10.3/chrono.js", "types": "./app/public/vendor/chrono-node/2.10.3/index.d.ts", "alias": "./app/public/vendor/chrono-node/2.10.3/chrono.js" },
+    "rrule": { "url": "./vendor/rrule/2.8.1/rrule.js", "types": "./app/public/vendor/rrule/2.8.1/index.d.ts", "alias": "./app/public/vendor/rrule/2.8.1/rrule.js" }
   },
   "paths": {
     "@core/*": ["./node_modules/app-sync/types/*.d.ts"],

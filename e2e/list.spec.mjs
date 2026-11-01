@@ -1,4 +1,4 @@
-// Sign-in, roles from the role doc, and the list: add, edit, delete to the bin.
+// Sign-in, roles from the role doc, and the tasks: add, rename, delete to the bin.
 import AxeBuilder from './axe.mjs';
 import { test, expect, clickOpens, signIn, add, synced, serverHas, db, uniq, today, APP } from './fixtures.mjs';
 
@@ -25,35 +25,36 @@ test('a member adds, edits and deletes; the delete lands in the bin', { tag: '@s
   await serverHas(t);
   expect(await AxeBuilder(page)).toEqual([]);
 
-  await clickOpens(page.getByRole('button', { name: t }), page.locator('#task-sheet'));
-  await page.fill('#task-text', t + ' edited');
-  await page.click('#task-save');
+  await clickOpens(page.locator('#today .td-row-main').filter({ hasText: t }), page.locator('#task-sheet'));
+  await page.fill('#task-sheet .td-task-title', t + ' edited');
+  await page.press('#task-sheet .td-task-title', 'Enter');
   await expect(page.locator('#today')).toContainText(t + ' edited');
   await serverHas(t + ' edited');
 
-  await clickOpens(page.getByRole('button', { name: t + ' edited' }), page.locator('#task-sheet'));
-  await page.click('#task-delete');
+  await page.locator('#task-sheet [aria-label="More"]').click();
+  await page.getByRole('menuitem', { name: 'Delete' }).click();
+  await expect(page.locator('#task-sheet')).toBeHidden();
   await expect(page.locator('#today')).not.toContainText(t);
-  await expect.poll(async () => (await db.list('spaces/_/bin')).some(b => b.data?.text === t + ' edited'), { timeout: 15_000 }).toBe(true);
-  await expect.poll(async () => (await db.list('spaces/_/tasks')).some(d => d.text === t + ' edited')).toBe(false);
+  await expect.poll(async () => (await db.list('spaces/_/bin')).some(b => b.data?.title === t + ' edited'), { timeout: 15_000 }).toBe(true);
+  await expect.poll(async () => (await db.list('spaces/_/tasks')).some(d => d.title === t + ' edited')).toBe(false);
 });
 
 test('a viewer reads but cannot add or edit', async ({ phone }) => {
   const t = uniq('seen');
-  await db.put(`spaces/_/tasks/${t}`, { text: t, due: today(), done: false, updatedAt: Date.now() });
+  await db.put(`spaces/_/tasks/${t}`, { title: t, projectId: 'inbox', due: { date: today() }, done: false, updatedAt: Date.now() });
   const page = await phone();
   await signIn(page, 'viewer');
   await expect(page.locator('#today')).toContainText(t);
-  await expect(page.locator('#add')).toBeHidden();
-  await expect(page.getByRole('button', { name: t })).toBeDisabled();
+  await expect(page.locator('#fab')).toBeHidden();
+  await expect(page.locator('#today .td-row').filter({ hasText: t }).locator('.td-check')).toBeDisabled();
 });
 
 test('a role change reaches the page by itself (role doc v ahead of the token)', async ({ phone }) => {
   const page = await phone();
   const { uid } = await signIn(page, 'viewer');
-  await expect(page.locator('#add')).toBeHidden();
+  await expect(page.locator('#fab')).toBeHidden();
   await db.put(`members/${uid}`, { role: 'member', v: 2 });
-  await expect(page.locator('#add')).toBeVisible();
+  await expect(page.locator('#fab')).toBeVisible();
   await db.del(`members/${uid}`);
   await expect(page.locator('#no-access')).toBeVisible({ timeout: 15_000 });
 });
@@ -94,32 +95,35 @@ test('a role change during a token refresh still reaches the page', async ({ pho
   for (let v = 2; v < 10; v += 2) {
     await refresh();
     await db.put(`members/${uid}`, { role: 'member', v });
-    await expect(page.locator('#add')).toBeVisible();
+    await expect(page.locator('#fab')).toBeVisible();
     await refresh();
     await db.put(`members/${uid}`, { role: 'viewer', v: v + 1 });
-    await expect(page.locator('#add')).toBeHidden();
+    await expect(page.locator('#fab')).toBeHidden();
   }
 });
 
-test('typing the next item while the last one saves keeps the new draft (slow or offline network)', async ({ phone }) => {
+test('typing the next task while the last one saves keeps the new draft (slow or offline network)', async ({ phone }) => {
   const page = await phone();
   await signIn(page, 'member');
   await synced(page);
+  await page.locator('#fab').click();
+  await expect(page.locator('#add-sheet')).toBeVisible();
   await page.context().setOffline(true);
   const first = uniq('first'), second = uniq('second');
   // both user actions in one task, so the next draft is typed before the first save resolves
   await page.evaluate(({ first, second }) => {
-    const box = /** @type {HTMLInputElement} */ (document.querySelector('#new-text'));
+    const box = /** @type {HTMLInputElement} */ (document.querySelector('#add-sheet .td-add-title'));
     box.value = first;
-    /** @type {HTMLFormElement} */ (document.querySelector('#add')).requestSubmit();
+    /** @type {HTMLFormElement} */ (document.querySelector('#add-sheet .td-add')).requestSubmit();
     box.value = second;
     box.dispatchEvent(new Event('input', { bubbles: true }));
   }, { first, second });
+  await expect(page.locator('#add-sheet .td-add-title')).toHaveValue(second);
+  await page.press('#add-sheet .td-add-title', 'Enter');
+  await expect(page.locator('#add-sheet .td-add-title')).toHaveValue('');
+  await page.keyboard.press('Escape');
   await expect(page.locator('#today')).toContainText(first);
-  await expect(page.locator('#new-text')).toHaveValue(second);
-  await page.click('#add button[type=submit]');
   await expect(page.locator('#today')).toContainText(second);
-  await expect(page.locator('#new-text')).toHaveValue('');
   await page.context().setOffline(false);
   await serverHas(first);
   await serverHas(second);

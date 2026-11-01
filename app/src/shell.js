@@ -1,8 +1,8 @@
-// The page's shell (index.html: .ui-shell, the kit's bar, tab bar, side bar and drawer) and the Settings page: the kit's
-// settingsScreen with the options (options.js) and its About rows, and what the options do to the tabs. A new app adds
-// its pages as .ui-tab-page sections with a tab (its data-tab-id) and a side link each, and keeps the rest.
-// Settings opens on a menu, as the logbook's do: a search box, the tabs taken off the bar (one tap away), then a row per
-// page; Back closes a page. The Tab bar page arranges the tabs (the kit's tabArranger; the tabs option, this device).
+// The page's shell (index.html: .ui-shell, the kit's bar, the five tabs, side bar and drawer) and the Settings page: the
+// kit's settingsScreen with the options (options.js) and its About rows, and what the options do to the tabs.
+// Settings is a screen pushed from Browse (its gear). It opens on a menu: a search box, the tabs taken off the bar (one
+// tap away), then a row per page; Back closes a page. The Tab bar page arranges the tabs (the kit's tabArranger; the
+// tabs option, this device); Browse always stays on the bar, since Settings is reached from it.
 import { startGestures, adaptiveShell, settingsScreen, createTransients, tabArranger, arrangeTabs, applyTabs } from '@core/ui';
 import { themeSwitch } from '@core/theme';
 import { APP } from './config.js';
@@ -25,8 +25,13 @@ const byGroup = sections => sections
   .map(s => (SETTINGS_GROUPS.includes(s.group ?? '') ? s : { ...s, group: 'Other' }))
   .sort((a, b) => SETTINGS_GROUPS.indexOf(a.group ?? '') - SETTINGS_GROUPS.indexOf(b.group ?? ''));
 
-// Settings always stays on the bar (the tabs off it are listed at the top of its menu)
-const TAB_RULES = { fixed: ['settings'] };
+// Browse always stays on the bar: Settings opens from it (the tabs off the bar are listed at the top of its menu)
+const TAB_RULES = { fixed: ['browse'] };
+
+/** @type {any} */
+let kit = null;
+/** the kit's screens (push and pop), once the shell has started */
+export const screens = () => /** @type {{ push: (sel: string) => unknown, pop: () => unknown } | undefined} */ (kit?.screens);
 
 // The shell starts first, as soon as the page's scripts have run, so the tabs and the menu work while the app is still
 // starting; the Settings page follows (settingsPage) once the app and its options are there.
@@ -34,7 +39,7 @@ const TAB_RULES = { fixed: ['settings'] };
 // still copy then, so a swipe or a quick flick never brings it in blank (app-ui rc.69 `ahead`, from the logbook).
 // An app that empties its hidden pages must spare the `.is-beside` ones.
 export function startShell() {
-  const kit = startGestures(document, { ahead: page => page.dispatchEvent(new CustomEvent('draw-ahead')) });
+  kit = startGestures(document, { ahead: page => page.dispatchEvent(new CustomEvent('draw-ahead')) });
   const shell = adaptiveShell(/** @type {HTMLElement} */ (document.querySelector('.ui-shell')), { screens: kit.screens });
   Object.assign(window, { kit, shell });   // for the tests
 }
@@ -48,6 +53,24 @@ function barTabs() {
 }
 const tabButton = (/** @type {string} */ id) => /** @type {HTMLElement | null} */ (document.querySelector(`.ui-tabbar > [data-tab-id="${id}"]`));
 
+/**
+ * A Settings page whose code loads when the page is first shown (settingsScreen mounts every page when it is built, shown
+ * or not, so a page that is heavy waits until it is on screen). load(host) -> its parts; leave runs whenever the page is
+ * hidden again. @param {HTMLElement} host
+ * @param {(host: HTMLElement) => Promise<{ leave: () => void, destroy: () => void }>} load
+ */
+function onShow(host, load) {
+  /** @type {Promise<{ leave: () => void, destroy: () => void }> | null} */
+  let page = null;
+  const watch = new IntersectionObserver(entries => {
+    const seen = entries.some(e => e.isIntersecting);
+    if (seen) page ??= load(host);
+    else page?.then(p => p.leave());
+  });
+  watch.observe(host);
+  return () => { watch.disconnect(); page?.then(p => p.destroy()); };
+}
+
 /** a list of rows in host @param {HTMLElement} host @param {HTMLElement[]} items */
 function listIn(host, items) {
   const list = document.createElement('ul');
@@ -56,12 +79,22 @@ function listIn(host, items) {
   host.append(list);
 }
 
-/** @param {import('./items.js').ItemsApp | null} app  null: not set up, so no Settings page */
+/**
+ * A Settings page shown as a screen of its own (the kit's menu.onPage, app-ui rc.80+): its title in the large title and
+ * the bar, no account block over it; the bar's Back closes it (the page is a history step). null: the menu again.
+ * @param {{ title: string } | null} page
+ */
+function onPage(page) {
+  const title = page ? page.title : 'Settings';
+  $('settings-title').textContent = title;
+  const small = document.querySelector('.ui-bar-title');
+  if (small && !$('settings-page').hidden) small.textContent = title;
+  $('settings-page').classList.toggle('is-sub', !!page);
+}
+
+/** @param {import('./items.js').ItemsApp | null} app  null: not set up, so no Settings page (Browse is not drawn either) */
 export function settingsPage(app) {
-  if (!app) {
-    for (const id of ['tab-settings', 'side-settings']) $(id).hidden = true;
-    return;
-  }
+  if (!app) return;
   const { settings } = app;
   const bar = /** @type {HTMLElement} */ (document.querySelector('.ui-tabbar'));
 
@@ -93,7 +126,7 @@ export function settingsPage(app) {
 
   settingsScreen($('settings-host'), {
     settings,
-    menu: { steps: createTransients({ history, location, events: window }), top: offBar },
+    menu: { steps: createTransients({ history, location, events: window }), top: offBar, onPage },
     sections: byGroup([
       ...SETTING_SECTIONS,
       { title: 'Tab bar', icon: ICONS.menu, sub: 'Order, and which tabs show', group: 'Look', find: 'arrange tabs', mount: host => {
@@ -103,7 +136,9 @@ export function settingsPage(app) {
         draw();
         return () => { repaints.delete(draw); stop(); };
       } },
-      { title: 'Look', icon: ICONS.smartphone, sub: 'Theme, colour and density', group: 'Look', mount: host => { themeSwitch(host); } },
+      { title: 'Import from Todoist', icon: ICONS.folderInput, sub: 'Bring your projects and tasks over', group: 'Data', find: 'migrate move api token tasks',
+        mount: host => onShow(host, async h => (await import('./screens/import.js')).importScreen(h, { app, openInbox: () => tabButton('inbox')?.click() })) },
+      { title: 'Look', icon: ICONS.smartphone, sub: 'Theme, colour and density', group: 'Look', mount: host => { themeSwitch(host, { name: APP.title || APP.name }); } },
       // the recipes' own pages (an empty slot adds none)
       ...Object.values(modules.settingsPages ?? {}).flatMap(slot => { const section = slot?.({ app }); return section ? [section] : []; }),
     ]),

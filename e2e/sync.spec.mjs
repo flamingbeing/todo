@@ -34,7 +34,8 @@ test('the bar\'s sync button shows the state as its icon; offline, a tap retries
   await btn.click();
   expect(await page.evaluate(() => window.starter.syncTaps)).toBe(1);
   await page.context().setOffline(false);
-  await btn.click();
+  // (back online it may send at once, and a synced cloud leaves the bar (app.css), so the tap goes to the element)
+  await btn.evaluate(b => /** @type {HTMLElement} */ (b).click());
   await serverHas(t);
   await expect(btn).toHaveAttribute('data-state', 'synced', { timeout: 15_000 });
 });
@@ -48,6 +49,15 @@ test('two phones see each other’s changes', async ({ phone }) => {
   await expect(b.locator('#today')).toContainText(t, { timeout: 15_000 });
 });
 
+// rename a task on Today in its sheet (the name saves as it leaves the field), then close the sheet
+async function rename(page, from, to) {
+  await clickOpens(page.locator('#today .td-row-main').filter({ hasText: from }), page.locator('#task-sheet'));
+  await page.fill('#task-sheet .td-task-title', to);
+  await page.press('#task-sheet .td-task-title', 'Enter');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#task-sheet')).toBeHidden();
+}
+
 test('an edit that meets a change from another phone waits for a choice; keep mine wins everywhere', async ({ phone }) => {
   const a = await phone(), b = await phone();
   const { email } = await signIn(a, 'member');
@@ -58,12 +68,8 @@ test('an edit that meets a change from another phone waits for a choice; keep mi
   await synced(b);
 
   await b.context().setOffline(true);
-  await clickOpens(b.getByRole('button', { name: t }), b.locator('#task-sheet'));
-  await b.fill('#task-text', t + ' from b');
-  await b.click('#task-save');
-  await clickOpens(a.getByRole('button', { name: t }), a.locator('#task-sheet'));
-  await a.fill('#task-text', t + ' from a');
-  await a.click('#task-save');
+  await rename(b, t, t + ' from b');
+  await rename(a, t, t + ' from a');
   await serverHas(t + ' from a');
   await b.context().setOffline(false);
 
@@ -93,12 +99,8 @@ test('keep theirs drops this phone’s held change and nothing else', async ({ p
   await expect(b.locator('#today')).toContainText(t, { timeout: 15_000 });
   await synced(b);
   await b.context().setOffline(true);
-  await clickOpens(b.getByRole('button', { name: t }), b.locator('#task-sheet'));
-  await b.fill('#task-text', t + ' from b');
-  await b.click('#task-save');
-  await clickOpens(a.getByRole('button', { name: t }), a.locator('#task-sheet'));
-  await a.fill('#task-text', t + ' from a');
-  await a.click('#task-save');
+  await rename(b, t, t + ' from b');
+  await rename(a, t, t + ' from a');
   await serverHas(t + ' from a');
   await b.context().setOffline(false);
   await expect(b.locator('#attention')).toBeVisible({ timeout: 20_000 });

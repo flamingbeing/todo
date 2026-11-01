@@ -7,6 +7,19 @@ Lasting decisions and how to test. Shaping decisions have their own records in [
 See README, "Tests". The browser tests use one shared list (`spaces/_/tasks`), so each test uses its own made-up
 accounts and task texts and checks only those; they run side by side.
 
+- A screen as a picture (iPhone size, 3x, light or dark, signed in on the emulators with made-up data, no real sign-in):
+  `node tools/shot.mjs out.png [--dark] [--tab upcoming-page] [--project <name>] [--task <title>] [--settings About]
+  [--click <selector>] [--eval <js>] [--keep]...` (needs Java and `PW_CHROMIUM`; it starts the emulators and the e2e
+  server unless already up, and stops them unless `--keep`; seeds `tools/shot-seed.json`, `--seed` for another).
+  `--wait <ms>` pauses and `--full` takes the whole page; shots of the Import page mock the network from `--eval`
+  (replace `window.fetch`, fill `#import-token`, click the Preview button). A set of every screen: one call per screen.
+  `--tab` takes a tab page id (`inbox-page`, `today-page`, `upcoming-page`, `search-page`, `browse-page`); `--project`
+  opens a project from Browse's rows; `--task` opens a task's sheet; `--settings` opens Settings from Browse's gear.
+- The icon: `node tools/icons.mjs` writes `app/public/icons/icon.svg` and renders the PNGs (192, 512, maskable, Apple
+  touch) with Playwright's Chromium; run it again after a change of colour or mark.
+- The browser tests start on Today, the second tab: Back from another tab goes to the first, Inbox (`back.spec`).
+  `synced()` also waits for the quick add and task sheet modules, which load straight after the first draw.
+
 ## UI kit gestures and the `/kit/` gallery (app-ui)
 
 The kit, its gallery and their tests live in [app-ui](https://github.com/flamingbeing/app-ui) since 1.0.0-rc.1
@@ -38,6 +51,25 @@ signed in paints the list as last drawn, read-only, until the real list replaces
 100 rows, cleared whenever the sign-in says signed out); `modules.json` entries marked `"preload"` get a
 `<link rel="modulepreload">` each (written by `node tools/modules.mjs`). Not here: lazy sheets (the starter has none;
 an app with many gets them from its own module) and the Vite bundle (`npm run vite`, still opt-in).
+
+## Import (Settings > Data)
+
+`app/src/screens/import.js` (the page, loaded when it is first shown) and `app/src/import-map.js` (the pure mapper,
+`mapImport(sync, { today, id, now, existing })`). The person pastes their personal API token; the page POSTs one full
+sync (`sync_token=*`, projects, sections, labels, items, filters) straight from the browser to the service's own host,
+which answers any origin, so no relay is used (that host is the one extra `connect-src` in `worker/headers.js`).
+- The token lives in the field and one variable. It is never stored (not in storage, options, drafts, logs, reports or
+  Firestore), and is emptied as soon as the answer arrives and again on leaving the page (`e2e/import.spec.mjs` dumps
+  every store after an import and looks for it).
+- Mapping: the priority is inverted (ours = 5 - theirs); due strings with a zone become the device's local time; a
+  repeat is kept only when `recur.js` reads the whole phrase (else it is listed as unparsed and comes in as a dated
+  task); colour names map to our 20 keys (unknown: charcoal); the Inbox merges into `inbox`; order becomes 1..n among
+  siblings; label names become label ids (missing ones are made). Every record keeps its source id in `extId`, so a
+  second import updates instead of adding; `keep` leaves a local done state and day order alone.
+- Writes go through `app.writeRecord` (the write queue), 20 at a time with a progress bar; a refusal stops the run and
+  says how far it got. The preview and the confirm come first; nothing is written before the second tap.
+- Tested with route-mocked answers only (`e2e/import.spec.mjs`, `app/test/import.unit.test.mjs` with made-up data), not
+  against the live service.
 
 ## Later
 
@@ -78,6 +110,23 @@ be saved. Where values live (change these only with a migration; `settings.unit.
 - The settings file (`kind: core-settings`, `version`) carries account options only.
 - Decision: `@core/theme`'s per-device choice can later move onto settings (device scope, same storage shape); today it
   keeps its own storage, so adopting settings changes no theme file.
+
+## Vendored libraries (`tools/vendor-lib.mjs`)
+
+The date words (chrono-node 2.10.3, English parsers only) and repeat rules (rrule 2.8.1) are npm packages bundled once
+into one minified ESM file each under `app/public/vendor/<name>/<version>/`, with the licence and a hand-written
+`index.d.ts` for the parts the app uses. The import map names them, `modules.json` lists them as lazy, so neither is
+on the first screen: `recur.js`'s `dateLibs()` loads both the first time quick add, the scheduler or a repeating tick
+needs them. `node tools/vendor-lib.mjs <name>` rebuilds one (network), `--check` checks each folder offline. Vite keeps
+every import-map name external, so a build never bundles them.
+
+## Row gestures (`app/src/ui/row-*.js`)
+
+Task rows have their own swipe, hold and drag rather than app-ui's `selectMode`/`holdMenus`: a page can hold several
+lists (Upcoming's days, a project's sections) that select as one, and a hold must both open the row's menu (let go)
+and lift the row for a drag (moved), which a hold-to-menu helper cannot share. Movement still goes through app-ui's
+gesture module: `drag` (swipe, as `cards`), `claim('drag')` for a lifted row or the + button, `glide`, `haptic`.
+Animations from `glide` are cancelled once they land, so the next gesture's inline transforms show.
 
 ## Search (`@core/search`)
 

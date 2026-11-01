@@ -1,6 +1,6 @@
 // The 1.0 engine features the starter shows: sign-out keeps this device's data, forget wipes it, refused saves wait
-// in a list, the edit sheet follows its item live (watchDoc), the list marks what changed, and "Check for updates".
-import { test, expect, clickOpens, signIn, signInAgain, add, synced, serverHas, uniq, db, itemIdOf, APP, openSettings, openToday } from './fixtures.mjs';
+// in a list, the task sheet follows its task live (watchDoc), the list marks what changed, and "Check for updates".
+import { test, expect, clickOpens, signIn, signInAgain, add, synced, serverHas, uniq, db, itemIdOf, today, APP, openSettings, openToday } from './fixtures.mjs';
 
 const kept = page => page.evaluate(async () => {
   let n = 0;
@@ -60,17 +60,18 @@ test('a save the server refuses waits in a list until retried or discarded', asy
   const page = await phone();
   await signIn(page, 'member');
   await synced(page);
-  // the rules refuse text over 500. app-sync may reject the save at once (a fast refusal) or queue it first; either way
-  // the add resolves (to '' or the reason), never throws into the page, and the copy waits in the refused list
-  const said = await page.evaluate(() => window.starter.add('x'.repeat(501)));
-  expect(typeof said).toBe('string');
+  // a task the rules no longer accept as it is (written elsewhere with no priority): completing it here is refused, the
+  // page goes on, and the copy waits in the refused list
+  const t = uniq('refused');
+  await db.put(`spaces/_/tasks/${t}`, { title: t, projectId: 'inbox', order: Date.now(), done: false, createdAt: Date.now(), updatedAt: Date.now(), due: { date: today() } });
+  await page.getByRole('checkbox', { name: `Complete: ${t}` }).click();
   await expect(page.locator('#refused li')).toHaveCount(1, { timeout: 15_000 });
   await page.click('#refused li button.discard');
   await expect(page.locator('#refused li')).toHaveCount(0);
   await synced(page);
 });
 
-test('the edit sheet follows its item: a change elsewhere shows, a delete elsewhere closes it', async ({ phone }) => {
+test('the task sheet follows its task: a change elsewhere shows, a delete elsewhere closes it', async ({ phone }) => {
   const a = await phone(), b = await phone();
   const { email } = await signIn(a, 'member');
   await signInAgain(b, email);
@@ -84,32 +85,15 @@ test('the edit sheet follows its item: a change elsewhere shows, a delete elsewh
   await add(a, t);
   await expect(b.locator('#today')).toContainText(t);
   await expect.poll(() => b.evaluate(t => window.changedSeen.some(x => x.includes(t)), t)).toBe(true);
-  await clickOpens(b.getByRole('button', { name: t }), b.locator('#task-sheet'));
+  await clickOpens(b.locator('#today .td-row-main').filter({ hasText: t }), b.locator('#task-sheet'));
   const itemId = await itemIdOf(t);
   const doc = await db.get(`spaces/_/tasks/${itemId}`);
   const noNulls = JSON.parse(JSON.stringify(doc, (k, v) => v === null ? undefined : v));   // (the admin helper can't write null)
-  await db.put(`spaces/_/tasks/${itemId}`, { ...noNulls, text: t + '-2', updatedAt: Date.now() });
-  await expect(b.locator('#task-live')).toContainText(t + '-2');
+  await db.put(`spaces/_/tasks/${itemId}`, { ...noNulls, title: t + '-2', updatedAt: Date.now() });
+  await expect(b.locator('#task-sheet .td-task-title')).toHaveValue(t + '-2');
   await db.del(`spaces/_/tasks/${itemId}`);
   await expect(b.locator('#task-sheet')).not.toBeVisible();
-  await expect(b.locator('#edit-msg')).toContainText('deleted on another device');
-});
-
-test('a delete elsewhere keeps a draft in the edit sheet; saving it adds it back', async ({ phone }) => {
-  const a = await phone(), b = await phone();
-  const { email } = await signIn(a, 'member');
-  await signInAgain(b, email);
-  const t = uniq('draft');
-  await add(a, t);
-  await expect(b.locator('#today')).toContainText(t);
-  await clickOpens(b.getByRole('button', { name: t }), b.locator('#task-sheet'));
-  await b.fill('#task-text', t + '-typed');
-  await db.del(`spaces/_/tasks/${await itemIdOf(t)}`);
-  await expect(b.locator('#task-live')).toContainText('deleted on another device');
-  await expect(b.locator('#task-sheet')).toBeVisible();
-  await b.click('#task-save');
-  await expect(b.locator('#today')).toContainText(t + '-typed');
-  await serverHas(t + '-typed');
+  await expect(b.locator('.toast').last()).toContainText('deleted on another device');
 });
 
 test('check for updates: a new version takes over at once', async ({ phone }) => {

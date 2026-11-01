@@ -1,9 +1,9 @@
 # Todo
 
 Instructions for every AI assistant working here (Claude Code reads this through `CLAUDE.md`).
-Replace the placeholders in angle brackets once the app is filled, then delete this line.
-
-<One or two lines: what this app is and who uses it.>
+A task manager for one person: tasks in an Inbox and in projects (list or board) with sections, subtasks, labels, filters,
+priorities, due dates, repeats and deadlines, shown by day (Today, Upcoming); can bring a list over from another task
+app; installable, works offline, syncs between the person's devices.
 
 ## Public here, private elsewhere
 
