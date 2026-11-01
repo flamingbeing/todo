@@ -42,7 +42,7 @@
 - Gestures and navigation (2026-11-01): the app opens on a Home view (Settings > General, Today unless set); Back on
   another tab goes Home, Back on Home says "Press Back again to close"; a tab tapped over a Settings page goes straight
   there (the next Back goes Home); the current tab tapped scrolls to top; a long press on the tab bar opens Settings >
-  Tab bar. Settings > General > "Swipe board cards" (off): a sideways swipe on a card completes or schedules it, and the
+  Tab bar. Board cards follow the row swipes (Settings > General > Swipe right / left; both None turns them off): a sideways swipe on a card completes or schedules it, and the
   board still pages from the gaps, headers and dots. Two fingers dragged down over rows select them; select mode's
   "..." has Deadline (sets or clears it on every selected task, with Undo).
 - Remaining gaps, part 1 (2026-11-01): "This weekend" on a Saturday or Sunday means the next Saturday; a repeating

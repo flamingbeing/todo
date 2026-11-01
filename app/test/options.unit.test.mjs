@@ -18,15 +18,15 @@ test('home: a tab id of the bar, else Today', () => {
   for (const bad of ['', 'nope', 'Today', 3, null, undefined, {}, ['today']]) assert.equal(clean?.(bad), 'today');
 });
 
-test('boardSwipe: per device, off', () => {
-  assert.equal(OPTIONS.boardSwipe.scope, 'device');
-  assert.equal(OPTIONS.boardSwipe.default, false);
+test('board cards follow the row swipes: no separate option or row', () => {
+  assert.equal(OPTIONS.boardSwipe, undefined);
+  const rows = SETTING_SECTIONS.find(s => s.title === 'General')?.rows ?? [];
+  assert.equal(rows.find(r => r.key === 'boardSwipe'), undefined);
 });
 
-test('Settings > General has the Home view and Swipe board cards rows', () => {
+test('Settings > General has the Home view row', () => {
   const rows = SETTING_SECTIONS.find(s => s.title === 'General')?.rows ?? [];
-  const home = rows.find(r => r.key === 'home'), swipe = rows.find(r => r.key === 'boardSwipe');
+  const home = rows.find(r => r.key === 'home');
   assert.equal(home?.label, 'Home view');
   assert.deepEqual(home?.choices?.map(([id]) => id), ['inbox', 'today', 'upcoming', 'search', 'browse']);
-  assert.equal(swipe?.label, 'Swipe board cards');
 });

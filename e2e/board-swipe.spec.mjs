@@ -1,14 +1,15 @@
-// Swipe on board cards (Settings > General > "Swipe board cards", this device, off by default). Off: a sideways swipe
-// that starts on a card pages the board, as before. On: a mostly-sideways swipe on a card runs the row swipes (right
-// completes, with Undo; left opens the scheduler), and the board still pages from a column gap. Real touches (CDP),
+// Swipe on board cards: cards follow the row swipes (Settings > General > Swipe right / Swipe left, this device). With a
+// swipe way set (the default), a mostly-sideways swipe on a card runs it (right completes, with Undo; left opens the
+// scheduler), and the board still pages from a column gap. With both set to None, a swipe on a card pages the board. Real touches (CDP),
 // so the browser's own panning and touch-action rules take part.
 import { test, expect, signIn, synced, uniq, db, openTab, openSettings, gesturesReady, fingers, line } from './fixtures.mjs';
 
 const now = () => ({ createdAt: Date.now(), updatedAt: Date.now() });
 
 /** a board of two sections with cards, open on the page; -> ids, its name and the card selector (the data is shared with tests running at once: each has its own project) */
-async function board(page) {
+async function board(page, pre) {
   await signIn(page, 'member');
+  if (pre) await pre(page);
   const pid = uniq('bp'), name = uniq('Board'), s1 = uniq('s1'), s2 = uniq('s2'), a = uniq('card-a'), b = uniq('card-b');
   await db.put(`spaces/_/projects/${pid}`, { name, color: 'blue', parentId: null, view: 'board', order: Date.now(), ...now() });
   await db.put(`spaces/_/sections/${s1}`, { name: 'Doing', projectId: pid, order: 1, collapsed: false, ...now() });
@@ -28,17 +29,20 @@ async function board(page) {
 // (the page slides in: a touch lands where the card is once it has stopped)
 const settled = page => page.evaluate(() => Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().endTime !== Infinity).map(a => a.finished.catch(() => {}))));
 const scrollLeft = page => page.locator('#project.td-board').evaluate(el => el.scrollLeft);
-const centre = async (page, sel) => { const r = await page.locator(sel).boundingBox(); return [r.x + r.width / 2, r.y + r.height / 2]; };
-const swipeOn = async (page, on) => {
+const centre = async (page, sel) => { await page.locator(sel).waitFor(); const r = await page.locator(sel).boundingBox(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+const swipesOff = async page => {
   await openSettings(page, 'General');
-  const row = page.getByRole('switch', { name: 'Swipe board cards' });
-  if ((await row.isChecked()) !== on) await row.click();
-  if (on) await expect(row).toBeChecked(); else await expect(row).not.toBeChecked();
+  for (const name of ['Swipe right', 'Swipe left']) {
+    const sel = page.locator('#settings-host select').filter({ has: page.locator('option', { hasText: 'None' }) })
+      .and(page.getByLabel(name, { exact: false }));
+    await sel.selectOption({ label: 'None' });
+  }
+  await expect(page.locator('html')).not.toHaveAttribute('data-board-swipe', '');
 };
 
-test('off: a sideways swipe on a card pages the board', async ({ phone }) => {
+test('swipes set to None: a sideways swipe on a card pages the board', async ({ phone }) => {
   const page = await phone();
-  const { a, card } = await board(page);
+  const { a, card } = await board(page, swipesOff);
   expect(await scrollLeft(page)).toBe(0);
   const [x, y] = await centre(page, card(a));
   await fingers(page, [line(x + 120, y, -300, 0, 12)]);
@@ -46,14 +50,9 @@ test('off: a sideways swipe on a card pages the board', async ({ phone }) => {
   expect((await db.get(`spaces/_/tasks/${a}`))?.done).toBe(false);
 });
 
-test('on: right completes with Undo, left opens the scheduler, a column gap still pages', async ({ phone }) => {
+test('by default: right completes with Undo, left opens the scheduler, a column gap still pages', async ({ phone }) => {
   const page = await phone();
   const { a, b, name, card } = await board(page);
-  await swipeOn(page, true);
-  await openTab(page, 'browse');
-  await page.locator('#browse').getByRole('button', { name: new RegExp(`^${name}`) }).click();
-  await expect(page.locator('#project.td-board')).toBeVisible();
-  await settled(page);
   await expect(page.locator('html')).toHaveAttribute('data-board-swipe', '');
 
   // left: the scheduler for that card

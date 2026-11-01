@@ -25,10 +25,12 @@ export function wire(ctx, l) {
   const way = (/** @type {string} */ k, /** @type {unknown} */ d) => { try { return /** @type {any} */ (settings.get(k) ?? d); } catch { return d; } };
   const ways = () => ({ right: way('swipeRight', 'complete'), left: way('swipeLeft', 'schedule') });
   const can = () => ctx.canWrite() && !selecting();
-  // Settings > General "Swipe board cards": a board's cards take the swipe actions (the html mark lets app.css keep the browser's pan off a card)
-  const boardSwipe = () => way('boardSwipe', false) === true;
+  // a board's cards take the row swipes whenever a swipe way is set (both None: a sideways swipe pages the board);
+  // the html mark lets app.css keep the browser's pan off a card
+  const boardSwipe = () => { const w = ways(); return w.right !== 'none' || w.left !== 'none'; };
   const markBoard = () => document.documentElement.toggleAttribute('data-board-swipe', boardSwipe());
-  settings.watch('boardSwipe', markBoard);
+  settings.watch('swipeRight', markBoard);
+  settings.watch('swipeLeft', markBoard);
   markBoard();
   const taskOf = (/** @type {string | undefined} */ id) => ctx.data().tasks.find(t => t.id === id);
   for (const [id, kind] of Object.entries(l.hosts)) {
