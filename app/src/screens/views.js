@@ -360,8 +360,8 @@ export function views(app) {
       data = next; changed = new Set([...changed, ...ids]);
       filter?.feed(data.tasks);
       loading.done();
-      // (not under a finger on a row, held or held up for a drag: drawn again, the row would leave it; once it is let go)
-      const now = () => { held = captured() === 'drag' || !!document.querySelector('[data-holding]'); if (held) setTimeout(now, 150); else redraw(); };
+      // (not while a finger holds, drags or swipes a row: drawn again, the row would leave it; once it is let go)
+      const now = () => { held = captured() === 'drag' || !!document.querySelector('[data-holding], .td-row.is-swiping'); if (held) setTimeout(now, 150); else redraw(); };
       if (!held) now();
       // the quick add and the task sheet straight after the first draw (the main ways in, and may be used offline), then the rest
       if (!warmed) {
