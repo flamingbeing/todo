@@ -133,6 +133,15 @@ test('chrono for the other dates', () => {
   assert.equal(due('a dec 5', { chrono: null }), null, 'without the library, its words stay text');
 });
 
+test('a date starts a word of its own, never mid-word', () => {
+  for (const t of ['Buy 2x4-10m', 'B-52s', 'invoice-3d', 'fix item-tomorrow', 'see x/dec 5', 'kept-mvy5h0j2-1319m']) {
+    assert.equal(due(t), null, t);
+    assert.equal(p(t).title, t, t);
+  }
+  assert.deepEqual(due('Report (dec 5)'), { date: '2026-12-05' }, 'after a bracket');
+  assert.deepEqual(due('Plan "tomorrow"'), { date: '2026-11-02' }, 'after a quote');
+});
+
 test('repeats: the first date comes from the rule', () => {
   assert.deepEqual(due('Gym every monday'), { date: '2026-11-02', rrule: 'FREQ=WEEKLY;BYDAY=MO', string: 'every monday' });
   assert.deepEqual(due('Water every day'), { date: '2026-11-01', rrule: 'FREQ=DAILY', string: 'every day' });

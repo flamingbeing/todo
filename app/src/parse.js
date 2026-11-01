@@ -35,7 +35,10 @@ const MON = '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?
 const monNum = (/** @type {string} */ m) => ['ja', 'fe', 'mar', 'ap', 'may', 'jun', 'jul', 'au', 'se', 'oc', 'no', 'de'].findIndex(p => m.startsWith(p)) + 1;
 const PARTS = /** @type {Record<string, string>} */ ({ morning: '09:00', afternoon: '12:00', evening: '19:00', night: '22:00', tonight: '22:00' });
 const END = '(?![\\p{L}\\p{N}])';
-const START = '(?<![\\p{L}\\p{N}])';
+// a date's words start a word of their own (after a space, an opening bracket or quote), never mid-word: "B-52s",
+// "2x4-10m" and "invoice-3d" stay text
+const WORD_START = /[\s([{"'\u201c\u2018]/;
+const START = '(?<=^|[\\s(\\[{"\'\\u201c\\u2018])';
 
 /** @param {string} key @returns {string} the month's last day */
 const monthEnd = key => new Date(Date.UTC(+key.slice(0, 4), +key.slice(5, 7), 0)).toISOString().slice(0, 10);
@@ -260,6 +263,7 @@ export function parse(text, ctx = {}) {
         // a month on its own ("review march report") is a word, not a date
         if (!s.isCertain('day') && !s.isCertain('weekday') && !s.isCertain('hour')) continue;
         if (!free(c.index, c.index + c.text.length)) continue;
+        if (c.index > 0 && !WORD_START.test(m0[c.index - 1])) continue;
         // the rest of a repeat this app doesn't say ("every 4 hours") stays words with it
         if (/(?:^|\s)(?:every|ev)!?\s+$/i.test(m0.slice(0, c.index))) continue;
         const y = s.get('year'), mo = s.get('month'), dd = s.get('day');
