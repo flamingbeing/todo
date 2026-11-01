@@ -79,7 +79,8 @@ export function pickDate(due, done, o = {}) {
 
   // ---- the shortcut rows
   const wd = weekdayOf(today);
-  const sat = wd === 6 || wd === 0 ? today : addDays(today, 6 - wd);
+  // (on Saturday or Sunday, This weekend is the next Saturday: Today already names today)
+  const sat = addDays(today, (6 - wd + 7) % 7 || 7);
   const mon = addDays(today, ((8 - wd) % 7) || 7);
   /** @type {[string, import('app-ui/icons/lucide.js').IconNodes, string, string | null][]} */
   const quick = [

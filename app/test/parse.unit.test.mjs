@@ -93,7 +93,9 @@ test('the app\'s own date words', () => {
   assert.deepEqual(due('a next week'), { date: '2026-11-02' }, 'the next Monday');
   assert.deepEqual(due('a next week', { nextWeekDay: 0 }), { date: '2026-11-08' }, 'a Sunday start, from a Sunday');
   assert.deepEqual(due('a later this week'), { date: '2026-11-03' });
-  assert.deepEqual(due('a this weekend'), { date: '2026-11-01' }, 'Sunday is still this weekend');
+  assert.deepEqual(due('a this weekend'), { date: '2026-11-07' }, 'said on a Sunday: the next Saturday');
+  assert.deepEqual(due('a this weekend', { now: new Date(2026, 10, 7, 10) }), { date: '2026-11-14' }, 'said on a Saturday: the next one');
+  assert.deepEqual(due('a weekend', { now: new Date(2026, 10, 3, 10) }), { date: '2026-11-07' }, 'weekend alone');
   assert.deepEqual(due('a this weekend', { now: new Date(2026, 10, 3, 10) }), { date: '2026-11-07' });
   assert.deepEqual(due('a next weekend', { now: new Date(2026, 10, 3, 10) }), { date: '2026-11-14' });
   assert.deepEqual(due('a end of month'), { date: '2026-11-30' });

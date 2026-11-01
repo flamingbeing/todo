@@ -50,7 +50,8 @@ const SHORTCUTS = [
   { re: '(?:tomorrow|tmrw|tmr|tom)', day: (_, c) => ({ date: addDays(c.today, 1) }) },
   { re: 'next\\s+week', day: (_, c) => ({ date: nextWeekday(c.today, c.nextWeekDay, true) }) },
   { re: 'later\\s+this\\s+week', day: (_, c) => ({ date: addDays(c.today, 2) }) },
-  { re: 'this\\s+weekend', day: (_, c) => ({ date: weekdayOf(c.today) === (c.weekendDay + 1) % 7 ? c.today : nextWeekday(c.today, c.weekendDay) }) },
+  // (said on the weekend itself, "this weekend" is the coming one: next Saturday, not today)
+  { re: '(?:this\\s+)?weekend', day: (_, c) => ({ date: nextWeekday(c.today, c.weekendDay, [c.weekendDay, (c.weekendDay + 1) % 7].includes(weekdayOf(c.today))) }) },
   { re: 'next\\s+weekend', day: (_, c) => ({ date: addDays(weekdayOf(c.today) === (c.weekendDay + 1) % 7 ? addDays(c.today, -1) : nextWeekday(c.today, c.weekendDay), 7) }) },
   { re: 'end\\s+of\\s+(?:the\\s+)?month|eom', day: (_, c) => ({ date: monthEnd(c.today) }) },
   { re: `mid[\\s-]+(${MON})`, day: (m, c) => {
