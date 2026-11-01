@@ -270,7 +270,9 @@ export function openQuickAdd(ctx, start, hold = null) {
       if (!r.refused) { made.set(n.toLowerCase(), r.id); ids.push(r.id); }
     }
     return ctx.app.addTask({ title: p.title, description: about || undefined, projectId: v.projectId, sectionId: v.sectionId, parentId: v.parentId,
-      priority: v.priority, labels: ids.length ? [...new Set(ids)] : undefined, due: v.due ?? undefined, deadline: v.deadline ?? undefined, order: atDrop(v) });
+      priority: v.priority, labels: ids.length ? [...new Set(ids)] : undefined, due: v.due ?? undefined, deadline: v.deadline ?? undefined, order: atDrop(v),
+      // a calendar slot's 30 minutes, while the task keeps that slot's time
+      duration: start.duration && v.due?.time ? start.duration : undefined });
   };
   const clearAll = () => {
     title.value = ''; desc.value = ''; desc.style.height = ''; ignore = []; was = '';

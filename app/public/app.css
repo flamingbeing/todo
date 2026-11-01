@@ -539,14 +539,19 @@ body:has(dialog[open]) .ui-fab.td-fab { display: none; }
 .ui-sheet.td-display-sheet { background: light-dark(#eeedeb, #1e1e1e); }
 .td-sheet-ok { background: var(--td-fill) !important; color: #fff !important; }
 .td-display-h { margin: 18px 20px 8px; font-size: 15px; font-weight: 600; color: var(--td-text-2); }
-.td-layouts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; }
-.td-layout { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 8px 10px; border: 0; border-radius: 12px; background: none; color: var(--td-text-2); cursor: pointer; }
-.td-layout-pic { width: 64px; height: 44px; fill: currentColor; opacity: .55; }
-.td-layout-name { padding: 2px 12px; border-radius: 12px; font-size: 14px; font-weight: 600; }
-.td-layout[aria-checked="true"] { background: color-mix(in srgb, var(--td-accent) 10%, transparent); color: var(--td-accent-text); }
+.td-layouts { display: grid; grid-template-columns: repeat(var(--n, 2), 1fr); gap: 8px; padding: 10px; }
+.td-layout { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 6px 8px; border: 1.5px solid transparent; border-radius: 12px; background: none; color: var(--td-text-2); cursor: pointer; }
+.td-layout-pic { width: 56px; height: 38px; fill: currentColor; opacity: .55; }
+.td-layout-name { font-size: 14px; font-weight: 600; }
+/* the chosen layout is outlined, not filled */
+.td-layout[aria-checked="true"] { border-color: var(--td-accent); color: var(--td-accent-text); }
 .td-layout[aria-checked="true"] .td-layout-pic { opacity: 1; }
-.td-layout[aria-checked="true"] .td-layout-name { background: var(--td-fill); color: #fff; }
-.td-display-done { width: auto; margin-top: 12px; }
+/* Agenda | Week | Month: a segmented control under the tiles */
+.td-seg { display: flex; margin: 0 12px 10px; padding: 2px; border-radius: 9px; background: light-dark(#eeedeb, #333); }
+.td-seg-item { flex: 1; min-height: 32px; border: 0; border-radius: 7px; background: none; color: var(--td-text); font: inherit; font-size: 14px; cursor: pointer; }
+.td-seg-item[aria-checked="true"] { background: light-dark(#fff, #555); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+.td-layout-card .td-attr:last-child::after { display: none; }
+.td-sheet-grey { color: var(--td-text-2); }
 .td-display-reset { display: block; margin: 8px auto 0; }
 
 /* ---------- Overdue's Reschedule ---------- */
@@ -619,5 +624,110 @@ body:has(dialog[open]) .ui-fab.td-fab { display: none; }
 
 /* sheets: the round close and "…" buttons are plain cards (white, #282828 dark) with a hairline of shadow, as on the grouped ground */
 .td-sheet-x, .td-sheet-more { background: light-dark(var(--td-card), #3a3a3a); box-shadow: 0 1px 3px rgb(0 0 0 / .08), 0 0 0 .5px var(--td-hair); }
-/* a single switch row in its own card has no divider */
-.td-attr.td-display-done::after { display: none; }
+
+/* the calendar layout (screens/calendar.js): a row over it, a sticky head of days and an all-day row, then the hours at
+   48 px (blocks filled by priority, label or project; the time now in red), or a month of days with chips */
+body {
+  --td-cv-p1: light-dark(#ffd6d3, color-mix(in srgb, #d1453b 26%, #1e1e1e));
+  --td-cv-p2: light-dark(#fbe7ce, color-mix(in srgb, #eb8909 26%, #1e1e1e));
+  --td-cv-p3: light-dark(#dde6f9, color-mix(in srgb, #246fe0 26%, #1e1e1e));
+  --td-cv-p4: light-dark(#f2f0ee, #333230);
+  --td-cv-chip: light-dark(#f5f5f4, #2e2d2c);
+  --td-cv-hour: var(--td-text-3);   /* (the lighter grey of the hours fails contrast) */
+  --td-cv-red: #dc4c3e;
+  --td-cv-red-text: light-dark(#c3392c, #ff7b6e);   /* red words: the red darkened (lightened in dark) to pass contrast */
+  --td-cv-faint: light-dark(#ecb5ad, #6b3a35);
+}
+.td-cv { position: relative; overflow-x: clip; }
+.td-cv-sticky { position: sticky; top: 0; z-index: 4; background: var(--td-ground); }
+.td-cv-week .td-cv-sticky { border-bottom: .5px solid var(--td-hair); }
+.td-cv-top { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 8px 0 16px; }
+.td-cv-title { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0; border: 0; background: none; color: var(--td-text); font: inherit; font-size: 17px; font-weight: 600; cursor: pointer; }
+.td-cv-title-chevron { width: 16px; height: 16px; color: var(--td-text-2); }
+.td-cv-count { min-height: 32px; padding: 0 10px; border: 0; border-radius: 16px; background: none; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.td-cv-nodate { color: var(--td-accent-text); background: color-mix(in srgb, var(--td-accent) 10%, transparent); }
+.td-cv-overdue { color: var(--td-d-overdue); background: color-mix(in srgb, var(--td-d-overdue) 10%, transparent); }
+.td-cv-gap { flex: 1; }
+.td-cv-today { height: 36px; font-size: 15px; font-weight: 600; }
+.td-cv-step { width: 32px; height: 32px; min-height: 32px; color: var(--td-text); }
+.td-cv-step .ui-icon { width: 18px; height: 18px; }
+.td-cv-strip { top: 0; }
+
+/* week: a 54 px gutter, then a column a day */
+.td-cv-heads, .td-cv-allday, .td-cv-grid { display: grid; grid-template-columns: 54px repeat(var(--n), minmax(0, 1fr)); }
+.td-cv-head { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 50px; gap: 1px; }
+.td-cv-head-day { font-size: 12px; color: var(--td-text-2); }
+.td-cv-head-num { display: grid; place-items: center; min-width: 26px; height: 24px; padding: 0 4px; box-sizing: border-box; border-radius: 12px; font-size: 16px; font-weight: 600; color: var(--td-text); }
+.td-cv-head.is-today .td-cv-head-day { color: var(--td-cv-red-text); font-weight: 600; }
+.td-cv-head.is-today .td-cv-head-num { background: var(--td-cv-red); color: #fff; }
+.td-cv-allday { align-items: start; border-top: .5px solid var(--td-hair); }
+.td-cv-allday.is-empty .td-cv-allday-cell { min-height: 10px; }
+.td-cv-allday-toggle { display: grid; place-items: center; width: 54px; height: 32px; padding: 0; border: 0; background: none; color: var(--td-text-2); cursor: pointer; }
+.td-cv-allday-toggle .ui-icon { width: 16px; height: 16px; }
+.td-cv-allday-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; min-height: 30px; padding: 2px; border-left: .5px solid var(--td-hair); box-sizing: border-box; }
+.td-cv-chip { display: block; width: 100%; height: 26px; min-height: 0; padding: 0 6px; border: 0; border-radius: 6px; overflow: hidden; background: var(--td-cv-p4);
+  color: var(--td-text); font: inherit; font-size: 13px; font-weight: 600; line-height: 26px; text-align: start; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.td-cv-chip-more { background: none; color: var(--td-text-2); font-weight: 500; }
+.td-cv-grid { position: relative; height: calc(24 * 48px); }
+.td-cv-hours { position: relative; }
+.td-cv-hour { position: absolute; top: -8px; right: 8px; font-size: 12px; line-height: 16px; color: var(--td-cv-hour); white-space: nowrap; }
+.td-cv-col { position: relative; border-left: .5px solid var(--td-hair); min-width: 0;
+  background: repeating-linear-gradient(to bottom, var(--td-hair) 0 .5px, transparent .5px 48px); cursor: cell; }
+.td-cv-block { position: absolute; box-sizing: border-box; display: flex; min-height: 20px; padding: 2px 4px 2px 3px; border-radius: 6px;
+  overflow: hidden; background: var(--td-cv-p4); color: var(--td-text); }
+.td-cv-block[data-priority="1"], .td-cv-chip[data-priority="1"] { background: var(--td-cv-p1); }
+.td-cv-block[data-priority="2"], .td-cv-chip[data-priority="2"] { background: var(--td-cv-p2); }
+.td-cv-block[data-priority="3"], .td-cv-chip[data-priority="3"] { background: var(--td-cv-p3); }
+.td-cv-block.is-tinted, .td-cv-chip.is-tinted { background: light-dark(color-mix(in srgb, var(--td-cv-c) 20%, #fff), color-mix(in srgb, var(--td-cv-c) 26%, #1e1e1e)); }
+.td-cv-block.is-short { padding-block: 1px; }
+/* the ring sits in the block's top left corner; its tap area is the corner (the rest of the block opens the task) */
+.td-cv-ring { position: absolute; top: 4px; left: 4px; z-index: 1; width: 12px; height: 12px; min-height: 0; padding: 0; border: 1.5px solid var(--td-p4); border-radius: 50%; background: none; cursor: pointer; }
+.td-cv-block[data-priority="1"] .td-cv-ring { border-color: var(--td-p1); }
+.td-cv-block[data-priority="2"] .td-cv-ring { border-color: var(--td-p2); }
+.td-cv-block[data-priority="3"] .td-cv-ring { border-color: var(--td-p3); }
+.td-cv-ring[aria-checked="true"] { background: var(--td-text-2); border-color: var(--td-text-2); }
+.td-cv-open { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; flex: 1; min-width: 0; min-height: 0; height: 100%; padding: 0 0 0 15px; border: 0; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
+.td-cv-block-title { overflow: hidden; font-size: 13px; font-weight: 600; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.td-cv-block.is-tall .td-cv-block-title { overflow-wrap: anywhere; text-overflow: clip; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.td-cv-block-time { overflow: hidden; font-size: 12px; line-height: 15px; color: light-dark(#4d4d4d, #c8c8c8); text-overflow: ellipsis; white-space: nowrap; }
+.td-cv-block-time::after { content: attr(data-time); }
+.td-cv-block.is-done, .td-cv-chip.is-done { opacity: .55; }
+.td-cv-block.is-done .td-cv-block-title, .td-cv-chip.is-done { text-decoration: line-through; }
+.td-cv-ghost { opacity: .5; background: none !important; border: 1px dashed var(--td-text-3); pointer-events: none; left: 1px; width: calc(100% - 3px); }
+.td-cv-block.is-lifted, .td-cv-chip.is-lifted { z-index: 6; pointer-events: none; box-shadow: 0 10px 24px rgb(0 0 0 / .2), 0 1px 4px rgb(0 0 0 / .12); }
+.is-drop.td-cv-allday-cell, .is-drop.td-cv-cell, .is-drop.td-cv-head { background: color-mix(in srgb, var(--td-accent) 12%, transparent); }
+.td-cv-drop { position: absolute; z-index: 5; top: -1px; left: 0; right: 0; height: 2px; background: #db4e3f; pointer-events: none; }
+.td-cv-drop::before { content: ""; position: absolute; left: -4px; top: -2.5px; width: 7px; height: 7px; border-radius: 50%; background: #db4e3f; }
+.td-cv-drop-time { position: absolute; left: 4px; bottom: 3px; padding: 0 4px; border-radius: 4px; background: #db4e3f; color: #fff; font-size: 11px; font-weight: 600; line-height: 16px; }
+/* the time now: across the days (faint), today's column (red, a dot at its start), the time in the gutter */
+.td-cv-now { position: absolute; z-index: 3; top: 0; left: 0; right: 0; height: 0; pointer-events: none; }
+.td-cv-now-all { position: absolute; left: 54px; right: 0; top: -.5px; height: 1px; background: var(--td-cv-faint); }
+.td-cv-now-day { position: absolute; top: -.5px; height: 1px; background: var(--td-cv-red);
+  left: calc(54px + (100% - 54px) / var(--n) * var(--i)); width: calc((100% - 54px) / var(--n)); }
+.td-cv-now-day::before { content: ""; position: absolute; left: -3.5px; top: -3px; width: 7px; height: 7px; border-radius: 50%; background: var(--td-cv-red); }
+.td-cv-now-time { position: absolute; top: -8px; right: calc(100% - 50px); padding-inline: 2px; background: var(--td-ground); color: var(--td-cv-red-text); font-size: 12px; font-weight: 700; line-height: 16px; }
+
+/* month: weekday letters (28 px), then the weeks; a day's number at its top right (today in a red square) */
+.td-cv-wk { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); height: 28px; align-items: center; border-bottom: .5px solid var(--td-hair); font-size: 12px; color: var(--td-text-2); text-align: center; }
+.td-cv-mbox { border-top: .5px solid var(--td-hair); }
+.td-cv-mrow { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-bottom: .5px solid var(--td-hair); }
+.td-cv-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; min-height: 76px; padding: 2px 2px 4px; box-sizing: border-box; border-left: .5px solid var(--td-hair); cursor: cell; }
+.td-cv-cell:first-child { border-left: 0; }
+.td-cv-cell.is-out { background: light-dark(#fafaf9, #232323); }
+.td-cv-cell.is-out .td-cv-num { color: var(--td-text-2); }
+.td-cv-num { align-self: flex-end; display: grid; place-items: center; min-width: 22px; height: 22px; min-height: 0; padding: 0 3px; border: 0; border-radius: 6px; background: none; color: var(--td-text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.td-cv-num.is-today { background: var(--td-cv-red); color: #fff; }
+.td-cv-cell .td-cv-chip { height: 18px; padding: 0 4px; border-radius: 4px; background: var(--td-cv-chip); font-size: 11px; font-weight: 500; line-height: 18px; }
+.td-cv-cell .td-cv-chip[data-priority="1"] { background: var(--td-cv-p1); }
+.td-cv-cell .td-cv-chip[data-priority="2"] { background: var(--td-cv-p2); }
+.td-cv-cell .td-cv-chip[data-priority="3"] { background: var(--td-cv-p3); }
+.td-cv-cell .td-cv-chip.is-tinted { background: light-dark(color-mix(in srgb, var(--td-cv-c) 20%, #fff), color-mix(in srgb, var(--td-cv-c) 26%, #1e1e1e)); }
+.td-cv-more { align-self: flex-start; white-space: nowrap; min-height: 18px; padding: 0 4px; border: 0; background: none; color: var(--td-text-2); font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
+
+/* the No date and Overdue sheets: 50 px rows, a circle to tick */
+.td-cv-picks { margin: 0; padding: 0 0 24px; list-style: none; }
+.td-cv-pick { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 50px; padding: 0 16px; border: 0; border-radius: 0; box-shadow: none; border-bottom: .5px solid var(--td-hair); background: none; color: var(--td-text); font: inherit; font-size: 16px; text-align: start; cursor: pointer; }
+.td-cv-pick-circle { flex: none; width: 20px; height: 20px; box-sizing: border-box; border: 1.5px solid var(--td-text-3); border-radius: 50%; }
+.td-cv-pick[aria-checked="true"] .td-cv-pick-circle { border: 6px solid var(--td-fill); }
+.td-cv-pick-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td-cv-pick-place { flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--td-text-2); }

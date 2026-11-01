@@ -56,7 +56,7 @@ import { modules } from '../modules.js';
  * @property {{ menu: (s: import('../items.js').Section, b: HTMLElement) => void, field: (value: string, s: import('../items.js').Section | null, pid: string) => HTMLElement,
  *   naming: () => { projectId: string, sectionId: string } | null, add: (pid: string) => void }} sections  a project's sections, named in place
  */
-/** @typedef {{ projectId?: string, sectionId?: string | null, parentId?: string | null, due?: import('../dates.js').Due | null, order?: number }} AddContext */
+/** @typedef {{ projectId?: string, sectionId?: string | null, parentId?: string | null, due?: import('../dates.js').Due | null, order?: number, duration?: number }} AddContext */
 
 /** @param {import('../items.js').ItemsApp} app */
 export function views(app) {
@@ -99,6 +99,7 @@ export function views(app) {
     strip: () => import('../ui/week-strip.js'),
     select: () => import('./select.js'),
     menus: () => import('./page-menu.js'),
+    calendar: () => import('./calendar.js'),
   });
   /** a list's Display choices on this device @param {string} view */
   const disp = view => cleanDisplay(/** @type {any} */ (app.settings.get('display'))?.[view], view);
@@ -227,9 +228,19 @@ export function views(app) {
   /** @param {import('../items.js').Section} s @param {HTMLElement} b */
   const sectionMenu = (s, b) => { void lazy.withMod('menus', m => m.sectionMenu(ctx, s, b, x => { naming = { projectId: x.projectId, sectionId: x.id }; fresh.clear(); paint(top); focusNaming(); })); };
 
+  /** whether a list is in its calendar layout (Display) @param {string} view */
+  const inCal = view => disp(view).layout === 'calendar';
+  /** a list in its calendar layout (calendar.js draws it) @param {string} view @param {HTMLElement} into @param {HTMLElement | null} empty @param {Task[]} tasks @param {AddContext} start */
+  const drawCal = (view, into, empty, tasks, start) => {
+    into.classList.remove('td-board'); into.removeAttribute('data-swipe-own'); into.setAttribute('data-sorted', '');
+    void lazy.withMod('calendar', m => m.drawCalendar(ctx, { view, into, empty, tasks, d: disp(view), start, resched }));
+  };
+
   /** a project's page (the Inbox too) into host @param {HTMLElement} into @param {string} pid @param {HTMLElement} empty */
   const projectList = (into, pid, empty) => {
-    const p = data.projects.find(x => x.id === pid), d = disp(pid === INBOX ? 'inbox' : `project:${pid}`), today = dayKey();
+    const view = pid === INBOX ? 'inbox' : `project:${pid}`;
+    if (inCal(view)) { drawCal(view, into, empty, filtered().filter(t => projectOf(t) === pid), { projectId: pid }); return; }
+    const p = data.projects.find(x => x.id === pid), d = disp(view), today = dayKey();
     const board = pid !== INBOX && p?.view === 'board';
     into.classList.toggle('td-board', board);
     into.toggleAttribute('data-swipe-own', board);
@@ -300,6 +311,7 @@ export function views(app) {
 
   const paintToday = () => {
     const today = drawnDay = dayKey(), d = disp('today');
+    if (inCal('today')) { shownToday = []; drawCal('today', $('today'), $('today-empty'), filtered().filter(t => !!t.due?.date), { projectId: INBOX }); return; }
     $('today').toggleAttribute('data-sorted', d.group !== 'date' || d.sort !== 'manual');
     if (!plainDisplay(d, 'today')) {
       const n = groups($('today'), filtered().filter(t => { const k = t.due?.date; return !!k && (t.done ? k === today : k <= today); }), d, rowCtx({ place: true }));
@@ -328,7 +340,11 @@ export function views(app) {
   let shownToday = [];
 
   // (by day from today, as a list's Agenda: week-strip.js)
-  const paintUpcoming = () => { void lazy.withMod('strip', m => m.drawDays(ctx, { list: $('upcoming'), strip: $('upcoming-strip'), tasks: filtered(), d: disp('upcoming'), place: true, projectId: INBOX, resched })); };
+  const paintUpcoming = () => {
+    const cal = $('upcoming-strip').hidden = inCal('upcoming');
+    if (cal) { drawCal('upcoming', $('upcoming'), null, filtered().filter(t => !!t.due?.date), { projectId: INBOX }); return; }
+    void lazy.withMod('strip', m => m.drawDays(ctx, { list: $('upcoming'), strip: $('upcoming-strip'), tasks: filtered(), d: disp('upcoming'), place: true, projectId: INBOX, resched }));
+  };
 
   const paintSearch = () => { void lazy.withMod('search', m => m.drawSearch(ctx, /** @type {HTMLInputElement} */ ($('search-text')), $('search'))); };
   $('search-text').addEventListener('input', () => { fresh.delete('search-page'); paint('search-page'); });
@@ -353,7 +369,10 @@ export function views(app) {
     else if (id === 'project-page') paintProject();
     else if (id === 'browse-page') void lazy.withMod('browse', m => m.drawBrowse(ctx, $('browse')));
     else if (id === 'filters-page') void lazy.withMod('filters', m => m.drawFiltersLabels(ctx, $('filters')));
-    else if (id === 'place-page') void lazy.withMod('filters', m => m.drawPlace(ctx, place, $('place'), $('place-empty'), disp(`${place.kind}:${place.id}`)));
+    else if (id === 'place-page') {
+      const v = `${place.kind}:${place.id}`;
+      void lazy.withMod('filters', m => m.drawPlace(ctx, place, $('place'), $('place-empty'), disp(v), inCal(v) ? ts => drawCal(v, $('place'), $('place-empty'), ts, { projectId: INBOX }) : undefined));
+    }
     else if (id === 'completed-page') void lazy.withMod('completed', m => m.drawCompleted(ctx, $('completed'), $('completed-empty')));
     else fresh.delete(id);
   };

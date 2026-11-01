@@ -32,5 +32,14 @@
   "spaces/_/tasks/s13": {"title": "Pack the chargers", "projectId": "trip", "sectionId": "t2", "order": 1, "priority": 4, "labels": ["l3"]},
   "spaces/_/tasks/s14": {"title": "Sunscreen and hats", "projectId": "trip", "sectionId": "t2", "order": 2, "priority": 4},
   "spaces/_/tasks/s15": {"title": "Check in online", "projectId": "trip", "sectionId": "t3", "order": 1, "priority": 2, "due": {"date": "{{today+5}}", "time": "18:00"}},
-  "spaces/_/tasks/s16": {"title": "Reply to the landlord", "projectId": "home", "order": 2, "priority": 2, "labels": ["l2"], "due": {"date": "{{today+8}}"}}
+  "spaces/_/tasks/s16": {"title": "Reply to the landlord", "projectId": "home", "order": 2, "priority": 2, "labels": ["l2"], "due": {"date": "{{today+8}}"}},
+  "spaces/_/tasks/c1": {"title": "Pick up the rental car", "projectId": "trip", "sectionId": "t3", "order": 2, "priority": 1, "due": {"date": "{{today}}", "time": "10:00"}, "duration": 45},
+  "spaces/_/tasks/c2": {"title": "Ferry to the island", "projectId": "trip", "sectionId": "t3", "order": 3, "priority": 3, "due": {"date": "{{today}}", "time": "10:30"}, "duration": 90},
+  "spaces/_/tasks/c3": {"title": "Lunch at the harbour", "projectId": "trip", "sectionId": "t3", "order": 4, "priority": 4, "due": {"date": "{{today+1}}", "time": "12:30"}, "duration": 60},
+  "spaces/_/tasks/c4": {"title": "Museum tour", "projectId": "trip", "sectionId": "t3", "order": 5, "priority": 2, "due": {"date": "{{today+1}}", "time": "15:00"}, "duration": 120},
+  "spaces/_/tasks/c5": {"title": "Sunset walk", "projectId": "trip", "sectionId": "t3", "order": 6, "priority": 4, "due": {"date": "{{today+2}}", "time": "17:30"}, "duration": 30},
+  "spaces/_/tasks/c6": {"title": "Morning run", "projectId": "trip", "sectionId": "t3", "order": 7, "priority": 4, "due": {"date": "{{today}}", "time": "07:30", "rrule": "FREQ=DAILY", "string": "every day at 7:30"}, "duration": 30},
+  "spaces/_/tasks/c7": {"title": "Print the tickets", "projectId": "trip", "sectionId": "t1", "order": 3, "priority": 3, "due": {"date": "{{today}}"}},
+  "spaces/_/tasks/c8": {"title": "Buy travel insurance", "projectId": "trip", "sectionId": "t1", "order": 4, "priority": 2, "due": {"date": "{{today+1}}"}},
+  "spaces/_/tasks/c9": {"title": "Download offline maps", "projectId": "trip", "sectionId": "t2", "order": 3, "priority": 4}
 }

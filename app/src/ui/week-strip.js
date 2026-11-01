@@ -182,9 +182,10 @@ function build(host, s) {
     } });
 }
 
-/** the month sheet: a month's days in weeks, a tap on one (today or later) picks it
- * @param {NonNullable<ReturnType<typeof state.get>>} s @param {(key: string) => void} done */
-function pickMonth(s, done) {
+/** the month sheet: a month's days in weeks, a tap on one (from min: the strip's today, a calendar's any) picks it
+ * @param {{ pick: string, day: string, start: number, min?: string }} s @param {(key: string) => void} done */
+export function pickMonth(s, done) {
+  const min = s.min ?? s.day;
   const d = /** @type {HTMLDialogElement} */ (document.getElementById('pick-sheet'));
   const body = /** @type {HTMLElement} */ (d.querySelector('[data-fill]'));
   let month = s.pick.slice(0, 7);
@@ -197,7 +198,7 @@ function pickMonth(s, done) {
       b.setAttribute('aria-label', label);
       b.append(icon(ic));
       const [y, m] = month.split('-').map(Number), next = new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7);
-      b.disabled = next < s.day.slice(0, 7);
+      b.disabled = next < min.slice(0, 7);
       b.addEventListener('click', () => { month = next; draw(); });
       return b;
     };
@@ -218,7 +219,7 @@ function pickMonth(s, done) {
         if (key.slice(0, 7) === month) {
           const b = /** @type {HTMLButtonElement} */ (el('button', 'td-mon-day', String(+key.slice(8))));
           b.type = 'button';
-          b.disabled = key < s.day;
+          b.disabled = key < min;
           b.classList.toggle('is-today', key === s.day);
           b.setAttribute('aria-pressed', String(key === s.pick));
           b.prepend(el('span', 'td-sr', `${weekdayName(key)} `));
