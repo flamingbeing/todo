@@ -7,6 +7,10 @@ Lasting decisions and how to test. Shaping decisions have their own records in [
 See README, "Tests". The browser tests use one shared list (`spaces/_/tasks`), so each test uses its own made-up
 accounts and task texts and checks only those; they run side by side.
 
+- A screen as a picture (iPhone size, 3x, light or dark, signed in on the emulators with made-up data, no real sign-in):
+  `node tools/shot.mjs out.png [--dark] [--tab upcoming-page] [--settings About] [--click <selector>]...` (needs Java and
+  `PW_CHROMIUM`; it starts and stops the emulators and the e2e server, seeds `tools/shot-seed.json`; `--seed` for another).
+
 ## UI kit gestures and the `/kit/` gallery (app-ui)
 
 The kit, its gallery and their tests live in [app-ui](https://github.com/flamingbeing/app-ui) since 1.0.0-rc.1
