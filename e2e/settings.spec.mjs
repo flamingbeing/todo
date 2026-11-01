@@ -1,5 +1,6 @@
-// @core/settings on the sample Settings sheet: a device value stays on this device, an account value reaches the
-// account's other devices, the settings file drops what it should not carry, and the open sheet passes axe.
+// @core/settings on the Settings sheet: the app's options are per device (Larger rows, task counts in Browse): they stay
+// on this device, not reaching the account's other phone; the settings file drops what it should not carry (device
+// options and unknown keys), and the open sheet passes axe.
 import { test, expect, signIn, signInAgain, synced, openSettings, openToday, openTab } from './fixtures.mjs';
 import AxeBuilder from './axe.mjs';
 
@@ -11,12 +12,13 @@ const shown = page => page.locator('#browse .td-browse-row', { hasText: 'Inbox' 
 const browse = async page => { await page.evaluate(() => window.starter.add('counted')); await openTab(page, 'browse'); };
 const note = page => page.locator('.ui-settings-status');
 
-test('a device value stays on this device; an account value reaches the other one', async ({ phone }) => {
+test('device values stay on this device: Larger rows and the counts do not reach the account\'s other phone', async ({ phone }) => {
   const a = await phone();
   const { email } = await signIn(a, 'member');
   await synced(a);
   await browse(a);
   await open(a);
+  await expect(a.locator('#settings-host')).toContainText('Show task counts in Browse');
   await big(a).check();
   await count(a).check();
   await openToday(a);
@@ -27,16 +29,11 @@ test('a device value stays on this device; an account value reaches the other on
   const b = await phone();
   await signInAgain(b, email);
   await browse(b);
-  await expect(shown(b)).toHaveCount(1);                       // the account's option arrived
-  await expect(b.locator('.ui-screens')).not.toHaveClass(/big/);        // this device's did not
+  await expect(b.locator('.ui-screens')).not.toHaveClass(/big/);
+  await expect(shown(b)).toHaveCount(0);
   await open(b);
   await expect(big(b)).not.toBeChecked();
-  await expect(count(b)).toBeChecked();
-
-  // and a change on b comes back to a without a reload
-  await count(b).uncheck();
-  await expect(shown(a)).toHaveCount(0, { timeout: 15_000 });
-  await expect(a.locator('.ui-screens')).toHaveClass(/big/);
+  await expect(count(b)).not.toBeChecked();
 });
 
 test('the device value survives sign-out and a reload', async ({ phone }) => {
@@ -65,20 +62,20 @@ test('a settings file: exported, imported on another account, bad keys dropped',
   const [download] = await Promise.all([a.waitForEvent('download'), a.getByRole('button', { name: 'Export' }).click()]);
   const file = JSON.parse(await (await import('node:fs/promises')).readFile(await download.path(), 'utf8'));
   expect(file.kind).toBe('core-settings');
-  expect(file.settings).toEqual({ showCounts: true });             // the device option stays behind
+  expect(file.settings).toEqual({});             // the device options stay behind
 
   const b = await phone();
   await signIn(b, 'member');
   await synced(b);
   await open(b);
-  const bad = { ...file, settings: { ...file.settings, bigRows: true, nope: 1 } };
+  const bad = { ...file, settings: { ...file.settings, showCounts: true, bigRows: true, nope: 1 } };
   await b.setInputFiles('.ui-settings input[type=file]', { name: 'settings.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(bad)) });
-  await expect(note(b)).toContainText('Imported: 1 change, 2 left out');
-  await expect(count(b)).toBeChecked();
+  await expect(note(b)).toContainText('Imported: 0 changes, 3 left out');
+  await expect(count(b)).not.toBeChecked();
   await expect(big(b)).not.toBeChecked();
   await b.setInputFiles('.ui-settings input[type=file]', { name: 'x.json', mimeType: 'application/json', buffer: Buffer.from('not json') });
   await expect(note(b)).toContainText('not JSON');
-  await expect(count(b)).toBeChecked();
+  await expect(count(b)).not.toBeChecked();
 });
 
 test('the Settings page passes axe', async ({ phone }) => {
@@ -90,25 +87,25 @@ test('the Settings page passes axe', async ({ phone }) => {
   expect(await AxeBuilder(a)).toEqual([]);   // a page
 });
 
-test('a direct switch from one account to another follows the new account\'s settings', async ({ phone }) => {
+test('a direct switch from one account to another shows the new account\'s own options, not the last one\'s', async ({ phone }) => {
   const b = await phone();
   const { email } = await signIn(b, 'member');   // account B, on its own phone
   const a = await phone();
   await signIn(a, 'member');                      // account A
   await synced(a);
+  await browse(a);
+  await open(a);
+  await count(a).check();
+  await openToday(a);
   // straight from A to B, no sign-out in between
   await a.evaluate(e => window.starter.signInAs(e), email);
   await expect.poll(() => a.locator('#uid').textContent()).not.toBe('');
   await expect(a.locator('#list-view')).toBeVisible();
   await expect.poll(() => a.evaluate(() => window.starter.ready)).toBe(true);
-  await browse(a);
-  await expect(shown(a)).toHaveCount(0);
-  // B's change on its other phone reaches a without a reload
-  await open(b);
-  await count(b).check();
-  await openToday(b);
-  await synced(b);
-  await expect(shown(a)).toHaveCount(1, { timeout: 15_000 });
+  await a.reload({ waitUntil: 'domcontentloaded' });
+  await expect(a.locator('#list-view')).toBeVisible();
+  await open(a);
+  await expect(count(a)).not.toBeChecked();
 });
 
 test('Settings > About offers "Install this app" as a button, (a tap shows how, nothing prompts unasked)', async ({ phone }) => {

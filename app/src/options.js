@@ -15,8 +15,8 @@ const HOMES = [['inbox', 'Inbox'], ['today', 'Today'], ['upcoming', 'Upcoming'],
 export const OPTIONS = {
   // this device only: a phone and a computer can differ
   bigRows: { scope: 'device', default: false },
-  // the person's account: every device they sign in on
-  showCounts: { scope: 'account', default: false },
+  // this device only too (was the account's before; the rules still accept the old value on a saved doc)
+  showCounts: { scope: 'device', default: false },
   // the tab bar's order and the tabs off it (this device; Settings, Tab bar)
   tabs: { scope: 'device', default: { order: [], hidden: [] }, clean: cleanTabs },
   // quick add and the scheduler read dates, times and repeats in the words typed (this device)
@@ -55,7 +55,7 @@ export const SETTING_SECTIONS = [
     { key: 'weekStart', label: 'Start of the week', sub: 'This device', choices: /** @type {[unknown, string][]} */ ([[1, 'Monday'], [0, 'Sunday']]) },
   ] },
   { title: 'Tasks', icon: ICONS.listChecks, sub: 'Counts and row size', group: 'Tasks', rows: [
-    { key: 'showCounts', label: 'Show task counts in Browse', sub: 'Every device; sign in to change it' },
+    { key: 'showCounts', label: 'Show task counts in Browse', sub: 'This device' },
     { key: 'bigRows', label: 'Larger rows', sub: 'This device' },
   ] },
   { title: 'Features', icon: ICONS.listChecks, sub: 'Switch optional parts on or off', group: 'Advanced', visible: () => FEATURES.length > 0, rows: FEATURES },

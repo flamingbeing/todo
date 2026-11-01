@@ -72,6 +72,16 @@ service cloud.firestore {
     function optNum(d, k) { return gone(d, k) || d[k] is number; }
     function optBool(d, k) { return gone(d, k) || d[k] is bool; }
     function text(d, k, max) { return d[k] is string && d[k].size() > 0 && d[k].size() <= max; }
+    // a task's labels: up to 20, each a label's id (or, from before ids, its name), text of 1 to 64.
+    // Rules have no loops: the lengths by one pattern over the list joined by line breaks (a break inside one reads as
+    // two, both still short), then each place is text.
+    function labelsOk(l) {
+      return l is list && l.size() <= 20 && (l.size() == 0 || l.join('\n').matches('^[^\n]{1,64}(\n[^\n]{1,64})*$'))
+        && (l.size() <= 0 || l[0] is string) && (l.size() <= 1 || l[1] is string) && (l.size() <= 2 || l[2] is string) && (l.size() <= 3 || l[3] is string) && (l.size() <= 4 || l[4] is string)
+        && (l.size() <= 5 || l[5] is string) && (l.size() <= 6 || l[6] is string) && (l.size() <= 7 || l[7] is string) && (l.size() <= 8 || l[8] is string) && (l.size() <= 9 || l[9] is string)
+        && (l.size() <= 10 || l[10] is string) && (l.size() <= 11 || l[11] is string) && (l.size() <= 12 || l[12] is string) && (l.size() <= 13 || l[13] is string) && (l.size() <= 14 || l[14] is string)
+        && (l.size() <= 15 || l[15] is string) && (l.size() <= 16 || l[16] is string) && (l.size() <= 17 || l[17] is string) && (l.size() <= 18 || l[18] is string) && (l.size() <= 19 || l[19] is string);
+    }
     function day(v) { return v is string && v.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'); }
     function colorOk(d) { return d.color is string && d.color in ['berry_red', 'red', 'orange', 'yellow', 'olive_green', 'lime_green', 'green', 'mint_green', 'teal', 'sky_blue', 'light_blue', 'blue', 'grape', 'violet', 'lavender', 'magenta', 'salmon', 'charcoal', 'grey', 'taupe']; }
     // the sync engine's own fields: updatedAt, _edits (who changed each field), and createdAt, which never changes
@@ -102,7 +112,7 @@ service cloud.firestore {
         && optId(request.resource.data, 'sectionId') && optId(request.resource.data, 'parentId')
         && request.resource.data.order is number && optNum(request.resource.data, 'dayOrder')
         && request.resource.data.priority in [1, 2, 3, 4]
-        && (gone(request.resource.data, 'labels') || (request.resource.data.labels is list && request.resource.data.labels.size() <= 20))
+        && (gone(request.resource.data, 'labels') || labelsOk(request.resource.data.labels))
         && dueOk(request.resource.data)
         && (gone(request.resource.data, 'deadline') || day(request.resource.data.deadline))
         // the planned length from due.time in whole minutes, up to a day (a calendar block's height)
@@ -174,7 +184,8 @@ service cloud.firestore {
     match /spaces/{g}/settings/{id} {
       allow read: if can(g, ['admin', 'member', 'viewer']);
       allow create, update: if can(g, ['admin', 'member', 'viewer']) && request.auth.uid == id && stamped()
-        // (defaultList: an older version's option, no longer written; allowed so a doc that still has it can be saved)
+        // (defaultList and showCounts: an older version's options, no longer written here (showCounts is per device now);
+        // allowed so a doc that still has them can be saved)
         && request.resource.data.keys().hasOnly(['profile', 'showCounts', 'defaultList', 'updatedAt', 'serverAt', '_edits'])
         && (!('_edits' in request.resource.data) || request.resource.data._edits is map)
         && (!('profile' in request.resource.data) || request.resource.data.profile == null || request.resource.data.profile is string)
