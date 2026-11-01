@@ -4,7 +4,8 @@
 // the week as seven days: the weekday's letter over the day's number, today's in the accent, the day picked
 // underlined, a dot under a day with tasks. A swipe sideways goes a week on or back (not before this week); a tap on
 // a day scrolls the list to it, and scrolling the list moves the pick. A task dragged onto a day moves to it
-// (row-drag.js reads data-drop-day). The week starts on the day the setting says.
+// (row-drag.js reads data-drop-day); a long press on a day opens the quick add dated that day. The week starts on the
+// day the setting says.
 import { icon, drag, glide, haptic } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { isTask, dayOrder } from '../tasks.js';
@@ -167,6 +168,23 @@ function build(host, s) {
 
   month.addEventListener('click', () => pickMonth(s, key => go(key, true)));
   todayBtn.addEventListener('click', () => go(s.day, true));
+
+  // a long press on a day (today on): the quick add, dated that day; the tap that ends it does not also pick the day
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let hold;
+  let x0 = 0, y0 = 0, held = false;
+  const letGo = () => { clearTimeout(hold); hold = undefined; };
+  week.addEventListener('pointerdown', e => {
+    held = false; letGo();
+    const b = /** @type {HTMLButtonElement | null} */ (/** @type {Element} */ (e.target).closest('.td-wday'));
+    if (!e.isPrimary || e.button > 0 || !b || b.disabled || !s.ctx.canWrite()) return;
+    x0 = e.clientX; y0 = e.clientY;
+    hold = setTimeout(() => { hold = undefined; held = true; haptic('long'); s.ctx.openQuickAdd({ due: { date: String(b.dataset.day) } }); }, 500);
+  });
+  week.addEventListener('pointermove', e => { if (hold && Math.hypot(e.clientX - x0, e.clientY - y0) > 10) letGo(); });
+  for (const t of ['pointerup', 'pointercancel', 'pointerleave']) week.addEventListener(t, letGo);
+  week.addEventListener('click', e => { if (held && e.isTrusted) { held = false; e.preventDefault(); e.stopPropagation(); } }, true);
+  week.addEventListener('contextmenu', e => e.preventDefault());
 
   // a swipe: the week follows the finger, then glides out and the next (or last) one glides in
   drag(view, { axis: 'x', mouse: true, name: 'cards',

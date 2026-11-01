@@ -70,3 +70,19 @@ test('dots, a swipe to next week, a tap scrolls to the day (the + adds there), T
   expect(await AxeBuilder(page)).toEqual([]);
   await page.keyboard.press('Escape');
 });
+
+test('a long press on a day of the strip opens the quick add dated that day', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const now = today();
+  await synced(page);
+  await gesturesReady(page);
+  await openTab(page, 'upcoming');
+  await finger(page, `#upcoming-strip .td-wday[data-day="${now}"]`, [], { hold: 700 });
+  await expect(page.locator('#add-sheet')).toBeVisible();
+  await expect(page.locator('#add-sheet .td-chip-main').first()).toHaveAttribute('aria-label', 'Date: Today');
+  const t = uniq('held');
+  await page.locator('#add-sheet .td-add-title').fill(t);
+  await page.keyboard.press('Enter');
+  await expect(page.locator(`#upcoming .td-day[data-day="${now}"]`)).toContainText(t);
+});
