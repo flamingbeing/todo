@@ -50,7 +50,8 @@ test('a label made in Filters & Labels, picked in the task sheet, its page, a fa
   await pick.getByRole('button', { name: 'Done' }).click();
   await expect.poll(async () => (await get(t))?.labels?.length).toBe(1);
   const id = (await get(t)).labels[0];
-  expect((await db.get(`spaces/_/labels/${id}`))?.name).toBe(name);
+  // (the new label and the task are separate saves: either can reach the server first)
+  await expect.poll(async () => (await db.get(`spaces/_/labels/${id}`))?.name, { timeout: 15_000 }).toBe(name);
   await page.keyboard.press('Escape');
   await expect(ts).toBeHidden();
 

@@ -1,6 +1,7 @@
 // Quick add's words: a task's name as typed becomes its title and its parts. "#Work" picks a project (the longest
 // known name, so "#Home Renovation" works), "/Admin" a section, "@errand" and "%errand" labels, "p1".."p4" a priority,
-// "every …" a repeat (recur.js), "{march 30}" a deadline (a day, no time, no repeat), and dates: the app's own shortcuts first ("tod", "tmr", "next week", "this weekend",
+// "every …" a repeat (recur.js), "{march 30}" a deadline (a day, no time, no repeat), "for 45 min" a duration, a time range
+// ("10am-11:15am", "from 2 to 3pm": the start and how long), and dates: the app's own shortcuts first ("tod", "tmr", "next week", "this weekend",
 // "evening", "mid jan", "end of month", "in 3 days", "+3 days"), then the chrono library for the rest ("next friday",
 // "dec 5", "at 5pm"). Each part found is a token with where it sits in the text, so the editor can colour it and the
 // chip can clear it; a range the person cleared (ignore) stays text. With smart dates off only #, /, @, % and p count.
@@ -8,7 +9,7 @@
 import { addDays, dayKey, timeKey, weekdayOf, isDay } from './dates.js';
 import { findRecur, timeOf, firstDay, firstDayPlain, TIME_RE } from './recur.js';
 
-/** @typedef {'project' | 'section' | 'label' | 'priority' | 'date' | 'recur' | 'deadline'} TokenKind */
+/** @typedef {'project' | 'section' | 'label' | 'priority' | 'date' | 'recur' | 'deadline' | 'duration'} TokenKind */
 /** @typedef {{ start: number, end: number, kind: TokenKind, value: unknown }} Token */
 /** @typedef {{ id: string, name: string }} Named */
 /** @typedef {{ id: string, name: string, projectId: string }} SectionLike */
@@ -25,6 +26,7 @@ import { findRecur, timeOf, firstDay, firstDayPlain, TIME_RE } from './recur.js'
  * @typedef {{
  *   title: string, tokens: Token[], due: import('./dates.js').Due | null, noDate: boolean,
  *   projectId: string | null, sectionId: string | null, labels: string[], priority: number | null, deadline: string | null,
+ *   duration: number | null,
  * }} Parsed
  */
 
@@ -33,7 +35,10 @@ const MON = '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?
 const monNum = (/** @type {string} */ m) => ['ja', 'fe', 'mar', 'ap', 'may', 'jun', 'jul', 'au', 'se', 'oc', 'no', 'de'].findIndex(p => m.startsWith(p)) + 1;
 const PARTS = /** @type {Record<string, string>} */ ({ morning: '09:00', afternoon: '12:00', evening: '19:00', night: '22:00', tonight: '22:00' });
 const END = '(?![\\p{L}\\p{N}])';
-const START = '(?<![\\p{L}\\p{N}])';
+// a date's words start a word of their own (after a space, an opening bracket or quote), never mid-word: "B-52s",
+// "2x4-10m" and "invoice-3d" stay text
+const WORD_START = /[\s([{"'\u201c\u2018]/;
+const START = '(?<=^|[\\s(\\[{"\'\\u201c\\u2018])';
 
 /** @param {string} key @returns {string} the month's last day */
 const monthEnd = key => new Date(Date.UTC(+key.slice(0, 4), +key.slice(5, 7), 0)).toISOString().slice(0, 10);
@@ -50,7 +55,8 @@ const SHORTCUTS = [
   { re: '(?:tomorrow|tmrw|tmr|tom)', day: (_, c) => ({ date: addDays(c.today, 1) }) },
   { re: 'next\\s+week', day: (_, c) => ({ date: nextWeekday(c.today, c.nextWeekDay, true) }) },
   { re: 'later\\s+this\\s+week', day: (_, c) => ({ date: addDays(c.today, 2) }) },
-  { re: 'this\\s+weekend', day: (_, c) => ({ date: weekdayOf(c.today) === (c.weekendDay + 1) % 7 ? c.today : nextWeekday(c.today, c.weekendDay) }) },
+  // (said on the weekend itself, "this weekend" is the coming one: next Saturday, not today)
+  { re: '(?:this\\s+)?weekend', day: (_, c) => ({ date: nextWeekday(c.today, c.weekendDay, [c.weekendDay, (c.weekendDay + 1) % 7].includes(weekdayOf(c.today))) }) },
   { re: 'next\\s+weekend', day: (_, c) => ({ date: addDays(weekdayOf(c.today) === (c.weekendDay + 1) % 7 ? addDays(c.today, -1) : nextWeekday(c.today, c.weekendDay), 7) }) },
   { re: 'end\\s+of\\s+(?:the\\s+)?month|eom', day: (_, c) => ({ date: monthEnd(c.today) }) },
   { re: `mid[\\s-]+(${MON})`, day: (m, c) => {
@@ -89,6 +95,32 @@ function dayOf(s, c, now, chrono) {
   if (!g?.isCertain('day') && !g?.isCertain('weekday')) return null;
   const date = `${g.get('year')}-${pad(g.get('month') ?? 0)}-${pad(g.get('day') ?? 0)}`;
   return isDay(date) ? date : null;
+}
+
+/** a range's time in minutes after midnight, or null: "11:15am", "14:00", "10" @param {string} h @param {string | undefined} m @param {string | undefined} ap */
+const rangeMin = (h, m, ap) => {
+  const hh = +h, mm = m ? +m : 0;
+  if (mm > 59 || (ap ? hh < 1 || hh > 12 : hh > 23)) return null;
+  return (ap ? (hh % 12) + (ap[0].toLowerCase() === 'p' ? 12 : 0) : hh) * 60 + mm;
+};
+const TM = '(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm|a|p)?';
+/** "10am-11:15am", "10-11am", "11-1pm", "14:00–15:30", "from 2 to 3pm": a time and a length; one end needs a colon or
+ * am/pm ("pages 3-4" stays words), an end without am/pm takes the one that makes the range shortest */
+const RANGE = new RegExp(`(?<=^|\\s)((?:from\\s+)?${TM})(\\s*(?:-|–|—|\\s(?:to|until|till)\\s)\\s*${TM})(?=$|[\\s,.;])`, 'giu');
+/** @param {RegExpMatchArray} m @returns {{ time: number, length: number } | null} */
+function rangeOf(m) {
+  const [, , h1, m1, a1, , h2, m2, a2] = m;
+  if (!a1 && !a2 && m1 === undefined && m2 === undefined) return null;
+  const other = (/** @type {string} */ a) => (a[0].toLowerCase() === 'p' ? 'am' : 'pm');
+  const starts = !a1 && a2 && +h1 <= 12 ? [a2, other(a2)].map(a => rangeMin(h1, m1, a)) : [rangeMin(h1, m1, a1)];
+  const ends = a1 && !a2 && +h2 <= 12 ? [a1, other(a1)].map(a => rangeMin(h2, m2, a)) : [rangeMin(h2, m2, a2)];
+  let best = /** @type {{ time: number, length: number } | null} */ (null);
+  for (const s of starts) for (const e of ends) {
+    if (s === null || e === null) continue;
+    const length = (((e - s) % 1440) + 1440) % 1440;
+    if (length > 0 && (!best || length < best.length)) best = { time: s, length };
+  }
+  return best;
 }
 
 /**
@@ -169,7 +201,25 @@ export function parse(text, ctx = {}) {
   let due = null;
   let noDate = false;
   let deadline = /** @type {string | null} */ (null);
+  let duration = /** @type {number | null} */ (null);
   if (ctx.smartDates !== false) {
+    // for 45 min, for 1h, for 2h 30m, for 90 minutes, for 1.5 hours: how long (minutes, 1 to 1440)
+    for (const m of text.matchAll(/(?<=^|\s)for\s+(?:(\d{1,2}(?:\.\d)?)\s*(?:h|hrs?|hours?)(?:\s*(\d{1,2})\s*(?:m|mins?|minutes?))?|(\d{1,4})\s*(?:m|mins?|minutes?))(?=$|[\s,.;])/gi)) {
+      const i = /** @type {number} */ (m.index), n = Math.round(m[3] ? +m[3] : +m[1] * 60 + +(m[2] ?? 0));
+      if (!free(i, i + m[0].length) || n < 1 || n > 1440) continue;
+      duration = n; take(i, i + m[0].length, 'duration', n); break;
+    }
+    // 10am-11:15am: the start (with the day found below, else today, or tomorrow once it has passed) and how long
+    let range = /** @type {{ time: string, start: number, end: number } | null} */ (null);
+    for (const m of text.matchAll(RANGE)) {
+      const i = /** @type {number} */ (m.index), mid = i + m[1].trimEnd().length, end = i + m[0].length, r = rangeOf(m);
+      if (!r || !free(i, end)) continue;
+      range = { time: `${pad(Math.floor(r.time / 60))}:${pad(r.time % 60)}`, start: i, end: mid };
+      taken.fill(1, i, mid);
+      if (duration == null) duration = r.length;
+      take(mid, end, 'duration', r.length);
+      break;
+    }
     // {march 30}: a deadline, read by the shortcuts or chrono; the braces hide it from the date scan below
     for (const m of text.matchAll(/\{([^{}]+)\}/g)) {
       const i = /** @type {number} */ (m.index), end = i + m[0].length;
@@ -213,6 +263,7 @@ export function parse(text, ctx = {}) {
         // a month on its own ("review march report") is a word, not a date
         if (!s.isCertain('day') && !s.isCertain('weekday') && !s.isCertain('hour')) continue;
         if (!free(c.index, c.index + c.text.length)) continue;
+        if (c.index > 0 && !WORD_START.test(m0[c.index - 1])) continue;
         // the rest of a repeat this app doesn't say ("every 4 hours") stays words with it
         if (/(?:^|\s)(?:every|ev)!?\s+$/i.test(m0.slice(0, c.index))) continue;
         const y = s.get('year'), mo = s.get('month'), dd = s.get('day');
@@ -227,11 +278,20 @@ export function parse(text, ctx = {}) {
         break;
       }
     }
+    if (range) {
+      const { start, end, time } = range;
+      // the start joins the day's words when only spaces part them ("tomorrow 10am"), else is a date part of its own
+      const near = tokens.find(t => t.kind === 'date' && t.end <= start && !text.slice(t.end, start).trim());
+      if (day?.date) day.time = time;
+      if (!day && !recur) day = { date: time <= timeKey(now) ? addDays(today, 1) : today, time };
+      if (near) near.end = end;
+      else take(start, end, 'date', day ?? { date: today, time });
+    }
     if (recur) {
       const startDay = recur.start ?? day?.date ?? today;
       // (before the rule library has loaded, the simple rules are worked out by hand)
       const date = (ctx.RRule ? firstDay(recur.rrule, startDay, ctx.RRule) : firstDayPlain(recur.rrule, startDay)) ?? startDay;
-      const time = recur.time ?? day?.time;
+      const time = recur.time ?? range?.time ?? day?.time;
       due = { date, ...(time ? { time } : {}), rrule: recur.rrule, string: recur.string, ...(recur.fromDone ? { fromDone: true } : {}) };
     } else if (day) {
       if (day.date) due = { date: day.date, ...(day.time ? { time: day.time } : {}) };
@@ -239,7 +299,7 @@ export function parse(text, ctx = {}) {
     }
   }
   tokens.sort((a, b) => a.start - b.start);
-  return { title: titleOf(text, tokens), tokens, due, noDate, projectId, sectionId, labels, priority, deadline };
+  return { title: titleOf(text, tokens), tokens, due, noDate, projectId, sectionId, labels, priority, deadline, duration };
 }
 
 /** the text without its tokens, spaces tidied @param {string} text @param {Token[]} tokens */

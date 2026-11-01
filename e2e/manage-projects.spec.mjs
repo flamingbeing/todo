@@ -17,15 +17,17 @@ test('a project moves with the keys and with its grip; the order is saved', asyn
   await openTab(page, 'browse');
   await page.locator('#browse').getByRole('button', { name: 'Manage projects' }).click();
   const sheet = page.locator('#pick-sheet');
+  // (which of a and b comes first among the names: other tests running at once add projects of their own, which may come first)
+  const first = () => sheet.locator('.td-manage-name').allTextContents().then(n => (n.indexOf(a) < 0 || n.indexOf(b) < 0 ? null : n.indexOf(a) < n.indexOf(b) ? a : b));
   await expect(sheet.getByRole('heading', { name: 'Manage projects' })).toBeVisible();
-  await expect(sheet.locator('.td-manage-name').nth(0)).toHaveText(a);
+  await expect.poll(first).toBe(a);
   expect(await AxeBuilder(page)).toEqual([]);
 
   // the keys: B up past A
   await sheet.getByRole('button', { name: `Move ${b}` }).focus();
   await page.keyboard.press('ArrowUp');
   await expect.poll(async () => (await order(b)) < (await order(a)), { timeout: 15_000 }).toBe(true);
-  await expect(sheet.locator('.td-manage-name').nth(0)).toHaveText(b);
+  await expect.poll(first).toBe(b);
   await expect(sheet.getByRole('button', { name: `Move ${b}` })).toBeFocused();
 
   // the grip: B back down past A
@@ -38,5 +40,5 @@ test('a project moves with the keys and with its grip; the order is saved', asyn
   await expect(sheet.locator('.td-manage-row.dragging')).toHaveCount(1);
   await page.mouse.up();
   await expect.poll(async () => (await order(a)) < (await order(b)), { timeout: 15_000 }).toBe(true);
-  await expect(sheet.locator('.td-manage-name').nth(0)).toHaveText(a);
+  await expect.poll(first).toBe(a);
 });

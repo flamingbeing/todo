@@ -8,16 +8,17 @@
 import { APP } from '../config.js';
 import { icon, draftSlot, confirmModal, plural } from '@core/ui';
 import { ICONS } from '../icons.js';
+import { MORE } from '../icons-more.js';
 import { INBOX, REFUSED } from '../items.js';
 import { placeText } from '../tasks.js';
-import { dueLine, deadlineLine, dayKey } from '../dates.js';
+import { dueLine, deadlineLine, dayKey, minutesText } from '../dates.js';
 import { colorHex } from '../colors.js';
 import { byOrder } from '../order.js';
 import { parse, shiftRanges } from '../parse.js';
 import { dateLibs } from '../recur.js';
 import { openMenu } from '../ui/menu.js';
 import { el, pickPlace } from './pick.js';
-import { pickDate } from './scheduler.js';
+import { pickDate, DURATIONS } from './scheduler.js';
 import { pickLabels, onIds } from './labels.js';
 
 /** @typedef {import('./views.js').Ctx} Ctx */
@@ -51,9 +52,10 @@ export function openQuickAdd(ctx, start, hold = null) {
   const settings = ctx.app.settings;
   const smart = () => { try { return settings.get('smartDates') !== false; } catch { return true; } };
   /** what the person set by hand (a chip or the foot): it wins over the words */
-  const manual = /** @type {{ due?: Due | null, priority?: number, labels?: string[], deadline?: string | null, place?: { projectId: string, sectionId: string | null } }} */ ({});
-  /** where the page shown says a task goes, and its date */
-  const base = { projectId: start.projectId ?? INBOX, sectionId: start.sectionId ?? null, parentId: start.parentId ?? null, due: start.due ?? null, order: typeof start.order === 'number' ? start.order : undefined };
+  const manual = /** @type {{ due?: Due | null, priority?: number, labels?: string[], deadline?: string | null, duration?: number | null, place?: { projectId: string, sectionId: string | null } }} */ ({});
+  /** where the page shown says a task goes, and its date (a group's "+": its priority or label too) */
+  const base = { projectId: start.projectId ?? INBOX, sectionId: start.sectionId ?? null, parentId: start.parentId ?? null, due: start.due ?? null, order: typeof start.order === 'number' ? start.order : undefined,
+    priority: start.priority, labels: start.labels };
   /** cleared ranges of the name: the words stay text */
   let ignore = /** @type {{ start: number, end: number }[]} */ ([]);
   let was = '';
@@ -112,9 +114,11 @@ export function openQuickAdd(ctx, start, hold = null) {
       projectId: place?.projectId ?? base.projectId, sectionId: place ? place.sectionId : base.sectionId,
       parentId: place && place.projectId !== base.projectId ? null : base.parentId,
       due: manual.due !== undefined ? manual.due : parsed.due ?? (parsed.noDate ? null : base.due),
-      priority: manual.priority ?? parsed.priority ?? 4,
-      labels: [...new Set([...(manual.labels ?? []), ...parsed.labels])],
-      deadline: manual.deadline !== undefined ? manual.deadline : parsed.deadline,
+      priority: manual.priority ?? parsed.priority ?? base.priority ?? 4,
+      labels: [...new Set([...(manual.labels ?? base.labels ?? []), ...parsed.labels])],
+      deadline: manual.deadline !== undefined ? manual.deadline : parsed.deadline ?? start.deadline ?? null,
+      // minutes: set by hand, else typed ("for 45 min"), else a calendar slot's while the task keeps that slot's time
+      duration: manual.duration !== undefined ? manual.duration : parsed.duration ?? (start.duration && (manual.due ?? base.due)?.time ? start.duration : null),
     };
   };
   /** the words of a kind leave the marks (they stay text) @param {string[]} kinds */
@@ -127,7 +131,7 @@ export function openQuickAdd(ctx, start, hold = null) {
    * @param {string} label @returns {{ box: HTMLElement, main: HTMLButtonElement, x: HTMLButtonElement }} */
   const chip = label => {
     const box = el('div', 'td-chip'), main = button('td-chip-main', label), x = button('td-chip-x', `Clear ${label.toLowerCase()}`);
-    x.append(icon(ICONS.x));
+    x.append(icon(MORE.x));
     box.append(main, x);
     return { box, main, x };
   };
@@ -137,7 +141,7 @@ export function openQuickAdd(ctx, start, hold = null) {
     c.x.hidden = !set;
     c.x.onclick = clear && (() => { clear(); reparse(); title.focus(); });
   };
-  const dateC = chip('Date'), prioC = chip('Priority'), labelC = chip('Labels'), deadC = chip('Deadline');
+  const dateC = chip('Date'), prioC = chip('Priority'), labelC = chip('Labels'), deadC = chip('Deadline'), durC = chip('Duration');
   const dateChip = dateC.main, prioChip = prioC.main, labelChip = labelC.main;
   const drawChips = () => {
     const v = value(), today = dayKey(), line = v.due ? dueLine(v.due, today) : null;
@@ -146,14 +150,15 @@ export function openQuickAdd(ctx, start, hold = null) {
     dateChip.setAttribute('aria-label', line ? `Date: ${line.text}${v.due?.rrule ? ', repeating' : ''}` : 'Date');
     if (line) dateC.box.dataset.tone = line.tone; else delete dateC.box.dataset.tone;
     setX(dateC, !!line, () => { if (fromWords(['date', 'recur'])) unmark(['date', 'recur']); manual.due = base.due ? null : undefined; });
-    const flag = icon(ICONS.flag);
+    const flag = icon(MORE.flag, { class: `td-flag${v.priority < 4 ? ' is-filled' : ''}` });
     flag.style.color = PRIORITY_COLOR[v.priority];
+    prioC.box.style.color = v.priority < 4 ? PRIORITY_COLOR[v.priority] : '';
     prioChip.replaceChildren(flag, el('span', '', v.priority === 4 ? 'Priority' : `P${v.priority}`));
     prioChip.setAttribute('aria-label', v.priority === 4 ? 'Priority' : `Priority: P${v.priority}`);
-    setX(prioC, v.priority !== 4, () => { unmark(['priority']); delete manual.priority; });
+    setX(prioC, v.priority !== 4, () => { unmark(['priority']); delete manual.priority; base.priority = undefined; });
     labelChip.replaceChildren(icon(ICONS.tag), el('span', '', v.labels.length ? v.labels.join(', ') : 'Labels'));
     labelChip.setAttribute('aria-label', v.labels.length ? `Labels: ${v.labels.join(', ')}` : 'Labels');
-    setX(labelC, v.labels.length > 0, () => { unmark(['label']); delete manual.labels; });
+    setX(labelC, v.labels.length > 0, () => { unmark(['label']); delete manual.labels; base.labels = undefined; });
     labelC.box.hidden = !v.labels.length;
     const dl = deadlineLine(v.deadline, today);
     deadC.main.replaceChildren(icon(ICONS.target), el('span', '', dl?.text ?? 'Deadline'));
@@ -161,18 +166,30 @@ export function openQuickAdd(ctx, start, hold = null) {
     setX(deadC, !!dl, () => { unmark(['deadline']); manual.deadline = null; });
     deadC.box.hidden = !dl;
     if (dl) deadC.box.dataset.tone = dl.tone; else delete deadC.box.dataset.tone;
+    const mins = v.duration ? minutesText(v.duration) : '';
+    durC.main.replaceChildren(icon(MORE.hourglass), el('span', '', mins || 'Duration'));
+    durC.main.setAttribute('aria-label', mins ? `Duration: ${mins}` : 'Duration');
+    setX(durC, !!mins, () => { unmark(['duration']); manual.duration = null; });
+    durC.box.hidden = !mins;
   };
+  /** @param {number | null} n */
+  const setDuration = n => { unmark(['duration']); manual.duration = n; reparse(); title.focus(); };
+  const openDuration = (/** @type {HTMLElement} */ at) => openMenu(at, [null, ...DURATIONS].map(n => ({ label: n ? minutesText(n) : 'None', icon: MORE.hourglass,
+    checked: (value().duration ?? null) === n, run: () => setDuration(n) })), { label: 'Duration' });
+  durC.main.addEventListener('click', () => openDuration(durC.main));
   /** @param {string | null | undefined} date */
   const deadlineOf = date => (date ? { date } : null);
   const openDeadline = () => pickDate(deadlineOf(value().deadline), d => {
     unmark(['deadline']); manual.deadline = d?.date ?? null; reparse(); title.focus();
   }, { data: ctx.data(), weekStart: Number(settings.get('weekStart') ?? 1), dateOnly: true });
   deadC.main.addEventListener('click', openDeadline);
-  dateChip.addEventListener('click', () => pickDate(value().due, due => {
-    unmark(['date', 'recur']); manual.due = due; reparse(); title.focus();
-  }, { data: ctx.data(), weekStart: Number(settings.get('weekStart') ?? 1) }));
+  dateChip.addEventListener('click', () => pickDate(value().due, (due, duration) => {
+    unmark(['date', 'recur']); manual.due = due;
+    if (duration !== undefined && duration !== value().duration) { unmark(['duration']); manual.duration = duration; }
+    reparse(); title.focus();
+  }, { data: ctx.data(), weekStart: Number(settings.get('weekStart') ?? 1), duration: value().duration }));
   prioChip.addEventListener('click', () => openMenu(prioChip, [1, 2, 3, 4].map(p => ({
-    label: `Priority ${p}`, icon: ICONS.flag, color: PRIORITY_COLOR[p], checked: value().priority === p,
+    label: `Priority ${p}`, icon: MORE.flag, color: PRIORITY_COLOR[p], checked: value().priority === p,
     run: () => { unmark(['priority']); manual.priority = p; reparse(); title.focus(); } })), { label: 'Priority' }));
   // the labels: the picker (from the chip, or the "…" chip's menu); typed @names count too
   const openLabels = () => {
@@ -188,8 +205,9 @@ export function openQuickAdd(ctx, start, hold = null) {
   labelChip.addEventListener('click', openLabels);
   const moreChip = button('td-chip td-chip-more', 'More options');
   moreChip.append(icon(ICONS.ellipsis));
-  moreChip.addEventListener('click', () => openMenu(moreChip, [{ label: 'Labels', icon: ICONS.tag, run: openLabels }, { label: 'Deadline', icon: ICONS.target, run: openDeadline }], { label: 'More options' }));
-  chips.append(dateC.box, prioC.box, labelC.box, deadC.box, moreChip);
+  moreChip.addEventListener('click', () => openMenu(moreChip, [{ label: 'Labels', icon: ICONS.tag, run: openLabels }, { label: 'Deadline', icon: ICONS.target, run: openDeadline },
+    { label: 'Duration', icon: MORE.hourglass, run: () => openDuration(moreChip) }], { label: 'More options' }));
+  chips.append(dateC.box, prioC.box, labelC.box, deadC.box, durC.box, moreChip);
 
   // names as they are typed after #, /, @ or %
   const list = el('div', 'td-suggest');
@@ -247,7 +265,7 @@ export function openQuickAdd(ctx, start, hold = null) {
   const send = /** @type {HTMLButtonElement} */ (el('button', 'td-send'));
   send.type = 'submit';
   send.setAttribute('aria-label', 'Add task');
-  send.append(icon(ICONS.arrowUp));
+  send.append(icon(MORE.arrowUp));
   const ready = () => { send.disabled = !parsed.title; };
   foot.append(place, send);
 
@@ -270,11 +288,12 @@ export function openQuickAdd(ctx, start, hold = null) {
       if (!r.refused) { made.set(n.toLowerCase(), r.id); ids.push(r.id); }
     }
     return ctx.app.addTask({ title: p.title, description: about || undefined, projectId: v.projectId, sectionId: v.sectionId, parentId: v.parentId,
-      priority: v.priority, labels: ids.length ? [...new Set(ids)] : undefined, due: v.due ?? undefined, deadline: v.deadline ?? undefined, order: atDrop(v) });
+      priority: v.priority, labels: ids.length ? [...new Set(ids)] : undefined, due: v.due ?? undefined, deadline: v.deadline ?? undefined, order: atDrop(v),
+      duration: v.duration ?? undefined });
   };
   const clearAll = () => {
     title.value = ''; desc.value = ''; desc.style.height = ''; ignore = []; was = '';
-    for (const k of /** @type {const} */ (['due', 'priority', 'labels', 'deadline'])) delete manual[k];
+    for (const k of /** @type {const} */ (['due', 'priority', 'labels', 'deadline', 'duration'])) delete manual[k];
     try { draft.clear(); } catch { /* storage blocked */ }
     reparse();
   };

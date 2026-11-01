@@ -56,6 +56,22 @@ test('completing shows Undo, which puts the task back', async ({ phone }) => {
   await expect(page.locator('#today')).toContainText(t);
 });
 
+test('a repeating task ticked moves to its next date and opens its done subtasks again; Undo puts both back', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const [r, sub] = [uniq('weekly'), uniq('step')];
+  await put(r, { title: r, due: { date: day(0), rrule: 'FREQ=WEEKLY', string: 'every week' } });
+  await put(sub, { title: sub, parentId: r, done: true, doneAt: Date.now() });
+  await page.getByRole('checkbox', { name: `Complete: ${r}` }).click();
+  await expect(page.locator('#today')).not.toContainText(r);
+  await expect.poll(async () => (await db.get(`spaces/_/tasks/${sub}`))?.done, { timeout: 15_000 }).toBe(false);
+  // (the task's own save and its subtask's are separate writes: either can reach the server first)
+  await expect.poll(async () => (await db.get(`spaces/_/tasks/${r}`))?.due?.date, { timeout: 15_000 }).toBe(day(7));
+  await page.locator('.toast').last().getByRole('button', { name: 'Undo' }).click();
+  await expect(page.locator('#today')).toContainText(r);
+  await expect.poll(async () => (await db.get(`spaces/_/tasks/${sub}`))?.done, { timeout: 15_000 }).toBe(true);
+});
+
 test('Reschedule on Overdue moves every overdue task to the day picked; Undo puts them back', async ({ phone }) => {
   const page = await phone();
   await signIn(page, 'member');
@@ -147,4 +163,52 @@ test('a start with nothing kept for Today: the early skeleton goes once the task
   await expect.poll(() => page.evaluate(() => window.starter.ready)).toBe(true);
   await expect(page.locator('#today-state .load-row')).toHaveCount(0);
   await expect(page.locator('#today-state')).not.toHaveAttribute('aria-busy', 'true');
+});
+
+test('the task sheet shows the words\' marks (bold, code, struck, a link to a new tab) until the field is tapped', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const t = uniq('md');
+  await put(t, { title: `Read **${t}** guide`, description: 'Run `npm test`, ~~old~~ [notes](https://example.com/n) <b>x</b>', due: { date: day(0) } });
+  await synced(page);
+  await clickOpens(row(page, '#today', t).locator('.td-row-main'), page.locator('#task-sheet'));
+  // the row: the marks too, a link's words underlined (the row is a button: no link inside)
+  await expect(row(page, '#today', t).locator('.td-title strong')).toHaveText(t);
+  await expect(row(page, '#today', t).locator('.td-title')).toHaveText(`Read ${t} guide`);
+  const title = page.locator('#task-sheet .td-md-title'), desc = page.locator('#task-sheet .td-md-desc');
+  await expect(title.locator('strong')).toHaveText(t);
+  await expect(desc.locator('code')).toHaveText('npm test');
+  await expect(desc.locator('s')).toHaveText('old');
+  await expect(desc.locator('b')).toHaveCount(0);
+  await expect(desc).toContainText('<b>x</b>');
+  const link = desc.locator('a');
+  await expect(link).toHaveAttribute('href', 'https://example.com/n');
+  await expect(link).toHaveAttribute('target', '_blank');
+  await expect(link).toHaveAttribute('rel', /noopener/);
+  expect(await AxeBuilder(page)).toEqual([]);
+  // tapped: the field as typed, marks and all
+  await page.locator('#task-sheet .td-task-title').click();
+  await expect(title).toBeHidden();
+  await expect(page.locator('#task-sheet .td-task-title')).toHaveValue(`Read **${t}** guide`);
+});
+
+test('the sheet\'s Copy link gives #task=<id>, which opens that task\'s sheet when the app loads with it', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const t = uniq('link');
+  await put(t, { title: t, due: { date: day(0) } });
+  await synced(page);
+  await page.evaluate(() => { window.copied = ''; navigator.clipboard.writeText = async s => { window.copied = s; }; });
+  await clickOpens(row(page, '#today', t).locator('.td-row-main'), page.locator('#task-sheet'));
+  await page.locator('#task-sheet .td-sheet-more').click();
+  await page.getByRole('menuitem', { name: 'Copy link' }).click();
+  await expect.poll(() => page.evaluate(() => window.copied)).toMatch(new RegExp(`#task=${t}$`));
+  const url = await page.evaluate(() => window.copied);
+  // (a fresh load, as a link opened in a new tab: a goto that changes only the hash would not load the page again)
+  await page.goto('about:blank');
+  await page.goto(url.replace(/^https?:\/\/[^/]+/, ''), { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#list-view')).toBeVisible();
+  await expect(page.locator('#task-sheet')).toBeVisible();
+  await expect(page.locator('#task-sheet .td-task-title')).toHaveValue(t);
+  expect(await page.evaluate(() => location.hash)).not.toContain('task=');
 });

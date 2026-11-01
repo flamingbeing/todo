@@ -109,7 +109,7 @@ export function openNamedSheet(ctx, kind, existing = null, made) {
   const fav = el('label', 'td-attr td-switch-row');
   const box = Object.assign(document.createElement('input'), { type: 'checkbox', className: 'ui-switch', checked: draft.favorite });
   box.disabled = !ctx.canWrite();
-  fav.append(icon(ICONS.heart, { class: 'td-attr-icon' }), el('span', 'td-attr-label', 'Favorite'), box);
+  fav.append(icon(MORE.heart, { class: 'td-attr-icon' }), el('span', 'td-attr-label', 'Favorite'), box);
   box.addEventListener('change', () => { draft.favorite = box.checked; if (existing) void keep({ favorite: box.checked }); });
   rows.append(color.b, fav);
   parts.push(rows);
@@ -117,7 +117,7 @@ export function openNamedSheet(ctx, kind, existing = null, made) {
   if (existing && ctx.canWrite()) {
     const del = /** @type {HTMLButtonElement} */ (el('button', 'td-card td-danger-row'));
     del.type = 'button';
-    del.append(icon(ICONS.trash2), el('span', '', `Delete ${word}`));
+    del.append(icon(MORE.trash2), el('span', '', `Delete ${word}`));
     del.addEventListener('click', async () => {
       const x = now();
       if (!x || !await removeNamed(ctx, kind, x)) return;

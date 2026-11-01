@@ -1,17 +1,66 @@
-// Upcoming's head (#upcoming-strip): the month of the week shown (a tap opens the month to pick a day) and Today, then
+// A list by day from today on (Upcoming, and a list's Agenda: screens/calendar.js): Overdue first (with Reschedule),
+// then each day with its tasks and an Add task row, more days drawn as the end comes near; over it the strip.
+// The strip (#upcoming-strip, or the Agenda's): the month of the week shown (a tap opens the month to pick a day) and Today, then
 // the week as seven days: the weekday's letter over the day's number, today's in the accent, the day picked
 // underlined, a dot under a day with tasks. A swipe sideways goes a week on or back (not before this week); a tap on
 // a day scrolls the list to it, and scrolling the list moves the pick. A task dragged onto a day moves to it
-// (row-drag.js reads data-drop-day). The week starts on the day the setting says.
+// (row-drag.js reads data-drop-day); a long press on a day opens the quick add dated that day. The week starts on the
+// day the setting says.
 import { icon, drag, glide, haptic } from '@core/ui';
 import { ICONS } from '../icons.js';
-import { isTask } from '../tasks.js';
-import { dayKey, addDays, daysBetween, weekOf, monthGrid, monthTitle, weekdayName, dueOf } from '../dates.js';
+import { MORE } from '../icons-more.js';
+import { isTask, dayOrder } from '../tasks.js';
+import { upcomingView, narrowTasks, sorter } from '../arrange.js';
+import { dayKey, addDays, daysBetween, weekOf, monthGrid, monthTitle, weekdayName, dueOf, dayTitle } from '../dates.js';
+import { rowList, addRow, groupHead } from './row.js';
 import { el, sheetHead } from '../screens/pick.js';
 import { underBar } from './stick.js';
 
 /** @typedef {import('../screens/views.js').Ctx} Ctx */
-/** @typedef {{ list: HTMLElement, days: () => number, more: (n: number) => void }} StripOptions */
+/** @typedef {import('../items.js').Task} Task */
+/** @typedef {{ list: HTMLElement, days: () => number, more: (n: number) => void, tasks?: () => Task[] }} StripOptions */
+/**
+ * @typedef {{ list: HTMLElement, strip: HTMLElement, tasks: Task[], d: import('../tasks.js').Display, place: boolean, projectId: string,
+ *   resched: (sec: HTMLElement, tasks: Task[]) => void }} DaysOptions
+ */
+
+const STEP = 28;
+/** how many days each list draws @type {WeakMap<HTMLElement, number>} */
+const shown = new WeakMap();
+
+/** @param {Ctx} ctx @param {DaysOptions} o */
+export function drawDays(ctx, o) {
+  const today = dayKey(), d = o.d, n = shown.get(o.list) ?? STEP;
+  const v = upcomingView(narrowTasks(o.tasks, d, ctx.data().labels, today), today, n, sorter(d.sort, d.dir, dayOrder)), parts = [];
+  o.list.toggleAttribute('data-sorted', d.sort !== 'manual');
+  // (back from Upcoming's board or calendar)
+  o.list.classList.remove('td-board');
+  o.list.removeAttribute('data-swipe-own');
+  delete o.list.dataset.grouped;
+  if (v.overdue.length) {
+    const g = document.createElement('section'); g.className = 'td-group';
+    g.append(groupHead('Overdue'), rowList(v.overdue, ctx.rows({ place: o.place }), 'Overdue'));
+    o.resched(g, v.overdue.map(l => l.task));
+    parts.push(g);
+  }
+  for (const day of v.days) {
+    const g = document.createElement('section'); g.className = 'td-group td-day'; g.dataset.day = day.key;
+    const title = dayTitle(day.key, today);
+    g.append(groupHead(title));
+    if (day.lines.length) g.append(rowList(day.lines, ctx.rows({ place: o.place, own: day.key }), title));
+    if (ctx.canWrite()) g.append(addRow('Add task', () => ctx.openQuickAdd({ projectId: o.projectId, due: { date: day.key } })));
+    parts.push(g);
+  }
+  o.list.replaceChildren(...parts);
+  const more = (/** @type {number} */ m) => { shown.set(o.list, Math.max(shown.get(o.list) ?? STEP, m)); drawDays(ctx, o); };
+  drawStrip(ctx, o.strip, { list: o.list, days: () => shown.get(o.list) ?? STEP, more, tasks: () => o.tasks });
+  // near the end of the days drawn: draw more
+  const last = /** @type {HTMLElement | undefined} */ (parts.at(-3) ?? parts.at(-1));
+  if (last && 'IntersectionObserver' in window) {
+    const io = new IntersectionObserver(es => { if (es.some(x => x.isIntersecting)) { io.disconnect(); more(n + STEP); } });
+    io.observe(last);
+  }
+}
 
 const LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -55,7 +104,7 @@ function build(host, s) {
   const count = () => {
     /** @type {Map<string, number>} */
     const by = new Map();
-    for (const t of s.ctx.data().tasks) { const d = isTask(t) && !t.done ? dueOf(t.due) : null; if (d) by.set(d.date, (by.get(d.date) ?? 0) + 1); }
+    for (const t of s.o.tasks?.() ?? s.ctx.data().tasks) { const d = isTask(t) && !t.done ? dueOf(t.due) : null; if (d) by.set(d.date, (by.get(d.date) ?? 0) + 1); }
     return by;
   };
   s.draw = () => {
@@ -121,6 +170,23 @@ function build(host, s) {
   month.addEventListener('click', () => pickMonth(s, key => go(key, true)));
   todayBtn.addEventListener('click', () => go(s.day, true));
 
+  // a long press on a day (today on): the quick add, dated that day; the tap that ends it does not also pick the day
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let hold;
+  let x0 = 0, y0 = 0, held = false;
+  const letGo = () => { clearTimeout(hold); hold = undefined; };
+  week.addEventListener('pointerdown', e => {
+    held = false; letGo();
+    const b = /** @type {HTMLButtonElement | null} */ (/** @type {Element} */ (e.target).closest('.td-wday'));
+    if (!e.isPrimary || e.button > 0 || !b || b.disabled || !s.ctx.canWrite()) return;
+    x0 = e.clientX; y0 = e.clientY;
+    hold = setTimeout(() => { hold = undefined; held = true; haptic('long'); s.ctx.openQuickAdd({ due: { date: String(b.dataset.day) } }); }, 500);
+  });
+  week.addEventListener('pointermove', e => { if (hold && Math.hypot(e.clientX - x0, e.clientY - y0) > 10) letGo(); });
+  for (const t of ['pointerup', 'pointercancel', 'pointerleave']) week.addEventListener(t, letGo);
+  week.addEventListener('click', e => { if (held && e.isTrusted) { held = false; e.preventDefault(); e.stopPropagation(); } }, true);
+  week.addEventListener('contextmenu', e => e.preventDefault());
+
   // a swipe: the week follows the finger, then glides out and the next (or last) one glides in
   drag(view, { axis: 'x', mouse: true, name: 'cards',
     bounds: () => (s.week <= weekOf(s.day, s.start) ? [0, Infinity] : [-Infinity, Infinity]),
@@ -140,9 +206,10 @@ function build(host, s) {
     } });
 }
 
-/** the month sheet: a month's days in weeks, a tap on one (today or later) picks it
- * @param {NonNullable<ReturnType<typeof state.get>>} s @param {(key: string) => void} done */
-function pickMonth(s, done) {
+/** the month sheet: a month's days in weeks, a tap on one (from min: the strip's today, a calendar's any) picks it
+ * @param {{ pick: string, day: string, start: number, min?: string }} s @param {(key: string) => void} done */
+export function pickMonth(s, done) {
+  const min = s.min ?? s.day;
   const d = /** @type {HTMLDialogElement} */ (document.getElementById('pick-sheet'));
   const body = /** @type {HTMLElement} */ (d.querySelector('[data-fill]'));
   let month = s.pick.slice(0, 7);
@@ -155,11 +222,11 @@ function pickMonth(s, done) {
       b.setAttribute('aria-label', label);
       b.append(icon(ic));
       const [y, m] = month.split('-').map(Number), next = new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7);
-      b.disabled = next < s.day.slice(0, 7);
+      b.disabled = next < min.slice(0, 7);
       b.addEventListener('click', () => { month = next; draw(); });
       return b;
     };
-    nav.append(name, step(-1, 'Last month', ICONS.chevronLeft ?? ICONS.chevronRight), step(1, 'Next month', ICONS.chevronRight));
+    nav.append(name, step(-1, 'Last month', MORE.chevronLeft ?? ICONS.chevronRight), step(1, 'Next month', ICONS.chevronRight));
     const grid = el('div', 'td-mon');
     grid.setAttribute('role', 'grid');
     grid.setAttribute('aria-label', monthTitle(`${month}-01`));
@@ -176,7 +243,7 @@ function pickMonth(s, done) {
         if (key.slice(0, 7) === month) {
           const b = /** @type {HTMLButtonElement} */ (el('button', 'td-mon-day', String(+key.slice(8))));
           b.type = 'button';
-          b.disabled = key < s.day;
+          b.disabled = key < min;
           b.classList.toggle('is-today', key === s.day);
           b.setAttribute('aria-pressed', String(key === s.pick));
           b.prepend(el('span', 'td-sr', `${weekdayName(key)} `));

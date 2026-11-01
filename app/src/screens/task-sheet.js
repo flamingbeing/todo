@@ -5,9 +5,10 @@
 // at the top to go back up.
 import { icon, confirmModal } from '@core/ui';
 import { ICONS } from '../icons.js';
+import { MORE } from '../icons-more.js';
 import { REFUSED } from '../items.js';
 import { priorityOf, placeText, projectOf, labelsOf } from '../tasks.js';
-import { dueLine, deadlineLine, dayKey } from '../dates.js';
+import { dueLine, deadlineLine, dayKey, minutesText } from '../dates.js';
 import { colorHex } from '../colors.js';
 import { flatten, descendants, canNest } from '../tree.js';
 import { byOrder } from '../order.js';
@@ -16,6 +17,7 @@ import { openMenu } from '../ui/menu.js';
 import { el, pickPlace } from './pick.js';
 import { pickDate } from './scheduler.js';
 import { pickLabels, ticksOf, onIds } from './labels.js';
+import { hasMarks, showMarks } from '../markdown.js';
 
 /** @typedef {import('../items.js').Task} Task */
 /** @typedef {import('./views.js').Ctx} Ctx */
@@ -67,25 +69,30 @@ function draw(ctx) {
   // head: close, the parent's name (a subtask), "…"
   const head = el('div', 'td-sheet-head');
   const x = /** @type {HTMLButtonElement} */ (el('button', 'td-round td-sheet-x'));
-  x.type = 'button'; x.setAttribute('aria-label', 'Close'); x.append(icon(ICONS.x));
+  x.type = 'button'; x.setAttribute('aria-label', 'Close'); x.append(icon(MORE.x));
   x.addEventListener('click', () => d().close());
   const parent = t.parentId ? ctx.data().tasks.find(p => p.id === t.parentId) : null;
   const up = el(parent ? 'button' : 'span', 'td-sheet-parent');
   if (parent) {
     /** @type {HTMLButtonElement} */ (up).type = 'button';
-    up.append(icon(ICONS.chevronLeft), el('span', '', parent.title));
+    up.append(icon(MORE.chevronLeft), el('span', '', parent.title));
     up.setAttribute('aria-label', `Back to ${parent.title}`);
     up.addEventListener('click', () => { showing = parent.id; draw(ctx); });
   }
   const more = /** @type {HTMLButtonElement} */ (el('button', 'td-round td-sheet-more'));
   more.type = 'button'; more.setAttribute('aria-label', 'More'); more.setAttribute('aria-haspopup', 'menu'); more.append(icon(ICONS.ellipsis));
-  more.hidden = !writable;
-  more.addEventListener('click', () => openMenu(more, [
-    { label: 'Duplicate', icon: ICONS.copy, run: async () => { const now = current(ctx); if (now && await ctx.app.duplicateTask(now)) ctx.toast(REFUSED); else ctx.toast('Duplicated'); } },
+  // (Copy link: this page's address with #task=<id>, which opens this task's sheet on load; a viewer can copy it too)
+  const copyLink = { label: 'Copy link', icon: MORE.link, run: async () => {
+    const url = `${location.origin}${location.pathname}${location.search}#task=${encodeURIComponent(t.id)}`;
+    try { await navigator.clipboard.writeText(url); ctx.toast('Link copied'); } catch { ctx.toast('Could not copy the link'); }
+  } };
+  more.addEventListener('click', () => openMenu(more, writable ? [
+    { label: 'Duplicate', icon: MORE.copy, run: async () => { const now = current(ctx); if (now && await ctx.app.duplicateTask(now)) ctx.toast(REFUSED); else ctx.toast('Duplicated'); } },
     { label: 'Move to…', icon: ICONS.folderInput, run: () => move() },
+    copyLink,
     null,
-    { label: 'Delete', icon: ICONS.trash2, danger: true, run: () => remove() },
-  ], { label: 'Task' }));
+    { label: 'Delete', icon: MORE.trash2, danger: true, run: () => remove() },
+  ] : [copyLink], { label: 'Task' }));
   head.append(x, up, more);
 
   // the card: box, title, description
@@ -114,13 +121,30 @@ function draw(ctx) {
     if (v !== current(ctx)?.title) void save({ title: v });
   });
   desc.addEventListener('change', () => { if (desc.value !== (current(ctx)?.description ?? '')) void save({ description: desc.value }); });
+  // the words with their marks (bold, links: markdown.js) laid over each field while it is not being edited; a tap
+  // between links reaches the field below (the layer lets taps through, but not on its links)
+  const views = [title, desc].map(a => {
+    const v = el('div', `td-md ${a === title ? 'td-md-title' : 'td-md-desc'}`);
+    v.setAttribute('aria-hidden', 'true');
+    a.addEventListener('focus', () => marks(a, v));
+    a.addEventListener('blur', () => marks(a, v));
+    return v;
+  });
+  const marks = (/** @type {HTMLTextAreaElement} */ a, /** @type {HTMLElement} */ v) => {
+    const on = document.activeElement !== a && hasMarks(a.value);
+    a.classList.toggle('has-md', on);
+    v.hidden = !on;
+    if (!on) { v.replaceChildren(); return; }
+    showMarks(v, a.value);
+    for (const link of v.querySelectorAll('a')) link.tabIndex = -1;
+  };
   const words = el('div', 'td-task-words');
-  words.append(title, desc);
+  words.append(title, views[0], desc, views[1]);
   card.append(box, words);
 
   // the rows: project, date, priority, labels
   const rows = el('div', 'td-card td-attrs');
-  const place = attrRow(ICONS.hash, 'Project', []), date = attrRow(ICONS.calendar, 'Date', []), prio = attrRow(ICONS.flag, 'Priority', []);
+  const place = attrRow(ICONS.hash, 'Project', []), date = attrRow(ICONS.calendar, 'Date', []), prio = attrRow(MORE.flag, 'Priority', []);
   const labels = attrRow(ICONS.tag, 'Labels', []), deadline = attrRow(ICONS.target, 'Deadline', []);
   for (const b of [place, date, deadline, prio, labels]) b.disabled = !writable;
   const move = () => { const now = current(ctx); if (now) pickPlace(ctx.data(), { projectId: projectOf(now), sectionId: now.sectionId }, async to => {
@@ -128,11 +152,12 @@ function draw(ctx) {
     if (at && await ctx.app.moveTask(at, { ...to, parentId: null })) ctx.toast(REFUSED);
   }); };
   place.addEventListener('click', move);
-  date.addEventListener('click', () => pickDate(current(ctx)?.due, due => save({ due }), { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1) }));
+  date.addEventListener('click', () => { const now = current(ctx); pickDate(now?.due, (due, duration) => save({ due, ...(duration !== undefined ? { duration } : {}) }),
+    { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1), duration: now?.duration ?? null }); });
   deadline.addEventListener('click', () => { const now = current(ctx); if (now) pickDate(now.deadline ? { date: now.deadline } : null, d => save({ deadline: d?.date ?? null }),
     { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1), dateOnly: true }); });
   labels.addEventListener('click', () => { const now = current(ctx); if (now) pickLabels(ctx, ticksOf(now, ctx.data().labels), ticks => save({ labels: onIds(ticks) })); });
-  prio.addEventListener('click', () => openMenu(prio, [1, 2, 3, 4].map(p => ({ label: `Priority ${p}`, icon: ICONS.flag, color: PRIORITY_COLOR[p],
+  prio.addEventListener('click', () => openMenu(prio, [1, 2, 3, 4].map(p => ({ label: `Priority ${p}`, icon: MORE.flag, color: PRIORITY_COLOR[p],
     checked: priorityOf(/** @type {Task} */ (current(ctx))) === p, run: () => save({ priority: p }) })), { label: 'Priority' }));
   rows.append(place, date, deadline, prio, labels);
 
@@ -159,23 +184,26 @@ function draw(ctx) {
     box.setAttribute('aria-label', `${now.done ? 'Not done' : 'Complete'}: ${now.title}`);
     if (document.activeElement !== title) { title.value = now.title; grow(title); }
     if (document.activeElement !== desc) { desc.value = String(now.description ?? ''); grow(desc); }
+    marks(title, views[0]); marks(desc, views[1]);
     const data = c.data(), pid = projectOf(now), proj = data.projects.find(x => x.id === pid);
     const hash = icon(pid === 'inbox' ? ICONS.inbox : ICONS.hash, { class: 'td-attr-icon' });
     hash.style.color = pid === 'inbox' ? 'var(--td-text-2)' : colorHex(proj?.color);
     const where = placeText(now, data.projects, data.sections);
     place.replaceChildren(hash, el('span', 'td-attr-text', where));
     place.setAttribute('aria-label', `Project: ${where}`);
-    const due = dueLine(now.due, dayKey());
-    const dueText = el('span', `td-attr-text${due ? '' : ' td-attr-empty'}`, due ? due.text : 'Date');
+    const due = dueLine(now.due, dayKey(), { dur: now.duration });
+    // the duration: in the time's range when there is one, else after the day ("Tomorrow · 45 min")
+    const long = due && now.duration && !now.due?.time ? ` · ${minutesText(now.duration)}` : '';
+    const dueText = el('span', `td-attr-text${due ? '' : ' td-attr-empty'}`, due ? due.text + long : 'Date');
     const cal = icon(ICONS.calendar, { class: 'td-attr-icon' });
     if (due) { cal.dataset.tone = due.tone; dueText.dataset.tone = due.tone; }
     date.replaceChildren(cal, dueText, ...(due?.repeats ? [icon(ICONS.repeat, { class: 'td-meta-icon td-repeat' })] : []));
-    date.setAttribute('aria-label', due ? `Date: ${due.text}` : 'Date');
+    date.setAttribute('aria-label', due ? `Date: ${due.text}${long}` : 'Date');
     const dl = deadlineLine(now.deadline, dayKey());
     deadline.replaceChildren(icon(ICONS.target, { class: 'td-attr-icon td-deadline-icon' }), el('span', `td-attr-text${dl ? '' : ' td-attr-empty'}`, dl ? dl.text : 'Deadline'));
     if (dl) /** @type {HTMLElement} */ (deadline.lastElementChild).dataset.tone = dl.tone;
     deadline.setAttribute('aria-label', dl ? `Deadline: ${dl.text}` : 'Deadline');
-    const flag = icon(ICONS.flag, { class: `td-attr-icon td-flag${p < 4 ? ' is-filled' : ''}` });
+    const flag = icon(MORE.flag, { class: `td-attr-icon td-flag${p < 4 ? ' is-filled' : ''}` });
     flag.style.color = PRIORITY_COLOR[p];
     prio.replaceChildren(flag, el('span', 'td-attr-text', `Priority ${p}`));
     prio.setAttribute('aria-label', `Priority ${p}`);

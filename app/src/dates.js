@@ -36,6 +36,14 @@ export const timeText = hhmm => {
   clock ??= new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
   return clock.format(new Date(2000, 0, 1, +hhmm.slice(0, 2), +hhmm.slice(3, 5)));
 };
+/** minutes after midnight in the person's own clock style (the calendar's blocks, now line, drop line) @param {number} min */
+export const minutesClock = min => timeText(`${pad(Math.floor(min / 60) % 24)}:${pad(min % 60)}`);
+/** a span in that style, said once where both ends share it: "12:30 – 1:30 PM", "12:30–13:30" @param {number} a @param {number} b */
+export const minutesSpan = (a, b) => {
+  clock ??= new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+  const at = (/** @type {number} */ m) => new Date(2000, 0, 1, Math.floor(m / 60) % 24, m % 60);
+  return clock.formatRange ? clock.formatRange(at(a), at(b)) : `${minutesClock(a)}–${minutesClock(b)}`;
+};
 
 /** @param {unknown} due @returns {Due | null} a usable due map, or null */
 export const dueOf = due => (due && typeof due === 'object' && isDay(/** @type {Due} */ (due).date) ? /** @type {Due} */ (due) : null);
@@ -70,16 +78,21 @@ export function deadlineLine(date, today) {
   return { text, tone: n < 0 ? 'overdue' : 'deadline' };
 }
 
+/** "45 min", "1 h", "2 h 30 min" @param {number} n minutes */
+export const minutesText = n => (n < 60 ? `${n} min` : `${Math.floor(n / 60)} h${n % 60 ? ` ${n % 60} min` : ''}`);
+
 /**
- * What a row shows for its due date: the words (with the time), the tone and whether it repeats. own: the day of the
- * group the row is in (Today, an Upcoming day), whose date is not repeated (only the time shows, or nothing).
- * @param {unknown} due @param {string} today @param {{ own?: string, now?: string }} [o]
+ * What a row shows for its due date: the words (with the time, and its end when the task has a duration: "10:00–10:45"),
+ * the tone and whether it repeats. own: the day of the group the row is in (Today, an Upcoming day), whose date is not
+ * repeated (only the time shows, or nothing).
+ * @param {unknown} due @param {string} today @param {{ own?: string, now?: string, dur?: number | null }} [o]
  * @returns {{ text: string, tone: Tone, repeats: boolean } | null}
  */
-export function dueLine(due, today, { own, now } = {}) {
+export function dueLine(due, today, { own, now, dur } = {}) {
   const d = dueOf(due);
   if (!d) return null;
-  const time = isTime(d.time) ? timeText(/** @type {string} */ (d.time)) : '';
+  const t = isTime(d.time) ? /** @type {string} */ (d.time) : '', end = t && dur ? (+t.slice(0, 2) * 60 + +t.slice(3) + dur) % 1440 : -1;
+  const time = t ? timeText(t) + (end < 0 ? '' : `–${timeText(`${pad(Math.floor(end / 60))}:${pad(end % 60)}`)}`) : '';
   const day = d.date === own ? '' : dayWords(d.date, today);
   return { text: [day, time].filter(Boolean).join(' '), tone: dateTone(d, today, now), repeats: !!d.rrule };
 }

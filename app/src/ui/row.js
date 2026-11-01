@@ -1,7 +1,8 @@
 // A task row: the round checkbox in the priority's colour, the title, one line of description, and the meta line (the
 // due date in its tone, a repeat mark, the subtask count, labels, and on day lists the project at the right). Subtasks
 // sit 24 px further in per level; a parent has a fold chevron at the right. A tap on the row opens the task; a tap on
-// the box completes it (the row then fades out and the list shows the undo toast).
+// the box completes it (the row then fades out and the list shows the undo toast). A title starting "* " is a note:
+// no box and no swipe to complete (plainRow).
 import { icon } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { dueLine, deadlineLine } from '../dates.js';
@@ -22,7 +23,11 @@ import { INBOX } from '../items.js';
  * @property {(t: Task) => void} onOpen
  * @property {(t: Task, row: HTMLElement) => void} onComplete
  * @property {(t: Task) => void} [onFold]
+ * @property {(span: HTMLElement, text: string) => void} [marks]  shows a title's markdown (markdown.js, loaded when a title has some)
  */
+
+/** a title starting "* " is a note in the list: no box to tick (shown without the "* ") @param {Task} t */
+export const plainRow = t => /^\* \S/.test(String(t.title));
 
 /** @param {string} tag @param {string} cls @param {string} [text] */
 const el = (tag, cls, text) => { const e = document.createElement(tag); e.className = cls; if (text) e.textContent = text; return e; };
@@ -30,7 +35,7 @@ const el = (tag, cls, text) => { const e = document.createElement(tag); e.classN
 /** the meta line's parts, or null when there are none @param {import('../tree.js').Line<Task>} line @param {RowContext} c */
 function meta(line, c) {
   const t = line.task, parts = [];
-  const due = dueLine(t.due, c.today, { own: c.own });
+  const due = dueLine(t.due, c.today, { own: c.own, dur: t.duration });
   if (due && (due.text || due.repeats)) {
     const d = el('span', 'td-date');
     d.dataset.tone = due.tone;
@@ -93,6 +98,7 @@ export function taskRow(line, c) {
   box.setAttribute('aria-label', `Complete: ${t.title}`);
   box.disabled = !c.canWrite;
   box.append(icon(ICONS.check, { class: 'td-check-mark' }));
+  if (plainRow(t)) { li.classList.add('is-plain'); box.disabled = true; box.tabIndex = -1; box.setAttribute('aria-hidden', 'true'); }
   box.addEventListener('click', () => {
     if (t.done) { c.onComplete(t, li); return; }
     if (li.classList.contains('is-done')) return;
@@ -103,7 +109,10 @@ export function taskRow(line, c) {
 
   const main = /** @type {HTMLButtonElement} */ (el('button', 'td-row-main'));
   main.type = 'button';
-  main.append(el('span', 'td-title', t.title));
+  const name = plainRow(t) ? t.title.slice(2) : t.title, head = el('span', 'td-title', name);
+  // (a title that may have marks: drawn again with them once markdown.js is in)
+  if (c.marks && /[*_`~]|https?:\/\//.test(name)) c.marks(head, name);
+  main.append(head);
   if (t.description) main.append(el('span', 'td-desc', String(t.description).split('\n')[0]));
   const m = meta(line, c);
   if (m) main.append(m);
@@ -140,9 +149,9 @@ export function addRow(label, onClick) {
   return b;
 }
 
-/** a group's header (a section, a day): its title, and optionally a fold chevron and a "…" button
- * @param {string} title @param {{ id?: string, collapsed?: boolean, onFold?: () => void, onMore?: (b: HTMLElement) => void, label?: string }} [o] */
-export function groupHead(title, { id, collapsed, onFold, onMore, label } = {}) {
+/** a group's header (a section, a day): its title, and optionally a fold chevron, a "+" (add a task there) and a "…" button
+ * @param {string} title @param {{ id?: string, collapsed?: boolean, onFold?: () => void, onMore?: (b: HTMLElement) => void, onAdd?: () => void, label?: string }} [o] */
+export function groupHead(title, { id, collapsed, onFold, onMore, onAdd, label } = {}) {
   const h = el('div', 'td-group-head');
   const name = el(onFold ? 'button' : 'h2', 'td-group-title');
   if (id) name.id = id;
@@ -155,6 +164,14 @@ export function groupHead(title, { id, collapsed, onFold, onMore, label } = {}) 
     wrap.append(name);
     h.append(wrap);
   } else { name.textContent = title; h.append(name); }
+  if (onAdd) {
+    const add = /** @type {HTMLButtonElement} */ (el('button', 'td-icon-btn td-group-add'));
+    add.type = 'button';
+    add.setAttribute('aria-label', `Add task to ${label ?? title}`);
+    add.append(icon(ICONS.plus));
+    add.addEventListener('click', onAdd);
+    h.append(add);
+  }
   if (onMore) {
     const more = /** @type {HTMLButtonElement} */ (el('button', 'td-icon-btn td-group-more'));
     more.type = 'button';

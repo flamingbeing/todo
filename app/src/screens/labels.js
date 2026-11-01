@@ -3,6 +3,7 @@
 // mode a label some of the tasks have shows a dash until it is tapped (then all, then none).
 import { icon } from '@core/ui';
 import { ICONS } from '../icons.js';
+import { MORE } from '../icons-more.js';
 import { REFUSED } from '../items.js';
 import { labelsOf } from '../tasks.js';
 import { colorHex } from '../colors.js';
@@ -20,7 +21,7 @@ export function searchField(placeholder, label) {
   const box = el('label', 'td-search-box');
   const input = Object.assign(document.createElement('input'), { type: 'search', placeholder, autocomplete: 'off', enterKeyHint: 'search' });
   input.setAttribute('aria-label', label);
-  box.append(icon(ICONS.search), input);
+  box.append(icon(MORE.search), input);
   return { box, input };
 }
 

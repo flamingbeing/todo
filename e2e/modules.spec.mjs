@@ -19,10 +19,16 @@ const kept = page => page.evaluate(async () => {
   return n;
 });
 
+// Browse (the way to Settings) is a module loaded the first time it is needed or in an idle moment after the start; a
+// phone keeps it offline through its service worker, which these pages have none of (emulator mode). So Settings is
+// opened once while online, before a test that goes there offline.
+const loadSettings = async page => { await openSettings(page); await openToday(page); };
+
 test('sign-out keeps the phone’s data and unsent saves; the same account carries on', async ({ phone }) => {
   const page = await phone();
   const { email } = await signIn(page, 'member');
   await synced(page);
+  await loadSettings(page);
   const t = uniq('kept');
   await page.context().setOffline(true);
   await add(page, t);
@@ -43,6 +49,7 @@ test('forget this device: refused while unsent, then wipes the phone', async ({ 
   const page = await phone();
   await signIn(page, 'member');
   await synced(page);
+  await loadSettings(page);
   await page.context().setOffline(true);
   await add(page, uniq('unsent'));
   await openSettings(page);

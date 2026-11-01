@@ -1,6 +1,7 @@
-// Sign-in, roles from the role doc, and the tasks: add, rename, delete to the bin.
+// Sign-in, roles from the role doc, and the tasks: add, rename, delete to the bin. A "* " title is a note: no box, no
+// swipe to complete.
 import AxeBuilder from './axe.mjs';
-import { test, expect, clickOpens, signIn, add, synced, serverHas, db, uniq, today, APP } from './fixtures.mjs';
+import { test, expect, clickOpens, signIn, add, synced, serverHas, db, uniq, today, APP, finger, gesturesReady, steps } from './fixtures.mjs';
 
 test('signed out: the sign-in screen, accessible', { tag: '@smoke' }, async ({ phone }) => {
   const page = await phone();
@@ -127,4 +128,23 @@ test('typing the next task while the last one saves keeps the new draft (slow or
   await page.context().setOffline(false);
   await serverHas(first);
   await serverHas(second);
+});
+
+test('a title starting "* " shows no box and a swipe right does not complete it', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const t = uniq('note');
+  await db.put(`spaces/_/tasks/${t}`, { title: `* ${t}`, projectId: 'inbox', order: Date.now(), priority: 4, done: false, due: { date: today() }, createdAt: Date.now(), updatedAt: Date.now() });
+  await synced(page);
+  await gesturesReady(page);
+  const row = `#today .td-row[data-id="${t}"]`;
+  await expect(page.locator(`${row} .td-title`)).toHaveText(t);
+  await expect(page.locator(row)).toHaveClass(/is-plain/);
+  await expect(page.locator(`${row} > .td-check`)).toBeHidden();
+  await expect(page.getByRole('checkbox', { name: `Complete: * ${t}` })).toHaveCount(0);
+  expect(await AxeBuilder(page)).toEqual([]);
+  await finger(page, row, steps(260, 4, 8));
+  await page.waitForTimeout(600);
+  expect((await db.get(`spaces/_/tasks/${t}`))?.done).toBe(false);
+  await expect(page.locator(row)).toBeVisible();
 });

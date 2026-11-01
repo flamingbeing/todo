@@ -97,6 +97,18 @@ const seed = () => {
   } });
   window.__csp = [];
   addEventListener('securitypolicyviolation', e => window.__csp.push(`${e.violatedDirective} ${e.blockedURI}`));
+  // A toast with an action (Undo) stays until it is tapped or a newer toast shows. The app lets it go after 6 s; a test
+  // that first waits for the server to have the change it undoes can take longer than that on a busy machine.
+  const tapped = new WeakSet();
+  addEventListener('click', e => { const t = e.target instanceof Element ? e.target.closest('.toast') : null; if (t) tapped.add(t); }, true);
+  new MutationObserver(records => {
+    for (const r of records) {
+      if (!(r.target instanceof HTMLElement) || !r.target.classList.contains('toasts')) continue;
+      for (const n of r.removedNodes) {
+        if (n instanceof HTMLElement && n.matches('.toast') && n.querySelector('.toast-action') && !tapped.has(n) && r.target.isConnected && !r.target.querySelector('.toast')) r.target.append(n);
+      }
+    }
+  }).observe(document, { childList: true, subtree: true });
   try {
     if (!localStorage.getItem('core-glass-guard')) localStorage.setItem('core-glass-guard', JSON.stringify({ solid: false, why: '' }));
   } catch { /* an opaque origin: nothing to keep */ }
@@ -256,7 +268,7 @@ export const settingsBack = async page => {
   else return;
   await expect(page.locator('#settings-host .ui-settings-menu')).toBeVisible();
 };
-// (a tab tapped while a Settings page is open over Browse first closes that page: then a second tap goes)
+// (a tab tapped while a Settings page is open over Browse goes straight there: shell.js closes that page first; the retry is for a tap during a slide)
 export const openTab = async (page, name) => {
   await toTop(page);
   await expect(async () => {
@@ -319,7 +331,86 @@ export async function finger(page, selector, steps = [], { hold = 0, at = null, 
     if (!steps.length && hold < 500) target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
   }, [selector, steps, hold, at, wait]);
 }
-// (wired last: the + button's drag, which takes its touches whole)
-export const gesturesReady = page => page.waitForFunction(() => document.getElementById('fab')?.style.touchAction === 'none', null, { timeout: 15_000 });
+// (wired last: the + button's drag, which takes its touches whole) and no view transition running: a change of phase
+// (screen-switch.js, as the list arrives after sign-in) cross-fades as one, and while it runs Chromium sends every touch
+// to <html>, so a tap then switches nothing
+export const gesturesReady = page => page.waitForFunction(() => document.getElementById('fab')?.style.touchAction === 'none'
+  && !(/** @type {any} */ (document).activeViewTransition)
+  && !document.getAnimations().some(a => /** @type {KeyframeEffect} */ (a.effect)?.pseudoElement?.startsWith('::view-transition') && a.playState !== 'finished'),
+null, { timeout: 15_000 });
+/** an element's box; measured again if a redraw (another test's synced change) took the element away as it was measured */
+export const boxOf = async (page, sel) => {
+  /** @type {{ x: number, y: number, width: number, height: number } | null} */
+  let r = null;
+  await expect.poll(async () => (r = await page.locator(sel).boundingBox()), { timeout: 10_000 }).not.toBeNull();
+  return /** @type {{ x: number, y: number, width: number, height: number }} */ (/** @type {unknown} */ (r));
+};
 /** [dx, dy] steps from 0 to (x, y) in n moves */
 export const steps = (x, y, n = 10) => Array.from({ length: n }, (_, i) => [Math.round(x * (i + 1) / n), Math.round(y * (i + 1) / n)]);
+
+// A finger in steps the test decides as it goes (for drags whose end is only known once the list has scrolled):
+// press() holds a row (or any element) at its middle, slide() moves to a point or to an element as it is then
+// (its middle, or `dy` from its top), letGo() lifts. Same touch events as finger().
+/** @param {import('@playwright/test').Page} page @param {string} selector @param {{ hold?: number, at?: [number, number] }} [o] */
+export async function press(page, selector, { hold = 650, at } = {}) {
+  await expect(() => page.locator(selector).first().scrollIntoViewIfNeeded({ timeout: 2_000 })).toPass({ timeout: 10_000 });
+  await page.evaluate(([selector, at]) => {
+    const el = /** @type {HTMLElement} */ (document.querySelector(selector));
+    const r = el.getBoundingClientRect();
+    const f = { target: el.querySelector('.td-row-main') ?? el, x: at ? r.left + at[0] : r.left + r.width / 2, y: at ? r.top + at[1] : r.top + r.height / 2 };
+    /** @type {any} */ (window).__finger = f;
+    f.target.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, composed: true, pointerId: 42, pointerType: 'touch', isPrimary: true,
+      clientX: f.x, clientY: f.y, button: 0, buttons: 1 }));
+  }, [selector, at ?? null]);
+  if (hold) await page.waitForTimeout(hold);
+}
+/** @param {import('@playwright/test').Page} page @param {{ x?: number, y?: number, to?: string, dy?: number, dx?: number }} where @param {number} [n] */
+export const slide = (page, where, n = 8) => page.evaluate(async ([where, n]) => {
+  const f = /** @type {any} */ (window).__finger;
+  for (let i = 1; i <= n; i++) {
+    await new Promise(r => setTimeout(r, 16));
+    let { x, y } = where;
+    if (where.to) {
+      const b = /** @type {HTMLElement} */ (document.querySelector(where.to)).getBoundingClientRect();
+      x = b.left + (where.dx ?? b.width / 2); y = b.top + (where.dy ?? b.height / 2);
+    }
+    const k = 1 / (n - i + 1);
+    f.x += ((x ?? f.x) - f.x) * k; f.y += ((y ?? f.y) - f.y) * k;
+    f.target.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, cancelable: true, composed: true, pointerId: 42, pointerType: 'touch', isPrimary: true,
+      clientX: f.x, clientY: f.y, button: 0, buttons: 1 }));
+  }
+}, [where, n]);
+/** @param {import('@playwright/test').Page} page */
+export const letGo = (page, wait = 80) => page.evaluate(async wait => {
+  const f = /** @type {any} */ (window).__finger;
+  await new Promise(r => setTimeout(r, wait));
+  f.target.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true, composed: true, pointerId: 42, pointerType: 'touch', isPrimary: true,
+    clientX: f.x, clientY: f.y, button: 0, buttons: 0 }));
+}, wait);
+/** the foot of what a list shows: the tab bar's top, or the window's foot @param {import('@playwright/test').Page} page */
+export const listFoot = page => page.evaluate(() => {
+  const t = /** @type {HTMLElement | null} */ (document.querySelector('.ui-tabbar'));
+  return t && t.offsetParent && t.getBoundingClientRect().height ? t.getBoundingClientRect().top : innerHeight;
+});
+
+// Real touches through the browser (CDP Input.dispatchTouchEvent): the page sees what a finger on a phone makes (touch
+// events, pointer events, the browser's own panning and its touch-action rules), which finger() and press() do not
+// (they send pointer events to one element). `paths` = one list of [x, y] page points per finger, all the same length
+// (the first point is where it lands, the last where it lifts); the fingers move together, `wait` ms between steps.
+/** @param {import('@playwright/test').Page} page @param {number[][][]} paths @param {{ wait?: number, hold?: number }} [o] */
+export async function fingers(page, paths, { wait = 16, hold = 0 } = {}) {
+  const cdp = await page.context().newCDPSession(page);
+  const points = i => paths.map((p, id) => ({ x: p[i][0], y: p[i][1], id }));
+  try {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: points(0) });
+    if (hold) await page.waitForTimeout(hold);
+    for (let i = 1; i < paths[0].length; i++) {
+      await page.waitForTimeout(wait);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: points(i) });
+    }
+    await page.waitForTimeout(wait);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  } finally { await cdp.detach().catch(() => {}); }
+}
+/** A straight path from (x, y) by (dx, dy) in n moves, for touch() */
+export const line = (x, y, dx, dy, n = 12) => Array.from({ length: n + 1 }, (_, i) => [Math.round(x + dx * i / n), Math.round(y + dy * i / n)]);

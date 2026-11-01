@@ -93,7 +93,9 @@ test('the app\'s own date words', () => {
   assert.deepEqual(due('a next week'), { date: '2026-11-02' }, 'the next Monday');
   assert.deepEqual(due('a next week', { nextWeekDay: 0 }), { date: '2026-11-08' }, 'a Sunday start, from a Sunday');
   assert.deepEqual(due('a later this week'), { date: '2026-11-03' });
-  assert.deepEqual(due('a this weekend'), { date: '2026-11-01' }, 'Sunday is still this weekend');
+  assert.deepEqual(due('a this weekend'), { date: '2026-11-07' }, 'said on a Sunday: the next Saturday');
+  assert.deepEqual(due('a this weekend', { now: new Date(2026, 10, 7, 10) }), { date: '2026-11-14' }, 'said on a Saturday: the next one');
+  assert.deepEqual(due('a weekend', { now: new Date(2026, 10, 3, 10) }), { date: '2026-11-07' }, 'weekend alone');
   assert.deepEqual(due('a this weekend', { now: new Date(2026, 10, 3, 10) }), { date: '2026-11-07' });
   assert.deepEqual(due('a next weekend', { now: new Date(2026, 10, 3, 10) }), { date: '2026-11-14' });
   assert.deepEqual(due('a end of month'), { date: '2026-11-30' });
@@ -129,6 +131,15 @@ test('chrono for the other dates', () => {
   assert.equal(due('review march report'), null, 'a month alone is a word');
   assert.equal(due('buy 2 apples'), null);
   assert.equal(due('a dec 5', { chrono: null }), null, 'without the library, its words stay text');
+});
+
+test('a date starts a word of its own, never mid-word', () => {
+  for (const t of ['Buy 2x4-10m', 'B-52s', 'invoice-3d', 'fix item-tomorrow', 'see x/dec 5', 'kept-mvy5h0j2-1319m']) {
+    assert.equal(due(t), null, t);
+    assert.equal(p(t).title, t, t);
+  }
+  assert.deepEqual(due('Report (dec 5)'), { date: '2026-12-05' }, 'after a bracket');
+  assert.deepEqual(due('Plan "tomorrow"'), { date: '2026-11-02' }, 'after a quote');
 });
 
 test('repeats: the first date comes from the rule', () => {
@@ -224,4 +235,44 @@ test('a repeat before the rule library has loaded: its first day all the same (t
   assert.deepEqual(due('Gym every fri', none), { date: '2026-11-06', rrule: 'FREQ=WEEKLY;BYDAY=FR', string: 'every fri' });
   assert.equal(due('Rent every month on the 15th', none)?.date, due('Rent every month on the 15th')?.date);
   assert.equal(due('Water plants every day', none)?.date, '2026-11-01');
+});
+
+test('for 45 min, for 1h, for 2h 30m, for 90 minutes: a duration, marked, out of the title', () => {
+  const r = p('Call the plumber tomorrow 10am for 45 min p2');
+  assert.equal(r.duration, 45);
+  assert.equal(r.title, 'Call the plumber');
+  assert.deepEqual(r.tokens.find(t => t.kind === 'duration'), { start: 31, end: 41, kind: 'duration', value: 45 });
+  assert.equal(r.due.time, '10:00');
+  assert.equal(p('a for 1h').duration, 60);
+  assert.equal(p('a for 2h 30m').duration, 150);
+  assert.equal(p('a for 90 minutes').duration, 90);
+  assert.equal(p('a for 1.5 hours').duration, 90);
+  assert.equal(p('a for 2 hrs, then rest').duration, 120);
+  assert.equal(p('a for 25 hours').duration, null, 'over a day stays text');
+  assert.equal(p('a for 0 min').duration, null);
+  assert.equal(p('shop for milk').duration, null);
+  assert.equal(p('a for 45 min', { smartDates: false }).duration, null, 'smart dates off');
+  assert.equal(p('a for 45 min', { ignore: [{ start: 2, end: 12 }] }).duration, null, 'cleared: text');
+});
+
+test('a time range: 10am-11:15am, 10-11am, from 2 to 3pm: the start and how long, the end marked as the duration', () => {
+  const r = p('Meet tomorrow 10am-11:15am p2');
+  assert.equal(r.title, 'Meet');
+  assert.deepEqual(r.due, { date: '2026-11-02', time: '10:00' });
+  assert.equal(r.duration, 75);
+  assert.deepEqual(r.tokens.map(t => [t.kind, 'Meet tomorrow 10am-11:15am p2'.slice(t.start, t.end)]), [['date', 'tomorrow 10am'], ['duration', '-11:15am'], ['priority', 'p2']]);
+  const from = p('Meet tomorrow from 10am to 11:15am');
+  assert.deepEqual([from.title, from.due, from.duration], ['Meet', { date: '2026-11-02', time: '10:00' }, 75]);
+  assert.deepEqual([p('a fri 2-3pm').due, p('a fri 2-3pm').duration], [{ date: '2026-11-06', time: '14:00' }, 60], 'the start takes the end’s pm');
+  assert.deepEqual([p('a tmr 11-1pm').due.time, p('a tmr 11-1pm').duration], ['11:00', 120], '…or the other, whichever is shorter');
+  assert.deepEqual([p('a tmr 14:00–15:30').due.time, p('a tmr 14:00–15:30').duration], ['14:00', 90]);
+  assert.deepEqual([p('a tmr 11pm-1am').due.time, p('a tmr 11pm-1am').duration], ['23:00', 120], 'past midnight');
+  assert.deepEqual([p('a 1pm-2pm').due, p('a 1pm-2pm').duration], [{ date: '2026-11-01', time: '13:00' }, 60], 'no day: today…');
+  assert.deepEqual(p('a 9am-10am').due, { date: '2026-11-02', time: '09:00' }, '…or tomorrow once it has passed');
+  const rep = p('Standup every mon 9am-9:15am');
+  assert.deepEqual([rep.title, rep.due.time, rep.due.string, rep.duration], ['Standup', '09:00', 'every mon', 15], 'with a repeat');
+  assert.equal(p('a tmr 10am-11am for 30 min').duration, 30, '"for" says how long');
+  assert.equal(p('Read pages 3-4').title, 'Read pages 3-4', 'no colon, no am/pm: words');
+  assert.equal(p('Call 555-1234').duration, null);
+  assert.equal(p('a tmr 10am-11am', { smartDates: false }).duration, null, 'smart dates off');
 });

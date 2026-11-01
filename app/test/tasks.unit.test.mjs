@@ -1,9 +1,10 @@
-// tasks.js and task-ops.js: what each list shows, the counts and cascades, and what a save stores.
+// tasks.js, arrange.js and task-ops.js: what each list shows, the counts and cascades, and what a save stores.
 // node --test app/test/tasks.unit.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { projectView, todayView, upcomingView, completedView, projectTree, projectCounts, todayCount, upcomingCount, placeText,
-  projectCascade, sectionCascade, cleanFields, cleanDue, isTask, dayOrder, labelsOf, cleanDisplay, plainDisplay, narrowTasks, sorter, groupTasks } from '../src/tasks.js';
+import { projectView, todayView, placeText, projectCascade, sectionCascade, cleanFields, cleanDue, isTask, dayOrder, labelsOf, cleanDisplay,
+  plainDisplay } from '../src/tasks.js';
+import { upcomingView, completedView, projectTree, projectCounts, todayCount, upcomingCount, narrowTasks, sorter, groupTasks } from '../src/arrange.js';
 import { rescheduled } from '../src/recur.js';
 import { taskOps, refusal, tasksGone } from '../src/task-ops.js';
 
@@ -91,6 +92,7 @@ test('where a task is, in words; the cascades a delete takes', () => {
 test('what a save stores: trimmed text, a priority of 1 to 4, a due map of known parts, empty ids as null', () => {
   assert.deepEqual(cleanFields({ title: '  milk  and  eggs ', priority: 0 }), { title: 'milk and eggs', priority: 4 });
   assert.equal(cleanFields({ title: 'x'.repeat(600) }).title?.length, 500);
+  assert.deepEqual([30, 2000, 0, null, 12.6].map(n => cleanFields({ duration: n }).duration), [30, 1440, null, null, 13]);
   assert.deepEqual(cleanFields({ priority: 2, sectionId: '', parentId: undefined, projectId: '' }), { priority: 2, sectionId: null, projectId: 'inbox' });
   assert.deepEqual(cleanDue({ date: T, time: '25:00', rrule: '', zone: 'x' }), { date: T });
   assert.deepEqual(cleanDue({ date: T, time: '09:30', rrule: 'FREQ=DAILY', fromDone: true }), { date: T, time: '09:30', rrule: 'FREQ=DAILY', fromDone: true });
@@ -137,6 +139,22 @@ test('complete takes the open subtasks along; untick brings them all back', asyn
   assert.equal(s.data.tasks.find(x => x.id === 'was').doneAt, 1, 'one done before keeps its time');
   await s.ops.untick(ticked);
   assert.deepEqual(s.data.tasks.filter(x => x.done).map(x => x.id), ['was']);
+});
+
+test('a repeating task ticked moves to its next date and reopens its done subtasks; unmove puts both back', async () => {
+  const due = { date: '2026-11-01', rrule: 'FREQ=WEEKLY', string: 'every week' };
+  const s = store({ tasks: [t('r', { due }), t('a', { parentId: 'r', done: true, doneAt: 5 }), t('aa', { parentId: 'a', done: true, doneAt: 6 }),
+    t('b', { parentId: 'r' }), t('x', { done: true, doneAt: 7 })] });
+  const r = await s.ops.complete(s.data.tasks[0], { next: '2026-11-08' });
+  assert.equal(r.refused, '');
+  assert.deepEqual(r.ticked, []);
+  assert.deepEqual(r.moved, due);
+  assert.deepEqual(r.reopened.map(x => x.id), ['a', 'aa']);
+  assert.deepEqual(s.data.tasks.map(x => [x.id, x.done, x.doneAt ?? null]), [['r', false, null], ['a', false, null], ['aa', false, null], ['b', false, null], ['x', true, 7]]);
+  assert.equal(s.data.tasks[0].due.date, '2026-11-08');
+  assert.equal(await s.ops.unmove(s.data.tasks[0], r.moved, r.reopened), '');
+  assert.deepEqual(s.data.tasks.map(x => [x.id, x.done, x.doneAt ?? null]), [['r', false, null], ['a', true, 5], ['aa', true, 6], ['b', false, null], ['x', true, 7]]);
+  assert.equal(s.data.tasks[0].due.date, '2026-11-01');
 });
 
 test('delete takes the subtasks; move takes them to the new project and section', async () => {
@@ -221,12 +239,32 @@ test('a task\'s labels: by id, or by name for older tasks; a deleted one is skip
 });
 
 test('Display: known choices only; Today groups by date, the rest by none', () => {
-  assert.deepEqual(cleanDisplay({}, 'today'), { group: 'date', sort: 'manual', dir: 'asc', completed: false, priority: 0, label: '', date: '' });
+  assert.deepEqual(cleanDisplay({}, 'today'), { group: 'date', sort: 'manual', dir: 'asc', completed: false, priority: 0, label: '', date: '', layout: '', cal: 'week', color: 'priority', allDay: false, future: false });
   assert.equal(cleanDisplay(null, 'inbox').group, 'none');
   assert.deepEqual(cleanDisplay({ group: 'x', sort: 'name', dir: 'desc', completed: true, priority: '2', date: 'week' }, 'p'),
-    { group: 'none', sort: 'name', dir: 'desc', completed: true, priority: 2, label: '', date: 'week' });
+    { group: 'none', sort: 'name', dir: 'desc', completed: true, priority: 2, label: '', date: 'week', layout: '', cal: 'week', color: 'priority', allDay: false, future: false });
   assert.ok(plainDisplay(cleanDisplay({}, 'today'), 'today'));
   assert.ok(!plainDisplay(cleanDisplay({ sort: 'name' }, 'today'), 'today'));
+});
+
+test('Display: the layout, the calendar\'s kind and colouring, the all-day row and future dates', () => {
+  for (const v of ['today', 'upcoming', 'inbox', 'project:p1', 'labels:l1', 'filters:f1']) assert.ok(plainDisplay(cleanDisplay({}, v), v), `${v} plain`);
+  const p = cleanDisplay({ layout: 'calendar', cal: 'month', color: 'label', allDay: false, future: true }, 'project:p1');
+  assert.deepEqual([p.layout, p.cal, p.color, p.allDay, p.future], ['calendar', 'month', 'label', false, true]);
+  assert.ok(!plainDisplay(p, 'project:p1'));
+  assert.equal(cleanDisplay({ layout: 'board' }, 'project:p1').layout, 'board');
+  assert.equal(cleanDisplay({ layout: 'board' }, 'inbox').layout, 'board', 'any list may be a board');
+  assert.equal(cleanDisplay({ layout: 'board' }, 'today').layout, 'board');
+  assert.equal(cleanDisplay({ layout: 'board' }, 'labels:l1').layout, 'board');
+  assert.equal(cleanDisplay({ layout: 'x' }, 'inbox').layout, '');
+  assert.equal(cleanDisplay({ cal: 'agenda' }, 'labels:l1').cal, 'agenda');
+  assert.equal(cleanDisplay({ cal: 'agenda' }, 'upcoming').cal, 'week', 'Upcoming has no agenda');
+  assert.equal(cleanDisplay({ cal: 'x' }, 'inbox').cal, 'week');
+  assert.equal(cleanDisplay({ color: 'project' }, 'filters:f1').color, 'project');
+  assert.equal(cleanDisplay({ color: 'project' }, 'inbox').color, 'priority', 'Inbox: not by project');
+  assert.equal(cleanDisplay({ color: 'project' }, 'project:p1').color, 'priority');
+  assert.equal(cleanDisplay({ allDay: 'no' }, 'today').allDay, false);
+  assert.equal(cleanDisplay({ future: 1 }, 'today').future, false);
 });
 
 const D = (o = {}) => ({ ...cleanDisplay({}, 'p'), ...o });
@@ -263,6 +301,18 @@ test('grouping by date, priority, label, project and none; done ones at each gro
   assert.deepEqual(g({ group: 'project' }), [['Inbox', ['cherry', 'date']], ['Home', ['apple']], ['Work', ['Banana']]]);
   assert.deepEqual(g({ group: 'priority', sort: 'name', dir: 'desc' }), [['Priority 1', ['cherry']], ['Priority 2', ['Banana', 'date']], ['No priority', ['apple']]],
     'a done task stays last whatever the sort');
+});
+
+test('by deadline: sorted (none last either way) and grouped (Overdue, each day, No deadline)', () => {
+  const list = () => [
+    t('w', { deadline: '2026-11-05' }), t('x', {}), t('y', { deadline: '2026-10-28' }), t('z', { deadline: T }), t('v', { deadline: '2026-10-20', done: true }),
+  ];
+  assert.deepEqual(titles(list().sort(sorter('deadline', 'asc'))), ['v', 'y', 'z', 'w', 'x']);
+  assert.deepEqual(titles(list().sort(sorter('deadline', 'desc'))), ['w', 'z', 'y', 'v', 'x']);
+  const g = groupTasks(list(), D({ group: 'deadline' }), { projects, labels, today: T }).map(x => [x.title, titles(x.tasks)]);
+  assert.deepEqual(g, [['Overdue', ['y']], ['20 Oct · Tuesday', ['v']], ['1 Nov · Today · Sunday', ['z']], ['5 Nov · Thursday', ['w']], ['No deadline', ['x']]]);
+  assert.equal(cleanDisplay({ group: 'deadline', sort: 'deadline' }, 'p').group, 'deadline');
+  assert.equal(cleanDisplay({ group: 'deadline', sort: 'deadline' }, 'p').sort, 'deadline');
 });
 
 test('the Display filter, and the completed switch\'s done tasks', () => {

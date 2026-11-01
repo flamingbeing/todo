@@ -53,6 +53,13 @@ export const labelName = name => text(name, 60).replace(/[#@%/]/g, '-').trim();
 /** a day that exists (not 2026-13-45) @param {string} s */
 const real = s => isDay(s) && new Date(Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8))).toISOString().slice(0, 10) === s;
 
+/** the planned length in minutes from the source's { amount, unit }: minutes (up to a day) only; a length in days is
+ * not a block on a day's grid, so it is left out @param {unknown} d @returns {number | null} */
+export function durationFrom(d) {
+  const o = /** @type {Record<string, unknown> | null} */ (d && typeof d === 'object' ? d : null), n = Math.round(Number(o?.amount));
+  return o?.unit === 'minute' && n >= 1 ? Math.min(1440, n) : null;
+}
+
 /**
  * A due map from the source's: 'YYYY-MM-DD', 'YYYY-MM-DDTHH:MM:SS' (floating: the same clock wherever) or with a Z (fixed: a
  * moment, shown on this device's clock).
@@ -210,7 +217,7 @@ export function mapImport(sync, { today = dayKey(), id = () => Math.random().toS
       priority: Math.min(4, Math.max(1, 5 - (Number(t.priority) || 1))),
       labels: [...new Set((Array.isArray(t.labels) ? t.labels : []).map(labelFor).filter(Boolean))].slice(0, 20),
       due: null, deadline: t.deadline && real(String(t.deadline.date)) ? String(t.deadline.date) : null,
-      collapsed: !!t.is_collapsed,
+      collapsed: !!t.is_collapsed, duration: durationFrom(t.duration),
     };
     if (due) {
       fields.due = due;

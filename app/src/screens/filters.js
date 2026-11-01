@@ -6,7 +6,8 @@
 import { icon, gripDrag, haptic } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { MORE } from '../icons-more.js';
-import { isTask, labelsOf, narrowTasks, groupTasks } from '../tasks.js';
+import { isTask, labelsOf } from '../tasks.js';
+import { narrowTasks, groupTasks } from '../arrange.js';
 import { colorHex } from '../colors.js';
 import { byOrder, placeAt } from '../order.js';
 import { flatten } from '../tree.js';
@@ -14,6 +15,8 @@ import { screens } from '../shell.js';
 import { runQuery, countQuery, errorText } from '../query.js';
 import { rowList, groupHead, emptyNote } from '../ui/row.js';
 import { el } from './pick.js';
+import { drawGroupBoard, addFor } from './board.js';
+import { INBOX } from '../items.js';
 import { openNamedSheet, queryContext } from './named-sheet.js';
 
 /** @typedef {import('./views.js').Ctx} Ctx */
@@ -115,8 +118,9 @@ function holdToDrag(b, list, drop) {
 /**
  * A label's or a filter's page into host. @param {Ctx} ctx @param {Place} place @param {HTMLElement} host @param {HTMLElement} empty
  * @param {import('../tasks.js').Display} d  this page's Display choices
+ * @param {(tasks: import('../items.js').Task[]) => void} [cal]  in its calendar layout: the tasks found go there (calendar.js)
  */
-export function drawPlace(ctx, place, host, empty, d) {
+export function drawPlace(ctx, place, host, empty, d, cal) {
   const data = ctx.data(), x = /** @type {(Label | Filter)[]} */ (data[place.kind]).find(y => y.id === place.id);
   const title = x?.name ?? (place.kind === 'filters' ? 'Filter' : 'Label');
   document.getElementById('place-title')?.replaceChildren(title);
@@ -142,6 +146,19 @@ export function drawPlace(ctx, place, host, empty, d) {
     // (a done task was let through as open to be tested; it shows as done again)
     lists = r.groups.map(g => ({ title: r.groups.length > 1 ? g.title : '', tasks: g.tasks.map(t => all.find(y => y.id === t.id) ?? t) }));
   }
+  if (cal) { cal([...new Set(lists.flatMap(l => l.tasks))]); return; }
+  const none = () => emptyNote('Nothing here', place.kind === 'labels' ? 'Tasks with this label show here' : 'Tasks this filter finds show here');
+  // what a task added from here starts with (a label's page: that label)
+  const base = place.kind === 'labels' ? { projectId: INBOX, labels: [x.name] } : { projectId: INBOX };
+  if (d.layout === 'board') {
+    if (!drawGroupBoard(ctx, { host, below: empty, tasks: [...new Set(lists.flatMap(l => l.tasks))], d, group: d.group, base, title })) empty.prepend(none());
+    return;
+  }
+  host.classList.remove('td-board');
+  host.removeAttribute('data-swipe-own');
+  host.toggleAttribute('data-sorted', d.sort !== 'manual');
+  // in Display's groups a row may be dragged to another (ui/row-drag.js: data-grouped, data-gkey); in none it stays put
+  if (d.group !== 'none') host.dataset.grouped = d.group; else delete host.dataset.grouped;
   let shown = 0;
   for (const list of lists) {
     const narrowed = narrowTasks(list.tasks, d, data.labels, today);
@@ -149,14 +166,29 @@ export function drawPlace(ctx, place, host, empty, d) {
     const sec = el('section', 'td-group');
     if (list.title) sec.append(groupHead(list.title));
     for (const g of groups) {
-      if (g.title) sec.append(el('h3', 'td-subgroup', g.title));
-      sec.append(rowList(flatten(g.tasks, all, { open: () => false }), c, g.title || list.title || title));
+      const box = d.group === 'none' ? sec : el('div', 'td-subgroup-box');
+      if (box !== sec) { box.dataset.gkey = g.key; sec.append(box); }
+      if (g.title) {
+        const h = el('div', 'td-subgroup'), a = addFor(d.group, g.key, data, base);
+        h.append(el('h3', 'td-subgroup-name', g.title));
+        if (a && ctx.canWrite()) {
+          // the "+" by a group's name: quick add with its value
+          const b = /** @type {HTMLButtonElement} */ (el('button', 'td-icon-btn td-group-add'));
+          b.type = 'button';
+          b.setAttribute('aria-label', `Add task to ${g.title}`);
+          b.append(icon(ICONS.plus));
+          b.addEventListener('click', () => ctx.openQuickAdd(a));
+          h.append(b);
+        }
+        box.append(h);
+      }
+      box.append(rowList(flatten(g.tasks, all, { open: () => false }), c, g.title || list.title || title));
       shown += g.tasks.length;
     }
     if (list.title || groups.some(g => g.tasks.length)) parts.push(sec);
   }
   host.replaceChildren(...parts);
-  empty.replaceChildren(...(shown ? [] : [emptyNote('Nothing here', place.kind === 'labels' ? 'Tasks with this label show here' : 'Tasks this filter finds show here')]));
+  empty.replaceChildren(...(shown ? [] : [none()]));
 }
 
 /** opens Filters & Labels */

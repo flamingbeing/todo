@@ -3,8 +3,10 @@
 // sections and tasks with it.
 import { icon } from '@core/ui';
 import { ICONS } from '../icons.js';
+import { MORE } from '../icons-more.js';
 import { INBOX, REFUSED } from '../items.js';
-import { projectTree, projectCascade } from '../tasks.js';
+import { projectCascade } from '../tasks.js';
+import { projectTree } from '../arrange.js';
 import { COLORS, DEFAULT_COLOR, colorHex, colorName } from '../colors.js';
 import { el, sheetHead, pickOne } from './pick.js';
 
@@ -70,7 +72,7 @@ export function openProjectSheet(ctx, o = {}) {
     const below = existing ? new Set(projectCascade(existing.id, ctx.data().projects, [], []).projects.map(p => p.id)) : new Set();
     const choose = (/** @type {string | null} */ id) => { draft.parentId = id; drawRows(); if (existing) void keep({ parentId: id }); };
     pickOne('Parent project', [
-      { label: 'None', icon: ICONS.ban, checked: !draft.parentId, run: () => choose(null) },
+      { label: 'None', icon: MORE.ban, checked: !draft.parentId, run: () => choose(null) },
       ...projectTree(ctx.data().projects.map(p => ({ ...p, collapsed: false }))).filter(({ project: p }) => !below.has(p.id))
         .map(({ project: p, depth }) => ({ label: p.name, icon: ICONS.hash, color: colorHex(p.color), depth, checked: draft.parentId === p.id, run: () => choose(p.id) })),
     ]);
@@ -79,7 +81,7 @@ export function openProjectSheet(ctx, o = {}) {
   // favourite: a switch
   const fav = el('label', 'td-attr td-switch-row');
   const box = Object.assign(document.createElement('input'), { type: 'checkbox', className: 'ui-switch', checked: draft.favorite });
-  fav.append(icon(ICONS.heart, { class: 'td-attr-icon' }), el('span', 'td-attr-label', 'Favorite'), box);
+  fav.append(icon(MORE.heart, { class: 'td-attr-icon' }), el('span', 'td-attr-label', 'Favorite'), box);
   box.addEventListener('change', () => { draft.favorite = box.checked; if (existing) void keep({ favorite: box.checked }); });
   rows.append(color.b, parent.b, fav);
 
@@ -87,7 +89,7 @@ export function openProjectSheet(ctx, o = {}) {
   if (existing && existing.id !== INBOX) {
     const del = /** @type {HTMLButtonElement} */ (el('button', 'td-card td-danger-row'));
     del.type = 'button';
-    del.append(icon(ICONS.trash2), el('span', '', 'Delete project'));
+    del.append(icon(MORE.trash2), el('span', '', 'Delete project'));
     del.addEventListener('click', async () => { const p = now(); if (p && await ctx.removeProject(p)) sheet.close(); });
     parts.push(del);
   }

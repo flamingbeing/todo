@@ -16,12 +16,12 @@ let n = 0;
 const t = (id, o = {}) => ({ id, title: id, projectId: 'inbox', order: ++n, priority: 4, done: false, ...o });
 const tasks = [
   t('a', { due: { date: T }, priority: 1, projectId: 'work' }),
-  t('b', { due: { date: '2026-11-05' }, labels: ['l1'] }),
+  t('b', { due: { date: '2026-11-05' }, labels: ['l1'], deadline: '2026-11-06' }),
   t('c', { due: { date: '2026-11-03', time: '09:00' }, projectId: 'home' }),
-  t('d', { projectId: 'reno', labels: ['l2', 'l3'] }),
+  t('d', { projectId: 'reno', labels: ['l2', 'l3'], deadline: T }),
   t('e', { due: { date: '2026-11-10', rrule: 'FREQ=WEEKLY' }, projectId: 'work', sectionId: 'w1', priority: 2 }),
   t('f', { parentId: 'a', projectId: 'work', sectionId: 'w2', description: 'Call the bank' }),
-  t('g', { due: { date: '2026-10-20' }, priority: 3, projectId: 'side' }),
+  t('g', { due: { date: '2026-10-20' }, priority: 3, projectId: 'side', deadline: '2026-11-01' }),
   t('h', { projectId: 'café', labels: ['errand'], title: 'Pick up crème' }),
   t('i', { due: { date: T }, done: true }),
   t('j', { projectId: 'amp', labels: ['l4'], due: { date: '2026-11-09' } }),
@@ -82,6 +82,13 @@ const cases = [
   ['!(today | overdue) & !no date', ['b', 'e', 'j']],
   ['p1 | p2 & #Work', ['a', 'e']],
   ['  today  ', ['a']],
+  ['deadline: today', ['d']],
+  ['deadline before: today', ['g']],
+  ['deadline after: today', ['b']],
+  ['deadline: friday', ['b']],
+  ['no deadline', ['a', 'c', 'e', 'f', 'h', 'j', 'k']],
+  ['!no deadline', ['b', 'd', 'g']],
+  ['!no deadline & no date', ['d']],
 ];
 for (const [q, want] of cases) test(`"${q}"`, () => assert.deepEqual(one(q), want));
 

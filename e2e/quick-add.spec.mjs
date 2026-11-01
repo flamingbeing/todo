@@ -1,6 +1,6 @@
 // Quick add: the words that set a date, priority, project, section, label or repeat are marked as typed and fill the
 // chips; Enter adds and keeps the sheet open; a chip's x leaves the words as text; # suggests projects; an unsent name
-// is kept; two pasted lines become two tasks once asked. The sheet passes axe.
+// is kept; two pasted lines become two tasks once asked. The sheet passes axe. "for 45 min" sets a duration.
 import AxeBuilder from './axe.mjs';
 import { test, expect, signIn, synced, uniq, today, db } from './fixtures.mjs';
 
@@ -91,4 +91,30 @@ test('a chip\'s x leaves the words as plain text; the draft is kept; two pasted 
   await expect(page.getByRole('dialog', { name: 'Add tasks' })).toBeVisible();
   await page.getByRole('button', { name: 'Add 2' }).click();
   await expect.poll(async () => [(await task(a))?.priority, (await task(b))?.priority], { timeout: 15_000 }).toEqual([4, 3]);
+});
+
+test('"for 45 min" is marked, shows the Duration chip, and the task gets the minutes; the chip menu changes them', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  await synced(page);
+  await openAdd(page);
+  const t = uniq('plumber');
+  await page.fill(name, `${t} today 3 pm for 45 min`);
+  await expect(page.locator('#add-sheet .td-hl[data-kind="duration"]')).toHaveText('for 45 min');
+  const chip = page.locator('#add-sheet .td-chip-main[aria-label^="Duration"]');
+  await expect(chip).toHaveAttribute('aria-label', 'Duration: 45 min');
+  expect(await AxeBuilder(page)).toEqual([]);
+  await page.press(name, 'Enter');
+  await expect.poll(async () => { const d = await task(t); return d && [d.duration, d.due?.time]; }, { timeout: 15_000 }).toEqual([45, '15:00']);
+
+  // set from the chip menu: the words stay text
+  const u = uniq('walk');
+  await page.fill(name, `${u} today 7 am for 1 hour`);
+  await expect(chip).toHaveAttribute('aria-label', 'Duration: 1 h');
+  await chip.click();
+  await page.getByRole('menuitemradio', { name: '30 min', exact: true }).or(page.getByRole('menuitem', { name: '30 min', exact: true })).click();
+  await expect(chip).toHaveAttribute('aria-label', 'Duration: 30 min');
+  await expect(page.locator('#add-sheet .td-hl[data-kind="duration"]')).toHaveCount(0);
+  await page.press(name, 'Enter');
+  await expect.poll(async () => (await task(`${u} for 1 hour`))?.duration, { timeout: 15_000 }).toBe(30);
 });

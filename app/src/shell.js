@@ -3,7 +3,7 @@
 // Settings is a screen pushed from Browse (its gear). It opens on a menu: a search box, the tabs taken off the bar (one
 // tap away), then a row per page; Back closes a page. The Tab bar page arranges the tabs (the kit's tabArranger; the
 // tabs option, this device); Browse always stays on the bar, since Settings is reached from it.
-import { startGestures, adaptiveShell, settingsScreen, createTransients, tabArranger, arrangeTabs, applyTabs } from '@core/ui';
+import { startGestures, adaptiveShell, settingsScreen, createTransients, tabArranger, arrangeTabs, applyTabs, tabPages, tabBack, toaster, CLOSE_MS } from '@core/ui';
 import { themeSwitch } from '@core/theme';
 import { APP } from './config.js';
 import { $ } from './dom.js';
@@ -20,8 +20,11 @@ import { modules } from './modules.js';
 // The Settings menu's headings, in this order; a page whose group is not listed goes under 'Other' (last), so a new
 // page is never left out and a recipe never edits this list
 const SETTINGS_GROUPS = ['Tasks', 'Look', 'Sharing', 'Data', 'Advanced', 'Other'];
+// (a page whose visible() is false now is left out: the kit keeps a group's heading even when all its pages are hidden,
+// so an Advanced with no features showed an empty heading; a key-gated page stays, as it can turn on live)
 /** @param {import('app-ui/ui/settings-screen.js').SettingSection[]} sections */
 const byGroup = sections => sections
+  .filter(s => typeof s.visible !== 'function' || s.visible())
   .map(s => (SETTINGS_GROUPS.includes(s.group ?? '') ? s : { ...s, group: 'Other' }))
   .sort((a, b) => SETTINGS_GROUPS.indexOf(a.group ?? '') - SETTINGS_GROUPS.indexOf(b.group ?? ''));
 
@@ -31,17 +34,63 @@ const TAB_RULES = { fixed: ['browse'] };
 /** @type {any} */
 let kit = null;
 /** the kit's screens (push and pop), once the shell has started */
-export const screens = () => /** @type {{ push: (sel: string) => unknown, pop: () => unknown } | undefined} */ (kit?.screens);
+export const screens = () => /** @type {{ push: (sel: string) => unknown, pop: () => unknown, depth: () => number } | undefined} */ (kit?.screens);
 
 // The shell starts first, as soon as the page's scripts have run, so the tabs and the menu work while the app is still
 // starting; the Settings page follows (settingsPage) once the app and its options are there.
 // A page that draws itself late (a lazy screen, a list filled on first view) listens for 'draw-ahead' and draws a
 // still copy then, so a swipe or a quick flick never brings it in blank (app-ui rc.69 `ahead`, from the logbook).
 // An app that empties its hidden pages must spare the `.is-beside` ones.
+//
+// STOPGAP (app-ui ask "home tab", owner's notes): tabPages sends Back to the first tab on the bar and opens on the lit
+// one; this app's Home (option `home`, Today) is where it opens and Back goes, and moving tabs in the DOM would change
+// the swipe order. So startGestures runs without the tabs' pages, tabPages starts here with its Back off, and the kit's
+// tabBack runs with Home as first. Drop it when tabPages takes a `home` option: call startGestures as before.
+/** the Home view's tab id, kept here so the next start opens on it before the options load */
+const HOME_KEY = 'td-home';
+let home = 'today';
+try { home = localStorage.getItem(HOME_KEY) || 'today'; } catch { /* none */ }
+const steps = createTransients({ history, location, events: window });
+/** @param {HTMLElement} t a tab on the bar that shows */
+const live = t => !t.hidden && !t.hasAttribute('data-off-bar');
 export function startShell() {
+  const bar = /** @type {HTMLElement} */ (document.querySelector('.ui-tabbar'));
+  const host = /** @type {HTMLElement} */ (document.querySelector('.ui-screens'));
+  const tabs = /** @type {HTMLElement[]} */ ([...bar.querySelectorAll('[data-tab-page]')]);
+  const pages = tabs.map(t => t.getAttribute('data-tab-page') ?? '');
+  const tabOf = (/** @type {string} */ id) => tabs.find(t => t.dataset.tabId === id && live(t));
+  /** the Home view's page: its tab if it shows, else Today's, else the first */
+  const homePage = () => document.querySelector((tabOf(home) ?? tabOf('today') ?? tabs.find(live))?.getAttribute('data-tab-page') ?? '');
+  for (const t of tabs) t.removeAttribute('data-tab-page');
   kit = startGestures(document, { ahead: page => page.dispatchEvent(new CustomEvent('draw-ahead')) });
+  tabs.forEach((t, i) => t.setAttribute('data-tab-page', pages[i]));
+  const start = tabOf(home);
+  if (start) for (const t of tabs) { if (t === start) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); }
+  const go = tabPages(bar, { screens: kit.screens, host, ahead: page => page.dispatchEvent(new CustomEvent('draw-ahead')), backToFirst: false });
+  kit.tabs = go;
+  try { history.scrollRestoration = 'manual'; } catch { /* none */ }
+  /** @type {(() => void) | null} */
+  let unsay = null;
+  const back = tabBack({ history, events: window, first: go.current() === homePage(), onFirst: () => { go.go(/** @type {HTMLElement} */ (homePage())); },
+    onClose: () => { unsay?.(); unsay = toaster(document.body).show('Press Back again to close', { ms: CLOSE_MS }); } });
+  host.addEventListener('ui-tab', e => back.went(/** @type {CustomEvent} */ (e).detail.page === homePage()));
+  // a tab tapped over a Settings page closes the page's history step first, then goes; the current tab scrolls to top
+  let again = false;
+  bar.addEventListener('click', e => {
+    const t = /** @type {Element} */ (e.target).closest('[data-tab-page]');
+    if (!t) return;
+    // (`again`: a reload can leave ids in the entry)
+    if (!again && history.state?.uiTransient?.ids?.length) { e.stopPropagation(); e.preventDefault(); again = true; void steps.dismissAll().then(() => { /** @type {HTMLElement} */ (t).click(); again = false; }); }
+    else if (document.querySelector(t.getAttribute('data-tab-page') ?? '') === go.current() && !kit.screens.depth()) scrollTo({ top: 0, behavior: 'smooth' });
+  });
   const shell = adaptiveShell(/** @type {HTMLElement} */ (document.querySelector('.ui-shell')), { screens: kit.screens });
   Object.assign(window, { kit, shell });   // for the tests
+}
+
+/** the Home view's tab, from the options (the next start opens on it) @param {unknown} id */
+export function setHome(id) {
+  home = String(id);
+  try { localStorage.setItem(HOME_KEY, home); } catch { /* none */ }
 }
 
 /** the tab bar's tabs, in index.html's order (an app's own hidden ones left out) */
@@ -126,7 +175,7 @@ export function settingsPage(app) {
 
   settingsScreen($('settings-host'), {
     settings,
-    menu: { steps: createTransients({ history, location, events: window }), top: offBar, onPage },
+    menu: { steps, top: offBar, onPage },
     sections: byGroup([
       ...SETTING_SECTIONS,
       { title: 'Tab bar', icon: ICONS.menu, sub: 'Order, and which tabs show', group: 'Look', find: 'arrange tabs', mount: host => {
@@ -151,4 +200,6 @@ export function settingsPage(app) {
   };
   settings.watch(null, apply);
   apply();
+  setHome(settings.get('home'));
+  settings.watch('home', setHome);
 }

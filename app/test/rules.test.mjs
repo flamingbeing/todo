@@ -110,6 +110,13 @@ test('tasks: title, description, ids, order, priority, labels, deadline and done
   ['labels that are not a list', { labels: 'errand' }, false],
   ['21 labels', { labels: Array.from({ length: 21 }, (_, i) => `l${i}`) }, false],
   ['20 labels', { labels: Array.from({ length: 20 }, (_, i) => `l${i}`) }, true],
+  ['a label of 64', { labels: ['a', 'x'.repeat(64)] }, true],
+  ['a label of 65', { labels: ['a', 'x'.repeat(65)] }, false],
+  ['the 20th label too long', { labels: [...Array.from({ length: 19 }, (_, i) => `l${i}`), 'x'.repeat(65)] }, false],
+  ['a label that is not text', { labels: ['a', 7] }, false],
+  ['an empty label', { labels: [''] }, false],
+  ['no labels', { labels: [] }, true],
+  ['20 labels of 64', { labels: Array.from({ length: 20 }, (_, i) => `${i}`.padEnd(64, 'x')) }, true],
   ['a deadline that is not a day', { deadline: '30/11/2026' }, false],
   ['collapsed as text', { collapsed: 'yes' }, false],
   ['done as text', { done: 'no' }, false],
@@ -118,6 +125,24 @@ test('tasks: title, description, ids, order, priority, labels, deadline and done
   ['doneAt as text', { doneAt: 'x' }, false],
   ['an extId over 64', { extId: 'x'.repeat(65) }, false],
 ]));
+
+test('tasks: a duration is whole minutes from 1 to 1440, or null', () => cases('tasks', [
+  ['30 minutes', { duration: 30 }, true],
+  ['a whole day', { duration: 1440 }, true],
+  ['null clears it', { duration: null }, true],
+  ['0 minutes', { duration: 0 }, false],
+  ['1441 minutes', { duration: 1441 }, false],
+  ['2.5 minutes', { duration: 2.5 }, false],
+  ['as text', { duration: '30' }, false],
+]));
+test('tasks: a duration changes on an update, and null clears it', async () => {
+  await emu.clear();
+  const path = 'spaces/_/tasks/d', base = { ...VALID.tasks, createdAt: 1 };
+  assert.equal((await as('member').set(path, { ...base, duration: 30 }, at)).ok, true, 'create with 30');
+  assert.equal((await as('member').set(path, { ...base, duration: 1440, updatedAt: 2 }, at)).ok, true, 'update to 1440');
+  assert.equal((await as('member').set(path, { ...base, duration: null, updatedAt: 3 }, at)).ok, true, 'update to null');
+  assert.equal((await as('member').set(path, { ...base, duration: 0, updatedAt: 4 }, at)).ok, false, 'update to 0');
+});
 
 test('tasks: a due date is a map of a day, and optionally a time, a repeat, its words and fromDone', () => cases('tasks', [
   ['a day', { due: { date: '2026-11-01' } }, true],
@@ -199,7 +224,7 @@ test('bin entries: writers stamp them; viewers only read', async () => {
 
 test('account options: one doc per person, only theirs, only the allowed fields', async () => {
   await emu.clear();
-  const mine = { showCounts: true, updatedAt: 1 };
+  const mine = { profile: 'p1', updatedAt: 1 };
   for (const role of ['admin', 'member', 'viewer']) {
     assert.equal((await as(role).set(`spaces/_/settings/u-${role}`, mine, at)).ok, true, `${role} saves their own`);
     assert.equal((await as(role).get(`spaces/_/settings/u-${role}`)).ok, true);
@@ -210,12 +235,13 @@ test('account options: one doc per person, only theirs, only the allowed fields'
   assert.equal((await emu.as('u-new', {}).set('spaces/_/settings/u-new', mine, at)).ok, false, 'no role, no access');
   assert.equal((await as('member').set('spaces/_/settings/u-member', mine)).ok, false, 'unstamped');
   assert.equal((await as('member').set('spaces/_/settings/u-member', { ...mine, other: 1 }, at)).ok, false, 'an option the app did not list');
-  assert.equal((await as('member').set('spaces/_/settings/u-member', { showCounts: 'yes', updatedAt: 1 }, at)).ok, false, 'wrong type');
-  // (an older version's doc still holds defaultList: saving other options to it must go on working)
+  assert.equal((await as('member').set('spaces/_/settings/u-member', { profile: 7, updatedAt: 1 }, at)).ok, false, 'wrong type');
+  // (an older version's doc still holds defaultList and showCounts, now per device: saving other options to it must go on working)
   await emu.seed('spaces/_/settings/u-member', { defaultList: 'l1', showCounts: false, updatedAt: 1 });
-  assert.equal((await as('member').update('spaces/_/settings/u-member', { defaultList: 'l1', showCounts: true, updatedAt: 2 }, at)).ok, true, 'a doc with the old option still saves');
+  assert.equal((await as('member').update('spaces/_/settings/u-member', { profile: 'p2', updatedAt: 2 }, at)).ok, true, 'a doc with the old options still saves');
+  assert.equal((await as('member').set('spaces/_/settings/u-member', { showCounts: 'yes', updatedAt: 3 }, at)).ok, false, 'the old option, checked as before');
   assert.equal((await as('member').set('spaces/_/settings/u-member', { defaultList: 'x'.repeat(65), updatedAt: 3 }, at)).ok, false, 'the old option, checked as before');
-  assert.equal((await as('member').set('spaces/_/settings/u-member', { showCounts: null, profile: null, updatedAt: 2 }, at)).ok, true, 'null forgets a value');
+  assert.equal((await as('member').set('spaces/_/settings/u-member', { showCounts: null, profile: null, updatedAt: 4 }, at)).ok, true, 'null forgets a value');
 });
 
 for (const m of mods) m.tests?.({ test, assert, emu, as });

@@ -8,7 +8,8 @@ import { icon, gripDrag } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { $ } from '../dom.js';
 import { INBOX } from '../items.js';
-import { projectTree, projectCounts, todayCount, upcomingCount, isTask, labelsOf } from '../tasks.js';
+import { isTask, labelsOf } from '../tasks.js';
+import { projectTree, projectCounts, todayCount, upcomingCount } from '../arrange.js';
 import { MORE } from '../icons-more.js';
 import { countQuery } from '../query.js';
 import { queryContext } from './named-sheet.js';
@@ -62,11 +63,13 @@ export function drawBrowse(ctx, host) {
   // the top: the person, and the gear, in the bar's row (index.html #browse-top)
   const top = $('browse-top');
   const me = el('span', 'td-pill'), u = ctx.user();
+  // (a name, or an email's part before the @: short enough for the pill, cut with "…" if still long)
+  const who = String(u?.name ?? '').trim().split('@')[0];
   const face = el('span', 'td-avatar');
   if (u?.photo) { const img = Object.assign(document.createElement('img'), { src: u.photo, alt: '', referrerPolicy: 'no-referrer' }); face.append(img); }
-  else if (u?.name) face.textContent = u.name.trim().charAt(0).toUpperCase();
-  else face.append(icon(ICONS.user));
-  me.append(face, el('span', 'td-pill-name', u?.name || 'Signed out'));
+  else if (who) face.textContent = who.charAt(0).toUpperCase();
+  else face.append(icon(MORE.user));
+  me.append(face, el('span', 'td-pill-name', who || 'Signed out'));
   const gear = /** @type {HTMLButtonElement} */ (el('button', 'td-round'));
   gear.type = 'button';
   gear.id = 'browse-settings';
@@ -78,8 +81,8 @@ export function drawBrowse(ctx, host) {
   const places = card('Places', [
     row({ label: 'Inbox', ic: ICONS.inbox, count: n(counts.get(INBOX) ?? 0), run: () => tab('inbox') }),
     row({ label: 'Today', ic: ICONS.calendar, count: n(todayCount(data.tasks, today)), run: () => tab('today') }),
-    row({ label: 'Upcoming', ic: ICONS.calendarDays, count: n(upcomingCount(data.tasks, today)), run: () => tab('upcoming') }),
-    row({ label: 'Filters & Labels', ic: ICONS.layoutGrid, run: openFiltersLabels }),
+    row({ label: 'Upcoming', ic: MORE.calendarDays, count: n(upcomingCount(data.tasks, today)), run: () => tab('upcoming') }),
+    row({ label: 'Filters & Labels', ic: MORE.layoutGrid, run: openFiltersLabels }),
     row({ label: 'Completed', ic: ICONS.circleCheck, run: () => screens()?.push('#completed-page') }),
   ]);
 
@@ -122,7 +125,7 @@ export function drawBrowse(ctx, host) {
     const tree = projectTree(data.projects);
     if (tree.length) {
       const rows = tree.map(({ project, depth }) => projectRow(project, depth));
-      if (ctx.canWrite()) rows.push(row({ label: 'Manage projects', ic: ICONS.gripVertical, run: () => manageProjects(ctx) }));
+      if (ctx.canWrite()) rows.push(row({ label: 'Manage projects', ic: MORE.gripVertical, run: () => manageProjects(ctx) }));
       parts.push(card('My Projects', rows));
     }
     else parts.push(el('p', 'td-browse-none', ctx.canWrite() ? 'No projects yet. Tap + to add one.' : 'No projects yet.'));
@@ -160,7 +163,7 @@ export function manageProjects(ctx) {
       grip.dataset.id = project.id;
       grip.setAttribute('aria-label', `Move ${project.name}`);
       grip.setAttribute('aria-keyshortcuts', 'ArrowUp ArrowDown');
-      grip.append(icon(ICONS.gripVertical));
+      grip.append(icon(MORE.gripVertical));
       grip.addEventListener('pointerdown', e => gripDrag(e, list, drop));
       // the keys: past the next project at its level, up or down
       grip.addEventListener('keydown', e => {

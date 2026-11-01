@@ -101,6 +101,7 @@
         </div>
         <!-- }cloud -->
         <div id="list-view" hidden>
+          <p id="today-sum" class="td-day-sum"></p>
           <div id="conflict-sheet"></div>
           <div id="refused-list"></div>
           <div id="list-tools"></div>
@@ -208,6 +209,10 @@
   </dialog>
   <dialog class="ui-sheet td-sheet" id="edit-sheet" data-detents="large" data-wide="panel" aria-label="Label or filter">
     <div class="ui-sheet-grabber" aria-hidden="true"></div>
+    <div class="td-sheet-body" data-fill></div>
+  </dialog>
+  <dialog class="ui-sheet td-sheet" id="cal-sheet" data-detents="medium large" data-wide="panel" aria-label="Tasks">
+    <div class="ui-sheet-grabber" aria-label="Expand or collapse"></div>
     <div class="td-sheet-body" data-fill></div>
   </dialog>
   <dialog class="ui-sheet td-sheet td-display-sheet" id="display-sheet" data-detents="large" data-wide="panel" aria-label="Display">
