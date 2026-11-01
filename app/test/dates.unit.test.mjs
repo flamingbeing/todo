@@ -1,7 +1,7 @@
 // dates.js: day maths, the tone and words of a due date, group headers. node --test app/test/dates.unit.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dayKey, timeKey, addDays, daysBetween, isDay, isTime, weekdayName, shortDate, dateTone, dayWords, dueLine, dayTitle, timeText } from '../src/dates.js';
+import { dayKey, timeKey, addDays, daysBetween, isDay, isTime, weekdayName, shortDate, dateTone, dayWords, dueLine, dayTitle, timeText, weekOf, monthGrid, monthTitle } from '../src/dates.js';
 
 const T = '2026-11-01';   // a Sunday
 
@@ -59,4 +59,23 @@ test('group headers: "1 Nov · Today · Sunday", "2 Nov · Tomorrow · Monday", 
   assert.equal(dayTitle('2026-11-02', T), '2 Nov · Tomorrow · Monday');
   assert.equal(dayTitle('2026-11-03', T), '3 Nov · Tuesday');
   assert.equal(dayTitle('2027-01-01', T), '1 Jan 2027 · Friday');
+});
+
+test('a week starts on Monday or Sunday as set', () => {
+  // 2026-11-04 is a Wednesday
+  assert.equal(weekOf('2026-11-04', 1), '2026-11-02');
+  assert.equal(weekOf('2026-11-04', 0), '2026-11-01');
+  assert.equal(weekOf('2026-11-02', 1), '2026-11-02', 'a Monday is its own week\'s start');
+  assert.equal(weekOf('2026-11-01', 1), '2026-10-26', 'a Sunday is the end of a Monday week');
+  assert.equal(weekOf('2026-11-01', 0), '2026-11-01');
+  assert.equal(weekOf('2027-01-01', 1), '2026-12-28', 'across a year');
+});
+
+test('a month grid: whole weeks from the 1st\'s week to the last day\'s', () => {
+  const mon = monthGrid('2026-11', 1), sun = monthGrid('2026-11', 0);
+  assert.deepEqual([mon[0][0], mon.at(-1)?.at(-1), mon.length], ['2026-10-26', '2026-12-06', 6]);
+  assert.deepEqual([sun[0][0], sun.at(-1)?.at(-1), sun.length], ['2026-11-01', '2026-12-05', 5]);
+  assert.ok(mon.every(w => w.length === 7));
+  assert.equal(monthGrid('2027-02', 1).length, 4, 'February 2027 starts on a Monday and fills four weeks');
+  assert.equal(monthTitle('2026-11-04'), 'November 2026');
 });

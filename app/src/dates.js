@@ -80,3 +80,16 @@ export function dayTitle(key, today) {
   const n = daysBetween(today, key);
   return [shortDate(key, today), n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : '', weekdayName(key)].filter(Boolean).join(' · ');
 }
+
+/** the first day of key's week (weekStart 1: Monday, 0: Sunday) @param {string} key @param {number} [weekStart] */
+export const weekOf = (key, weekStart = 1) => addDays(key, -((weekdayOf(key) - weekStart + 7) % 7));
+/** a month as weeks of 7 days, from the week its 1st is in to the week its last day is in (days of the months
+ * beside it included) @param {string} month YYYY-MM @param {number} [weekStart] @returns {string[][]} */
+export function monthGrid(month, weekStart = 1) {
+  const first = `${month}-01`, next = addDays(first, 32).slice(0, 7), last = addDays(`${next}-01`, -1);
+  const weeks = [];
+  for (let d = weekOf(first, weekStart); d <= last; d = addDays(d, 7)) weeks.push(Array.from({ length: 7 }, (_, i) => addDays(d, i)));
+  return weeks;
+}
+/** "November 2026" @param {string} key */
+export const monthTitle = key => `${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][+key.slice(5, 7) - 1]} ${key.slice(0, 4)}`;

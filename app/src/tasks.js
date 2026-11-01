@@ -2,7 +2,7 @@
 // sections, Today and Upcoming by day, the done tasks, the projects' tree and the counts. A record without a title is
 // skipped (an older copy, or not a task yet).
 import { INBOX } from './items.js';
-import { dueOf, isDay, isTime, addDays } from './dates.js';
+import { dueOf, isDay, isTime, addDays, dayTitle } from './dates.js';
 import { flatten, descendants } from './tree.js';
 import { byOrder } from './order.js';
 import { isColor, DEFAULT_COLOR } from './colors.js';
@@ -11,6 +11,7 @@ import { isColor, DEFAULT_COLOR } from './colors.js';
 /** @typedef {import('./items.js').Project} Project */
 /** @typedef {import('./items.js').Section} Section */
 /** @typedef {import('./tree.js').Line<Task>} Line */
+/** @typedef {import('./items.js').Label} Label */
 
 /** @param {unknown} x @returns {x is Task} */
 export const isTask = x => !!x && typeof (/** @type {Task} */ (x)).title === 'string' && !!(/** @type {Task} */ (x)).title;
@@ -24,14 +25,16 @@ const open = (/** @type {Task[]} */ tasks) => tasks.filter(t => isTask(t) && !t.
 /**
  * A project's page (the Inbox too): its open top tasks with no section first, then each section with its own. A
  * subtask shows under its parent; one whose parent is gone or done shows as a top task.
+ * Display's order (cmp; done tasks last) and its choice of tasks (keep) when given.
  * @param {Task[]} tasks @param {Section[]} sections @param {string} projectId
  * @returns {{ loose: Line[], sections: { section: Section, lines: Line[] }[] }}
  */
-export function projectView(tasks, sections, projectId) {
-  const mine = open(tasks).filter(t => projectOf(t) === projectId), ids = new Set(mine.map(t => t.id));
+export function projectView(tasks, sections, projectId, { cmp, keep } = /** @type {{ cmp?: (a: Task, b: Task) => number, keep?: (t: Task) => boolean }} */ ({})) {
+  const mine = (keep ? tasks.filter(t => isTask(t) && keep(t)) : open(tasks)).filter(t => projectOf(t) === projectId), ids = new Set(mine.map(t => t.id));
   const own = byOrder(sections.filter(s => s && s.projectId === projectId && s.name));
   const known = new Set(own.map(s => s.id));
-  const tops = byOrder(mine.filter(t => !t.parentId || !ids.has(t.parentId)));
+  const tops = mine.filter(t => !t.parentId || !ids.has(t.parentId));
+  if (cmp) tops.sort((a, b) => Number(!!a.done) - Number(!!b.done) || cmp(a, b)); else tops.splice(0, Infinity, ...byOrder(tops));
   const sectionOf = (/** @type {Task} */ t) => (t.sectionId && known.has(t.sectionId) ? t.sectionId : '');
   const all = tasks.filter(isTask);
   return {
@@ -51,7 +54,7 @@ export function dayOrder(a, b) {
   return priorityOf(a) - priorityOf(b) || num(a.dayOrder ?? a.order) - num(b.dayOrder ?? b.order) || num(a.createdAt) - num(b.createdAt);
 }
 /** rows for a list by day: each task alone (its subtasks show only on their own dates), with its counts */
-const dayLines = (/** @type {Task[]} */ list, /** @type {Task[]} */ all) => flatten(list.sort(dayOrder), all, { open: () => false });
+const dayLines = (/** @type {Task[]} */ list, /** @type {Task[]} */ all, cmp = dayOrder) => flatten(list.sort(cmp), all, { open: () => false });
 
 /** Today: what is overdue (before today), then what is due today @param {Task[]} tasks @param {string} today */
 export function todayView(tasks, today) {
@@ -62,15 +65,16 @@ export function todayView(tasks, today) {
   };
 }
 
-/** Upcoming: what is overdue, then every day from today for `days` days, empty days included @param {Task[]} tasks @param {string} today @param {number} days */
-export function upcomingView(tasks, today, days) {
+/** Upcoming: what is overdue, then every day from today for `days` days, empty days included (each in cmp's order)
+ * @param {Task[]} tasks @param {string} today @param {number} days @param {(a: Task, b: Task) => number} [cmp] */
+export function upcomingView(tasks, today, days, cmp = dayOrder) {
   const dated = open(tasks).filter(t => dueOf(t.due)), all = tasks.filter(isTask);
   /** @type {Map<string, Task[]>} */
   const by = new Map();
   for (const t of dated) { const k = /** @type {any} */ (t.due).date; (by.get(k) ?? by.set(k, []).get(k))?.push(t); }
   return {
-    overdue: dayLines(dated.filter(t => /** @type {any} */ (t.due).date < today), all),
-    days: Array.from({ length: days }, (_, i) => { const key = addDays(today, i); return { key, lines: dayLines(by.get(key) ?? [], all) }; }),
+    overdue: dayLines(dated.filter(t => /** @type {any} */ (t.due).date < today), all, cmp),
+    days: Array.from({ length: days }, (_, i) => { const key = addDays(today, i); return { key, lines: dayLines(by.get(key) ?? [], all, cmp) }; }),
   };
 }
 
@@ -185,3 +189,104 @@ export function cleanFields(f) {
 
 /** a colour key the rules take @param {unknown} c */
 export const cleanColor = c => (isColor(c) ? /** @type {string} */ (c) : DEFAULT_COLOR);
+
+/** a task's labels as records: by id, or by name for older tasks; one whose label is gone is left out
+ * @param {Task} t @param {Label[]} labels @returns {Label[]} */
+export function labelsOf(t, labels) {
+  const out = /** @type {Label[]} */ ([]);
+  for (const v of Array.isArray(t.labels) ? t.labels : []) {
+    const l = labels.find(x => x.id === v) ?? labels.find(x => x.name && x.name.toLowerCase() === String(v).toLowerCase());
+    if (l && !out.includes(l)) out.push(l);
+  }
+  return out;
+}
+
+// ---- Display: a list's grouping, sorting, filter and completed switch (per view, this device; screens/display.js)
+/** @typedef {{ group: string, sort: string, dir: 'asc' | 'desc', completed: boolean, priority: number, label: string, date: string }} Display */
+export const GROUPS = ['none', 'date', 'priority', 'label', 'project'];
+export const SORTS = ['manual', 'name', 'date', 'priority', 'added'];
+export const DATE_FILTERS = ['', 'today', 'week', 'overdue', 'nodate'];
+/** a view's Display choices, known values only (Today groups by date, the rest by none)
+ * @param {unknown} v @param {string} view @returns {Display} */
+export function cleanDisplay(v, view) {
+  const o = /** @type {Record<string, unknown>} */ (v && typeof v === 'object' ? v : {}), str = (/** @type {string} */ k) => String(o[k] ?? '');
+  return {
+    group: GROUPS.includes(str('group')) ? str('group') : view === 'today' ? 'date' : 'none',
+    sort: SORTS.includes(str('sort')) ? str('sort') : 'manual',
+    dir: o.dir === 'desc' ? 'desc' : 'asc',
+    completed: o.completed === true,
+    priority: [1, 2, 3, 4].includes(Number(o.priority)) ? Number(o.priority) : 0,
+    label: typeof o.label === 'string' ? o.label.slice(0, 64) : '',
+    date: DATE_FILTERS.includes(str('date')) ? str('date') : '',
+  };
+}
+/** whether a view's choices are the defaults @param {Display} d @param {string} view */
+export const plainDisplay = (d, view) => JSON.stringify(d) === JSON.stringify(cleanDisplay({}, view));
+
+/** the tasks the Display filter lets through @param {Task[]} tasks @param {Display} d @param {Label[]} labels @param {string} today */
+export function narrowTasks(tasks, d, labels, today) {
+  return tasks.filter(t => {
+    if (d.priority && priorityOf(t) !== d.priority) return false;
+    if (d.label && !labelsOf(t, labels).some(l => l.id === d.label)) return false;
+    const due = dueOf(t.due)?.date;
+    if (d.date === 'today') return !!due && due <= today;
+    if (d.date === 'week') return !!due && due <= addDays(today, 6);
+    if (d.date === 'overdue') return !!due && due < today;
+    if (d.date === 'nodate') return !due;
+    return true;
+  });
+}
+
+/** a comparator for a sort key and direction; manual is the list's own order (a task with no date sorts last either way)
+ * @param {string} sort @param {'asc' | 'desc'} dir @param {(a: Task, b: Task) => number} [manual] */
+export function sorter(sort, dir, manual = (a, b) => num(a.order) - num(b.order)) {
+  const when = (/** @type {Task} */ t) => { const d = dueOf(t.due); return d ? `${d.date}T${isTime(d.time) ? d.time : '~'}` : ''; };
+  /** @type {Record<string, (a: Task, b: Task) => number>} */
+  const by = {
+    name: (a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }),
+    date: (a, b) => (when(a) < when(b) ? -1 : when(a) > when(b) ? 1 : 0),
+    priority: (a, b) => priorityOf(a) - priorityOf(b),
+    added: (a, b) => num(a.createdAt) - num(b.createdAt),
+  };
+  const f = by[sort];
+  if (!f) return manual;
+  const sign = dir === 'desc' ? -1 : 1;
+  return (/** @type {Task} */ a, /** @type {Task} */ b) => {
+    if (sort === 'date' && !when(a) !== !when(b)) return when(a) ? -1 : 1;
+    return sign * f(a, b) || manual(a, b);
+  };
+}
+
+/**
+ * A flat list in groups (Display's grouping): by date (Overdue, each day, No date), priority, label (a task with two
+ * shows under both; No label last) or project; none is one group. Done tasks (when given) go to each group's end.
+ * @param {Task[]} tasks @param {Display} d
+ * @param {{ projects: Project[], labels: Label[], today: string, manual?: (a: Task, b: Task) => number }} c
+ * @returns {{ key: string, title: string, tasks: Task[] }[]}
+ */
+export function groupTasks(tasks, d, c) {
+  /** @type {Map<string, { key: string, title: string, tasks: Task[] }>} */
+  const by = new Map();
+  const into = (/** @type {string} */ key, /** @type {string} */ title, /** @type {Task} */ t) => (by.get(key) ?? by.set(key, { key, title, tasks: [] }).get(key))?.tasks.push(t);
+  const list = tasks.filter(isTask);
+  if (d.group === 'date') {
+    for (const t of list) {
+      const due = dueOf(t.due)?.date;
+      if (!due) into('~', 'No date', t);
+      else if (due < c.today && !t.done) into('0', 'Overdue', t);
+      else into(`1${due}`, dayTitle(due, c.today), t);
+    }
+  } else if (d.group === 'priority') for (const t of list) into(String(priorityOf(t)), priorityOf(t) === 4 ? 'No priority' : `Priority ${priorityOf(t)}`, t);
+  else if (d.group === 'label') {
+    for (const t of list) { const ls = labelsOf(t, c.labels); if (!ls.length) into('~', 'No label', t); for (const l of ls) into(l.id, l.name, t); }
+  } else if (d.group === 'project') {
+    for (const t of list) { const p = c.projects.find(x => x.id === projectOf(t)); into(projectOf(t), projectOf(t) === INBOX || !p ? 'Inbox' : p.name, t); }
+  } else for (const t of list) into('', '', t);
+  const rank = d.group === 'label' ? new Map(byOrder(c.labels).map((l, i) => [l.id, i]))
+    : d.group === 'project' ? new Map([[INBOX, -1], ...projectTree(c.projects).map((x, i) => /** @type {[string, number]} */ ([x.project.id, i]))]) : null;
+  const pos = (/** @type {string} */ k) => (k === '~' ? Infinity : rank ? rank.get(k) ?? 1e9 : 0);
+  const groups = [...by.values()].sort((a, b) => (rank ? pos(a.key) - pos(b.key) : a.key === '~' ? 1 : b.key === '~' ? -1 : a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+  const cmp = sorter(d.sort, d.dir, c.manual ?? (d.group === 'date' ? dayOrder : undefined));
+  for (const g of groups) g.tasks.sort((a, b) => Number(!!a.done) - Number(!!b.done) || cmp(a, b));
+  return groups;
+}
