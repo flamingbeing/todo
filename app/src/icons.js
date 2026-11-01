@@ -47,5 +47,6 @@ export const ICONS = {
   calendarRange: [['rect', { width: '18', height: '18', x: '3', y: '4', rx: '2' }], ['path', { d: 'M16 2v4' }], ['path', { d: 'M3 10h18' }], ['path', { d: 'M8 2v4' }], ['path', { d: 'M17 14h-6' }], ['path', { d: 'M13 18H7' }], ['path', { d: 'M7 14h.01' }], ['path', { d: 'M17 18h.01' }]],
   circleSlash: [['circle', { cx: '12', cy: '12', r: '10' }], ['path', { d: 'M22 2 2 22' }]],
   gripVertical: [['circle', { cx: '9', cy: '12', r: '1' }], ['circle', { cx: '9', cy: '5', r: '1' }], ['circle', { cx: '9', cy: '19', r: '1' }], ['circle', { cx: '15', cy: '12', r: '1' }], ['circle', { cx: '15', cy: '5', r: '1' }], ['circle', { cx: '15', cy: '19', r: '1' }]],
+  target: [['circle', { cx: '12', cy: '12', r: '10' }], ['circle', { cx: '12', cy: '12', r: '6' }], ['circle', { cx: '12', cy: '12', r: '2' }]],
   squareCheck: [['path', { d: 'M21 10.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12.5' }], ['path', { d: 'm9 11 3 3L22 4' }]],
 };

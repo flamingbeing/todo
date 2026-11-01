@@ -552,3 +552,34 @@ body:has(dialog[open]) .ui-fab.td-fab { display: none; }
 .td-label { color: light-dark(color-mix(in srgb, var(--c, #808080) 62%, #000), color-mix(in srgb, var(--c, #808080) 70%, #fff)); }
 /* words for a screen reader only */
 .td-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Settings > Import from Todoist */
+.td-import { display: grid; gap: 12px; padding: 4px 0 24px; }
+.td-import-intro { margin: 0; font-size: 15px; line-height: 1.4; color: var(--td-text-2); }
+.td-import-field { display: grid; gap: 6px; }
+.td-import-label { font-size: 13px; font-weight: 600; color: var(--td-text-2); }
+.td-import-box { display: flex; align-items: center; height: 44px; border: 1px solid var(--td-hair); border-radius: 10px; background: var(--td-card); }
+.td-import-box:focus-within { border-color: var(--td-accent); outline: 2px solid color-mix(in srgb, var(--td-accent) 30%, transparent); }
+.td-import-box input { flex: 1; min-width: 0; height: 100%; padding: 0 12px; border: 0; background: none; font-size: 16px; color: var(--td-text); outline: none; }
+.td-import-show { display: grid; place-items: center; width: 44px; height: 44px; border: 0; background: none; color: var(--td-text-2); cursor: pointer; }
+.td-import-go { padding: 0 20px; }
+.td-import-go:disabled { opacity: .45; cursor: default; }
+.td-import-status { min-height: 20px; margin: 0; font-size: 14px; color: var(--td-text-2); }
+.td-import-status.is-error { color: var(--td-d-overdue); }
+.td-import-result { display: grid; gap: 12px; }
+.td-import-card { padding: 4px 16px 12px; border-radius: 12px; background: var(--td-card); }
+.td-import-counts { margin: 0; }
+.td-import-count { display: flex; justify-content: space-between; align-items: center; min-height: 44px; border-bottom: .5px solid var(--td-hair); font-size: 16px; }
+.td-import-count:last-child { border-bottom: 0; }
+.td-import-count dt { color: var(--td-text); }
+.td-import-count dd { margin: 0; font-variant-numeric: tabular-nums; color: var(--td-text-2); }
+.td-import-note { margin: 8px 0 0; font-size: 13px; line-height: 1.4; color: var(--td-text-2); }
+.td-import-h { margin: 12px 0 0; font-size: 14px; font-weight: 600; color: var(--td-text); }
+.td-import-unparsed { margin: 8px 0 0; padding: 0; list-style: none; }
+.td-import-unparsed li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: .5px solid var(--td-hair); font-size: 14px; }
+.td-import-unparsed li:last-child { border-bottom: 0; }
+.td-import-u-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--td-text); }
+.td-import-u-string { flex: none; max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--td-text-2); }
+.td-import-bar { width: 100%; height: 8px; border-radius: 4px; accent-color: var(--td-accent); }
+.td-import-done-title { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; font-size: 17px; font-weight: 600; color: var(--td-d-today); }
+.td-import-done-title .ui-icon { width: 22px; height: 22px; }

@@ -19,6 +19,8 @@ const CORE = 'https://core.anawj.com';
 const GOOGLE_API = 'https://apis.google.com';
 const FONTS_CSS = 'https://fonts.googleapis.com';
 const FONTS = 'https://fonts.gstatic.com';
+// Settings > Import from Todoist reads the person's account from the page itself (one fetch with their token)
+const IMPORT_API = 'https://api.todoist.com';
 // where the browser sends what the policy blocked (or would have)
 const REPORTS = '/api/csp';
 
@@ -33,7 +35,7 @@ export function csp({ kit = KIT, project = '', local = false, framedBySelf = fal
     'style-src': ["'self'", CORE, kit, FONTS_CSS],
     'font-src': ["'self'", CORE, kit, FONTS],
     'img-src': ["'self'", 'data:', 'blob:', kit, 'https://lh3.googleusercontent.com', 'https://www.google.com'],   // (the SDK's connectivity ping)
-    'connect-src': ["'self'", CORE, kit, FONTS_CSS, FONTS, 'https://*.googleapis.com', GOOGLE_API, ...emulators],
+    'connect-src': ["'self'", CORE, kit, FONTS_CSS, FONTS, 'https://*.googleapis.com', GOOGLE_API, IMPORT_API, ...emulators],
     'frame-src': frames,
     'worker-src': ["'self'"],
     'manifest-src': ["'self'"],

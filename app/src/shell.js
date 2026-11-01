@@ -53,6 +53,24 @@ function barTabs() {
 }
 const tabButton = (/** @type {string} */ id) => /** @type {HTMLElement | null} */ (document.querySelector(`.ui-tabbar > [data-tab-id="${id}"]`));
 
+/**
+ * A Settings page whose code loads when the page is first shown (settingsScreen mounts every page when it is built, shown
+ * or not, so a page that is heavy waits until it is on screen). load(host) -> its parts; leave runs whenever the page is
+ * hidden again. @param {HTMLElement} host
+ * @param {(host: HTMLElement) => Promise<{ leave: () => void, destroy: () => void }>} load
+ */
+function onShow(host, load) {
+  /** @type {Promise<{ leave: () => void, destroy: () => void }> | null} */
+  let page = null;
+  const watch = new IntersectionObserver(entries => {
+    const seen = entries.some(e => e.isIntersecting);
+    if (seen) page ??= load(host);
+    else page?.then(p => p.leave());
+  });
+  watch.observe(host);
+  return () => { watch.disconnect(); page?.then(p => p.destroy()); };
+}
+
 /** a list of rows in host @param {HTMLElement} host @param {HTMLElement[]} items */
 function listIn(host, items) {
   const list = document.createElement('ul');
@@ -105,6 +123,8 @@ export function settingsPage(app) {
         draw();
         return () => { repaints.delete(draw); stop(); };
       } },
+      { title: 'Import from Todoist', icon: ICONS.folderInput, sub: 'Bring your projects and tasks over', group: 'Data', find: 'migrate move api token tasks',
+        mount: host => onShow(host, async h => (await import('./screens/import.js')).importScreen(h, { app, openInbox: () => tabButton('inbox')?.click() })) },
       { title: 'Look', icon: ICONS.smartphone, sub: 'Theme, colour and density', group: 'Look', mount: host => { themeSwitch(host, { name: APP.title || APP.name }); } },
       // the recipes' own pages (an empty slot adds none)
       ...Object.values(modules.settingsPages ?? {}).flatMap(slot => { const section = slot?.({ app }); return section ? [section] : []; }),

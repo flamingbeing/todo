@@ -23,6 +23,13 @@ test('CSP: Firebase is vendored (app/public/vendor/firebase/), so the page loads
   assert.ok(!d['connect-src'].some(s => s.includes('www.gstatic.com')));
 });
 
+test('CSP: the import page may call the one import API host, and nothing else new', () => {
+  const d = parse(csp({ project: 'p1' }));
+  assert.ok(d['connect-src'].includes('https://api.todoist.com'));
+  assert.ok(!d['connect-src'].some(s => s === '*' || s === 'https:'));
+  assert.ok(!d['script-src'].includes('https://api.todoist.com') && !d['default-src'].includes('https://api.todoist.com'));
+});
+
 test('CSP: the emulators only for local pages', () => {
   assert.ok(parse(csp({ local: true }))['connect-src'].includes('http://127.0.0.1:*'));
 });

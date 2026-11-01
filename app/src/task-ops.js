@@ -180,5 +180,7 @@ export function taskOps({ save, id, data, now = Date.now, drop = () => {} }) {
     orderNamed: (kind, list) => first(list.map(({ item, order }) => put(kind === 'labels' ? LABELS : FILTERS, { ...item, order }, item))),
     /** a whole task under its own id, as a new save (a restore brings one back) @param {Task} task */
     put: task => put(COLL, { ...task }, null),
+    /** one record of any collection as the import made it (base: its saved copy, or null) @param {string} coll @param {Record<string, unknown>} rec @param {unknown} base */
+    writeRecord: (coll, rec, base) => put(coll, rec, base),
   };
 }

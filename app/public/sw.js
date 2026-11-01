@@ -44,6 +44,7 @@ const SHELL = [
   'src/screens/completed.js',
   'src/screens/display.js',
   'src/screens/filters.js',
+  'src/screens/import.js',
   'src/screens/labels.js',
   'src/screens/named-sheet.js',
   'src/screens/no-access.js',
