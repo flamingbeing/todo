@@ -97,6 +97,18 @@ const seed = () => {
   } });
   window.__csp = [];
   addEventListener('securitypolicyviolation', e => window.__csp.push(`${e.violatedDirective} ${e.blockedURI}`));
+  // A toast with an action (Undo) stays until it is tapped or a newer toast shows. The app lets it go after 6 s; a test
+  // that first waits for the server to have the change it undoes can take longer than that on a busy machine.
+  const tapped = new WeakSet();
+  addEventListener('click', e => { const t = e.target instanceof Element ? e.target.closest('.toast') : null; if (t) tapped.add(t); }, true);
+  new MutationObserver(records => {
+    for (const r of records) {
+      if (!(r.target instanceof HTMLElement) || !r.target.classList.contains('toasts')) continue;
+      for (const n of r.removedNodes) {
+        if (n instanceof HTMLElement && n.matches('.toast') && n.querySelector('.toast-action') && !tapped.has(n) && r.target.isConnected && !r.target.querySelector('.toast')) r.target.append(n);
+      }
+    }
+  }).observe(document, { childList: true, subtree: true });
   try {
     if (!localStorage.getItem('core-glass-guard')) localStorage.setItem('core-glass-guard', JSON.stringify({ solid: false, why: '' }));
   } catch { /* an opaque origin: nothing to keep */ }
