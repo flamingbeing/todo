@@ -29,6 +29,7 @@ const SHELL = [
   'src/hint.js',
   'src/icons-more.js',
   'src/icons.js',
+  'src/import-map.js',
   'src/items.js',
   'src/modules.js',
   'src/options.js',
