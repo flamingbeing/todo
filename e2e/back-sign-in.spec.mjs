@@ -29,10 +29,8 @@ test('Back after signing in never shows the sign-in screen again, and Back from 
   await db.put(`members/${await page.locator('#uid').textContent()}`, { role: 'member', v: 1 });
   await expect(page.locator('#list-view')).toBeVisible();
 
-  // (a page from the cache fires no load event; the app opens on Today, the second tab: each page's first Back goes to
-  // the first tab, Inbox, and the next one asks "Press Back again to close")
-  await page.goBack({ waitUntil: 'commit' });
-  await expect(page.locator('#inbox-page')).toBeVisible();
+  // (a page from the cache fires no load event; the app opens on Home, Today: each page's first Back asks "Press Back
+  // again to close", the next one leaves)
   await page.goBack({ waitUntil: 'commit' });
   await expect(page.getByText('Press Back again to close')).toBeVisible();
   await page.goBack({ waitUntil: 'commit' });
@@ -41,9 +39,7 @@ test('Back after signing in never shows the sign-in screen again, and Back from 
   await expect(page.locator('#list-view')).toBeVisible();
   await expect(page.locator('#signed-out')).toBeHidden();
 
-  await page.goBack({ waitUntil: 'commit' });   // to the first tab, then asks once
-  await expect(page.locator('#inbox-page')).toBeVisible();
-  await page.goBack({ waitUntil: 'commit' });
+  await page.goBack({ waitUntil: 'commit' });   // asks once, then leaves
   await expect(page.getByText('Press Back again to close')).toBeVisible();
   await page.goBack({ waitUntil: 'commit' });
   await expect.poll(() => page.url()).toBe('about:blank');

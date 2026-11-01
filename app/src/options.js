@@ -8,6 +8,9 @@ const SWIPES = ['complete', 'schedule', 'delete', 'none'];
 /** @type {[unknown, string][]} */
 const SWIPE_CHOICES = [['complete', 'Complete'], ['schedule', 'Schedule'], ['delete', 'Delete'], ['none', 'None']];
 
+/** @type {[unknown, string][]} the tabs Home can be */
+const HOMES = [['inbox', 'Inbox'], ['today', 'Today'], ['upcoming', 'Upcoming'], ['search', 'Search'], ['browse', 'Browse']];
+
 /** @type {Record<string, import('app-ui/settings/types').OptionSpec>} */
 export const OPTIONS = {
   // this device only: a phone and a computer can differ
@@ -21,6 +24,10 @@ export const OPTIONS = {
   // what a row does when swiped right or left (this device): 'complete', 'schedule', 'delete' or 'none'
   swipeRight: { scope: 'device', default: 'complete', clean: v => (SWIPES.includes(String(v)) ? v : 'complete') },
   swipeLeft: { scope: 'device', default: 'schedule', clean: v => (SWIPES.includes(String(v)) ? v : 'schedule') },
+  // the tab the app opens on and Back returns to (this device)
+  home: { scope: 'device', default: 'today', clean: v => (HOMES.some(([id]) => id === v) ? v : 'today') },
+  // a board card's sideways swipe runs the swipe actions, not the paging (this device)
+  boardSwipe: { scope: 'device', default: false },
   // the first day of the week in Upcoming's strip and the calendars (this device): 1 Monday, 0 Sunday
   weekStart: { scope: 'device', default: 1, clean: v => (v === 0 ? 0 : 1) },
   // each list's Display choices (this device): a view's id to its grouping, sorting, filter and completed switch
@@ -43,6 +50,8 @@ export const SETTING_SECTIONS = [
     { key: 'smartDates', label: 'Smart date recognition', sub: 'Read dates, times and repeats as you type a task' },
     { key: 'swipeRight', label: 'Swipe right', sub: 'This device', choices: SWIPE_CHOICES },
     { key: 'swipeLeft', label: 'Swipe left', sub: 'This device', choices: SWIPE_CHOICES },
+    { key: 'boardSwipe', label: 'Swipe board cards', sub: 'A sideways swipe on a card runs the swipe actions above, not the move between columns' },
+    { key: 'home', label: 'Home view', sub: 'Where the app opens and Back returns to; Today if it is off the tab bar', choices: HOMES },
     { key: 'weekStart', label: 'Start of the week', sub: 'This device', choices: /** @type {[unknown, string][]} */ ([[1, 'Monday'], [0, 'Sunday']]) },
   ] },
   { title: 'Tasks', icon: ICONS.listChecks, sub: 'Counts and row size', group: 'Tasks', rows: [
