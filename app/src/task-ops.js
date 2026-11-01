@@ -51,10 +51,15 @@ export function taskOps({ save, id, data, now = Date.now, drop = () => {} }) {
     return put(COLL, { id: id(), done: false, ...f, order, createdAt: now() }, null);
   };
   /** a task and its open subtasks, done (doneAt now) -> '' or the reason, and the tasks it ticked (an undo unticks them).
-   * A repeating task with a next date (next) stays open and moves to it instead: moved is the date it had (an undo puts it back).
-   * @param {Task} task @param {{ next?: string | null }} [o] @returns {Promise<{ refused: string, ticked: Task[], moved?: import('./dates.js').Due }>} */
+   * A repeating task with a next date (next) stays open and moves to it instead: moved is the date it had, reopened its
+   * done subtasks, open again for the next time (an undo, unmove, puts both back).
+   * @param {Task} task @param {{ next?: string | null }} [o] @returns {Promise<{ refused: string, ticked: Task[], moved?: import('./dates.js').Due, reopened?: Task[] }>} */
   const complete = async (task, { next } = {}) => {
-    if (next && task.due?.rrule) return { refused: await put(COLL, { ...task, due: cleanDue({ ...task.due, date: next }) }, task), ticked: [], moved: task.due };
+    if (next && task.due?.rrule) {
+      const reopened = descendants(task.id, data().tasks).filter(t => t.done);
+      return { refused: await first([put(COLL, { ...task, due: cleanDue({ ...task.due, date: next }) }, task), ...reopened.map(t => put(COLL, { ...t, done: false, doneAt: null }, t))]),
+        ticked: [], moved: task.due, reopened };
+    }
     const ticked = [task, ...descendants(task.id, data().tasks).filter(t => !t.done)], at = now();
     return { refused: await first(ticked.map(t => put(COLL, { ...t, done: true, doneAt: at }, t))), ticked };
   };
@@ -71,6 +76,12 @@ export function taskOps({ save, id, data, now = Date.now, drop = () => {} }) {
     tick: (task, done) => put(COLL, { ...task, done, doneAt: done ? now() : null }, task),
     /** not done again (an undo): each as it is now @param {Task[]} tasks */
     untick: tasks => first(tasks.map(t => data().tasks.find(x => x.id === t.id) ?? t).map(t => put(COLL, { ...t, done: false, doneAt: null }, t))),
+    /** a repeating task's move undone: its date back, its reopened subtasks done again as they were
+     * @param {Task} task @param {import('./dates.js').Due} due @param {Task[]} [reopened] */
+    unmove: (task, due, reopened = []) => first([task, ...reopened].map((t, i) => {
+      const n = data().tasks.find(x => x.id === t.id) ?? t;
+      return put(COLL, i ? { ...n, done: true, doneAt: t.doneAt ?? null } : { ...n, due }, n);
+    })),
     /** a task and its subtasks @param {Task} task */
     removeTask: task => remove(COLL, tasksGone('task', task, data())),
     /**

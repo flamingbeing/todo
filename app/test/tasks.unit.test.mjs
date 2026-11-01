@@ -141,6 +141,22 @@ test('complete takes the open subtasks along; untick brings them all back', asyn
   assert.deepEqual(s.data.tasks.filter(x => x.done).map(x => x.id), ['was']);
 });
 
+test('a repeating task ticked moves to its next date and reopens its done subtasks; unmove puts both back', async () => {
+  const due = { date: '2026-11-01', rrule: 'FREQ=WEEKLY', string: 'every week' };
+  const s = store({ tasks: [t('r', { due }), t('a', { parentId: 'r', done: true, doneAt: 5 }), t('aa', { parentId: 'a', done: true, doneAt: 6 }),
+    t('b', { parentId: 'r' }), t('x', { done: true, doneAt: 7 })] });
+  const r = await s.ops.complete(s.data.tasks[0], { next: '2026-11-08' });
+  assert.equal(r.refused, '');
+  assert.deepEqual(r.ticked, []);
+  assert.deepEqual(r.moved, due);
+  assert.deepEqual(r.reopened.map(x => x.id), ['a', 'aa']);
+  assert.deepEqual(s.data.tasks.map(x => [x.id, x.done, x.doneAt ?? null]), [['r', false, null], ['a', false, null], ['aa', false, null], ['b', false, null], ['x', true, 7]]);
+  assert.equal(s.data.tasks[0].due.date, '2026-11-08');
+  assert.equal(await s.ops.unmove(s.data.tasks[0], r.moved, r.reopened), '');
+  assert.deepEqual(s.data.tasks.map(x => [x.id, x.done, x.doneAt ?? null]), [['r', false, null], ['a', true, 5], ['aa', true, 6], ['b', false, null], ['x', true, 7]]);
+  assert.equal(s.data.tasks[0].due.date, '2026-11-01');
+});
+
 test('delete takes the subtasks; move takes them to the new project and section', async () => {
   const s = store({ tasks: [t('p'), t('c', { parentId: 'p' }), t('x')] });
   await s.ops.moveTask(s.data.tasks[0], { projectId: 'w', sectionId: 's' });

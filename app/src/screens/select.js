@@ -128,7 +128,7 @@ function moveTasks(ctx, tasks, after) {
 async function completeTasks(ctx, tasks) {
   /** @type {Task[]} */
   const ticked = [];
-  /** @type {[Task, import('../dates.js').Due][]} */
+  /** @type {[Task, import('../dates.js').Due, Task[] | undefined][]} */
   const moved = [];
   const today = dayKey();
   /** @type {Map<string, string | null>} */
@@ -141,15 +141,12 @@ async function completeTasks(ctx, tasks) {
     const r = await ctx.app.complete(t, { next: nexts.get(t.id) ?? null });
     if (r.refused) { ctx.toast(REFUSED); break; }
     ticked.push(...r.ticked);
-    if (r.moved) moved.push([t, r.moved]);
+    if (r.moved) moved.push([t, r.moved, r.reopened]);
   }
   const n = doable.length;
   ctx.undo.show(n > 1 ? `${plural(n, 'task')} completed` : 'Task completed', async () => {
     if (ticked.length && await ctx.app.untick(ticked)) { ctx.toast(REFUSED); return; }
-    for (const [t, due] of moved) {
-      const now = ctx.data().tasks.find(x => x.id === t.id) ?? t;
-      if (await ctx.app.editTask(now, { due })) { ctx.toast(REFUSED); return; }
-    }
+    for (const [t, due, reopened] of moved) if (await ctx.app.unmove(t, due, reopened)) { ctx.toast(REFUSED); return; }
   });
 }
 

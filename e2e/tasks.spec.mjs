@@ -56,6 +56,21 @@ test('completing shows Undo, which puts the task back', async ({ phone }) => {
   await expect(page.locator('#today')).toContainText(t);
 });
 
+test('a repeating task ticked moves to its next date and opens its done subtasks again; Undo puts both back', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const [r, sub] = [uniq('weekly'), uniq('step')];
+  await put(r, { title: r, due: { date: day(0), rrule: 'FREQ=WEEKLY', string: 'every week' } });
+  await put(sub, { title: sub, parentId: r, done: true, doneAt: Date.now() });
+  await page.getByRole('checkbox', { name: `Complete: ${r}` }).click();
+  await expect(page.locator('#today')).not.toContainText(r);
+  await expect.poll(async () => (await db.get(`spaces/_/tasks/${sub}`))?.done, { timeout: 15_000 }).toBe(false);
+  expect((await db.get(`spaces/_/tasks/${r}`)).due.date).toBe(day(7));
+  await page.locator('.toast').last().getByRole('button', { name: 'Undo' }).click();
+  await expect(page.locator('#today')).toContainText(r);
+  await expect.poll(async () => (await db.get(`spaces/_/tasks/${sub}`))?.done, { timeout: 15_000 }).toBe(true);
+});
+
 test('Reschedule on Overdue moves every overdue task to the day picked; Undo puts them back', async ({ phone }) => {
   const page = await phone();
   await signIn(page, 'member');

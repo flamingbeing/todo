@@ -143,12 +143,9 @@ export function views(app) {
       await new Promise(r => setTimeout(r, 150));
       if (!next) await glide([[row, x => ({ opacity: String(1 - x), transform: `translateX(${x * 12}px)` })]], 0, 1).done;
     }
-    const { refused, ticked, moved } = await app.complete(t, { next });
+    const { refused, ticked, moved, reopened } = await app.complete(t, { next });
     if (refused) { toast(REFUSED); redraw(); return; }
-    if (moved) undo.show('Task completed', async () => {
-      const now = data.tasks.find(x => x.id === t.id) ?? t;
-      if (await app.editTask(now, { due: moved })) toast(REFUSED);
-    });
+    if (moved) undo.show('Task completed', async () => { if (await app.unmove(t, moved, reopened)) toast(REFUSED); });
     else undo.show('Task completed', async () => { if (await app.untick(ticked)) toast(REFUSED); });
   };
 
