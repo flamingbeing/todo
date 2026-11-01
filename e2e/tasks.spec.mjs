@@ -65,7 +65,8 @@ test('a repeating task ticked moves to its next date and opens its done subtasks
   await page.getByRole('checkbox', { name: `Complete: ${r}` }).click();
   await expect(page.locator('#today')).not.toContainText(r);
   await expect.poll(async () => (await db.get(`spaces/_/tasks/${sub}`))?.done, { timeout: 15_000 }).toBe(false);
-  expect((await db.get(`spaces/_/tasks/${r}`)).due.date).toBe(day(7));
+  // (the task's own save and its subtask's are separate writes: either can reach the server first)
+  await expect.poll(async () => (await db.get(`spaces/_/tasks/${r}`))?.due?.date, { timeout: 15_000 }).toBe(day(7));
   await page.locator('.toast').last().getByRole('button', { name: 'Undo' }).click();
   await expect(page.locator('#today')).toContainText(r);
   await expect.poll(async () => (await db.get(`spaces/_/tasks/${sub}`))?.done, { timeout: 15_000 }).toBe(true);
