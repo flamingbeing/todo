@@ -7,6 +7,8 @@ import { defineConfig } from 'vite';
 // Where each local module's source is, for builds that bundle core from source (tools/vite-pieces.mjs); this build
 // keeps them external like the rest of core. Generated from modules.json's "alias" fields: node tools/modules.mjs.
 export const SOURCE_ALIAS = {
+  'chrono-node': './app/public/vendor/chrono-node/2.10.3/chrono.js',
+  'rrule': './app/public/vendor/rrule/2.8.1/rrule.js',
 };
 
 export default defineConfig({

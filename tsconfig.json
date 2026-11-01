@@ -18,6 +18,8 @@
       "@core/ui": ["./node_modules/app-ui/ui/index.js"],
       "@core/theme": ["./node_modules/app-ui/theme/index.js"],
       "@core/settings": ["./node_modules/app-ui/settings/index.js"],
+      "chrono-node": ["./app/public/vendor/chrono-node/2.10.3/index.d.ts"],
+      "rrule": ["./app/public/vendor/rrule/2.8.1/index.d.ts"],
       "@core/*": ["./node_modules/app-sync/types/*.d.ts"],
       "app-ui/*": ["./node_modules/app-ui/*"],
       "zod": ["./e2e/fixtures/outside-package/vendor/zod/3.23.8/index.d.ts"]
