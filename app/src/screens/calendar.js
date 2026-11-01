@@ -14,6 +14,7 @@ import { INBOX, REFUSED } from '../items.js';
 import { isTask, narrowTasks, sorter, dayOrder, priorityOf, projectOf, labelsOf, placeText } from '../tasks.js';
 import { dayKey, timeKey, addDays, dueOf } from '../dates.js';
 import { colorHex } from '../colors.js';
+import { edgeScroll, edgeSpeed, shownSpan } from '../ui/edge-scroll.js';
 import { HOUR, columnCount, weekColumns, minutesOf, timeOf, yOf, minOf, snap, blockHeight, openAt, lanes, monthCells, dropPatch,
   unchanged, periodTitle, stepPeriod, periodOf, occurrences } from '../cal.js';
 import { el } from './pick.js';
@@ -30,6 +31,8 @@ import { underBar } from '../ui/stick.js';
 /** @typedef {{ date: string, min?: number, allDay?: boolean, at: HTMLElement }} Target */
 
 const HOLD_MS = 350, SLOP = 10, ALL_DAY = 2, MONTH_MAX = 3;
+// a held task near the week grid's side (24 px) turns the period after half a second, then every 0.7 s while it stays
+const PAGE_EDGE = 24, PAGE_FIRST = 500, PAGE_NEXT = 700;
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 /** "Tue 3 Nov" @param {string} key */
@@ -547,7 +550,9 @@ function pager(st, root, pane, by) {
 }
 
 /** hold a task (350 ms), then drag it: to an hour (15-minute steps; a line with the time shows where), to the all-day
- * row (no time), or to another day; one save and Undo @param {Ctx} ctx @param {HTMLElement} root @param {NonNullable<ReturnType<typeof kept.get>>} st */
+ * row (no time), or to another day; one save and Undo. Near the top or foot the page scrolls by itself (edge-scroll.js);
+ * held at the week grid's side the period turns (the month: at its top or foot, once the page can scroll no further),
+ * the task floating over the new one @param {Ctx} ctx @param {HTMLElement} root @param {NonNullable<ReturnType<typeof kept.get>>} st */
 function holds(ctx, root, st) {
   root.addEventListener('pointerdown', e => {
     if (!ctx.canWrite() || !e.isPrimary || e.button > 0) return;
@@ -557,8 +562,12 @@ function holds(ctx, root, st) {
     const task = ctx.data().tasks.find(t => t.id === item.dataset.calId);
     if (!task) return;
     const id = e.pointerId, x0 = e.clientX, y0 = e.clientY, grab = e.clientY - item.getBoundingClientRect().top, isBlock = item.classList.contains('td-cv-block');
-    const sc = scroller(root), s0 = sc.scrollTop;
-    let lifted = false, moved = false, fx = x0, fy = y0, edge = 0;
+    const sc = scroller(root), s0 = sc.scrollTop, b0 = item.getBoundingClientRect();
+    let lifted = false, moved = false, fx = x0, fy = y0, dir = 0;
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    let turn;
+    /** the task lifted out of a period turned away: over the page, where it was @type {HTMLElement | null} */
+    let float = null;
     /** @type {Target | null} */
     let target = null;
     /** @type {HTMLElement | null} */
@@ -574,7 +583,8 @@ function holds(ctx, root, st) {
     }, HOLD_MS);
     const done = () => {
       clearTimeout(timer);
-      cancelAnimationFrame(edge);
+      clearTimeout(turn);
+      edge.stop();
       removeEventListener('pointermove', move);
       removeEventListener('pointerup', up);
       removeEventListener('pointercancel', up);
@@ -597,18 +607,51 @@ function holds(ctx, root, st) {
         t.at.append(mark);
       } else t.at.classList.add('is-drop');
     };
-    const place = () => { item.style.transform = `translate(${fx - x0}px, ${fy - y0 + sc.scrollTop - s0}px) scale(1.03)`; show(); };
-    // near the top or foot of the screen, the page scrolls a step that way each frame while the finger stays there
-    const edgeScroll = () => {
-      if (edge) return;
-      const step = () => {
-        const by = fy < 120 ? -8 : fy > innerHeight - 90 ? 8 : 0;
-        if (!lifted || !by) { edge = 0; return; }
-        sc.scrollTop += by;
-        place();
-        edge = requestAnimationFrame(step);
+    const place = () => { item.style.transform = `translate(${fx - x0}px, ${fy - y0 + (float ? 0 : sc.scrollTop - s0)}px) scale(1.03)`; show(); };
+    const edge = edgeScroll({ el: () => sc, span: () => shownSpan(sc), at: () => fy, on: () => lifted && moved, moved: () => { place(); paging(); } });
+    // which way the period would turn from here (0: it stays)
+    const pageWay = () => {
+      if (st.kind === 'month') {
+        const [lo, hi] = shownSpan(sc), v = edgeSpeed(fy, lo, hi);
+        const end = v < 0 ? sc.scrollTop <= 0 : sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 1;
+        return v && end ? Math.sign(v) : 0;
+      }
+      if (st.kind !== 'week' && st.kind !== 'day') return 0;
+      const g = (st.root?.querySelector('.td-cv-grid') ?? root).getBoundingClientRect();
+      return fy < g.top ? 0 : fx < g.left + PAGE_EDGE ? -1 : fx > g.right - PAGE_EDGE ? 1 : 0;
+    };
+    const paging = () => {
+      const way = lifted && moved ? pageWay() : 0;
+      if (way === dir) return;
+      clearTimeout(turn);
+      dir = way;
+      if (!way) return;
+      const next = (/** @type {number} */ ms) => {
+        turn = setTimeout(() => {
+          if (pageWay() !== dir) { dir = 0; return; }
+          lift();
+          st.first = stepPeriod(st.first, st.kind === 'month' ? 'month' : 'week', dir, st.n);
+          st.opened = true;
+          st.redraw();
+          haptic('tick');
+          show();
+          next(PAGE_NEXT);
+        }, ms);
       };
-      edge = requestAnimationFrame(step);
+      next(PAGE_FIRST);
+    };
+    // the period's draw takes the task's root away: it floats over the page from where it was, in the calendar's look
+    const lift = () => {
+      if (float) return;
+      float = el('div', `${root.className} td-cv-float`);
+      float.dataset.holding = '';
+      float.style.cssText = `position:fixed;left:${b0.left}px;top:${b0.top}px;width:${b0.width}px;height:${b0.height}px;z-index:30;pointer-events:none;margin:0`;
+      item.style.position = 'absolute';
+      item.style.inset = '0';
+      item.style.width = item.style.height = '100%';
+      float.append(item);
+      document.body.append(float);
+      place();
     };
     const move = (/** @type {PointerEvent} */ ev) => {
       if (ev.pointerId !== id) return;
@@ -616,7 +659,8 @@ function holds(ctx, root, st) {
       if (!lifted) { if (Math.hypot(fx - x0, fy - y0) > SLOP) done(); return; }
       moved = true;
       place();
-      edgeScroll();
+      edge.poke();
+      paging();
     };
     const touch = (/** @type {TouchEvent} */ ev) => { if (lifted && ev.cancelable) ev.preventDefault(); };
     const up = async (/** @type {PointerEvent} */ ev) => {
@@ -625,16 +669,23 @@ function holds(ctx, root, st) {
       if (!lifted) return;
       release('drag');
       root.dispatchEvent(new CustomEvent('td-cv-hold', { detail: false }));
+      const floated = float;
+      float = null;
       // the click that follows the let-go is the drag's
       const eat = (/** @type {MouseEvent} */ c) => { c.preventDefault(); c.stopPropagation(); };
       root.addEventListener('click', eat, { capture: true, once: true });
       setTimeout(() => root.removeEventListener('click', eat, true), 400);
       mark?.remove();
       root.querySelector('.is-drop')?.classList.remove('is-drop');
-      const settle = () => { item.classList.remove('is-lifted'); void glide([[item, k => ({ transform: `scale(${1 + 0.03 * k})` })]], 1, 0).done.then(() => { item.style.transform = ''; }); };
+      const settle = () => {
+        // (floated: the period it came from is gone; the one shown is drawn again without it)
+        if (floated) { floated.remove(); st.redraw(); return; }
+        item.classList.remove('is-lifted'); void glide([[item, k => ({ transform: `scale(${1 + 0.03 * k})` })]], 1, 0).done.then(() => { item.style.transform = ''; });
+      };
       if (!moved || !target || ev.type === 'pointercancel') { settle(); return; }
       const patch = dropPatch(task, target);
       if (unchanged(task, patch)) { settle(); return; }
+      floated?.remove();
       item.style.opacity = '0';
       const was = { due: task.due ?? null, ...(patch.duration !== undefined ? { duration: task.duration ?? null } : {}) };
       if (await ctx.app.editTask(task, patch)) { ctx.toast(REFUSED); item.style.opacity = ''; settle(); st.redraw(); return; }
