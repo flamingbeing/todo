@@ -319,8 +319,20 @@ export async function finger(page, selector, steps = [], { hold = 0, at = null, 
     if (!steps.length && hold < 500) target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
   }, [selector, steps, hold, at, wait]);
 }
-// (wired last: the + button's drag, which takes its touches whole)
-export const gesturesReady = page => page.waitForFunction(() => document.getElementById('fab')?.style.touchAction === 'none', null, { timeout: 15_000 });
+// (wired last: the + button's drag, which takes its touches whole) and no view transition running: a change of phase
+// (screen-switch.js, as the list arrives after sign-in) cross-fades as one, and while it runs Chromium sends every touch
+// to <html>, so a tap then switches nothing
+export const gesturesReady = page => page.waitForFunction(() => document.getElementById('fab')?.style.touchAction === 'none'
+  && !(/** @type {any} */ (document).activeViewTransition)
+  && !document.getAnimations().some(a => /** @type {KeyframeEffect} */ (a.effect)?.pseudoElement?.startsWith('::view-transition') && a.playState !== 'finished'),
+null, { timeout: 15_000 });
+/** an element's box; measured again if a redraw (another test's synced change) took the element away as it was measured */
+export const boxOf = async (page, sel) => {
+  /** @type {{ x: number, y: number, width: number, height: number } | null} */
+  let r = null;
+  await expect.poll(async () => (r = await page.locator(sel).boundingBox()), { timeout: 10_000 }).not.toBeNull();
+  return /** @type {{ x: number, y: number, width: number, height: number }} */ (/** @type {unknown} */ (r));
+};
 /** [dx, dy] steps from 0 to (x, y) in n moves */
 export const steps = (x, y, n = 10) => Array.from({ length: n }, (_, i) => [Math.round(x * (i + 1) / n), Math.round(y * (i + 1) / n)]);
 

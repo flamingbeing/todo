@@ -1,6 +1,6 @@
 // Arrange tabs (Settings, Tab bar; @core/ui tabArranger): a tab taken off the bar is listed at the top of the Settings
 // menu, one tap away, and stays off after a reload (the tabs option, this device).
-import { test, expect, APP, openSettings, settingsBack, signIn, synced, gesturesReady, fingers, line } from './fixtures.mjs';
+import { test, expect, APP, openSettings, settingsBack, signIn, synced, gesturesReady, fingers, finger, steps, boxOf } from './fixtures.mjs';
 
 test('a tab taken off the bar is one tap away in Settings and stays off', async ({ phone }) => {
   const page = await phone();
@@ -30,7 +30,7 @@ test('a long press on the tab bar opens Tab bar settings; a tap still switches t
   await signIn(page, 'member');
   await synced(page);
   await gesturesReady(page);
-  const at = async id => { const r = await page.locator(`.ui-tabbar [data-tab-id="${id}"]`).boundingBox(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+  const at = async id => { const r = await boxOf(page, `.ui-tabbar [data-tab-id="${id}"]`); return [r.x + r.width / 2, r.y + r.height / 2]; };
   const tabBarOpen = () => page.getByRole('switch', { name: 'On the tab bar: Browse' }).count();
 
   // a tap: the tab
@@ -39,10 +39,10 @@ test('a long press on the tab bar opens Tab bar settings; a tap still switches t
   await expect(page.locator('#upcoming-page')).toBeVisible();
   expect(await tabBarOpen()).toBe(0);
 
-  // lifted early, or a slow tap that turns into a swipe before 500 ms: nothing opens
-  [x, y] = await at('search');
-  await fingers(page, [line(x, y, 0, 0, 1)], { hold: 250 });
-  await fingers(page, [line(x, y, 60, 0, 6)], { hold: 300 });
+  // lifted early, or a slow tap that turns into a swipe before 500 ms: nothing opens (timed in the page: a busy machine
+  // can stretch a real touch's 250 ms, sent from here, past the 500)
+  await finger(page, '.ui-tabbar [data-tab-id="search"]', [], { hold: 250 });
+  await finger(page, '.ui-tabbar [data-tab-id="search"]', steps(60, 0, 6), { hold: 300 });
   await page.waitForTimeout(700);
   expect(await page.locator('#settings-host').isVisible()).toBe(false);
 

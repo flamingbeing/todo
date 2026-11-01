@@ -2,7 +2,7 @@
 // swipe way set (the default), a mostly-sideways swipe on a card runs it (right completes, with Undo; left opens the
 // scheduler), and the board still pages from a column gap. With both set to None, a swipe on a card pages the board. Real touches (CDP),
 // so the browser's own panning and touch-action rules take part.
-import { test, expect, signIn, synced, uniq, db, openTab, openSettings, gesturesReady, fingers, line } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, db, openTab, openSettings, gesturesReady, fingers, line, boxOf } from './fixtures.mjs';
 
 const now = () => ({ createdAt: Date.now(), updatedAt: Date.now() });
 
@@ -20,8 +20,11 @@ async function board(page, pre) {
   await synced(page);
   await gesturesReady(page);
   await openTab(page, 'browse');
-  await page.locator('#browse').getByRole('button', { name: new RegExp(`^${name}`) }).click();
-  await expect(page.locator('#project.td-board')).toBeVisible();
+  // (again if another test's new project drew Browse anew under the click)
+  await expect(async () => {
+    await page.locator('#browse').getByRole('button', { name: new RegExp(`^${name}`) }).click({ timeout: 2_000 });
+    await expect(page.locator('#project.td-board')).toBeVisible({ timeout: 1_500 });
+  }).toPass({ timeout: 15_000 });
   await expect(page.locator(`#project .td-row[data-id="${a}"]`)).toBeVisible();
   await settled(page);
   return { a, b, name, card: id => `#project .td-row[data-id="${id}"]` };
@@ -29,7 +32,13 @@ async function board(page, pre) {
 // (the page slides in: a touch lands where the card is once it has stopped)
 const settled = page => page.evaluate(() => Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().endTime !== Infinity).map(a => a.finished.catch(() => {}))));
 const scrollLeft = page => page.locator('#project.td-board').evaluate(el => el.scrollLeft);
-const centre = async (page, sel) => { await page.locator(sel).waitFor(); const r = await page.locator(sel).boundingBox(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+/** the board's scrollLeft once it has stopped moving (a page snap glides on after the finger lifts) */
+const scrollStill = page => page.locator('#project.td-board').evaluate(el => new Promise(done => {
+  let last = NaN;
+  const look = () => { if (el.scrollLeft === last) done(last); else { last = el.scrollLeft; setTimeout(look, 150); } };
+  look();
+}));
+const centre = async (page, sel) => { const r = await boxOf(page, sel); return [r.x + r.width / 2, r.y + r.height / 2]; };
 const swipesOff = async page => {
   await openSettings(page, 'General');
   for (const name of ['Swipe right', 'Swipe left']) {
@@ -65,14 +74,19 @@ test('by default: right completes with Undo, left opens the scheduler, a column 
   await expect(page.locator('#schedule-sheet')).toBeHidden();
   await settled(page);
 
-  // a gap: the board pages
-  const cols = await page.locator('#project .td-col').evaluateAll(els => els.map(e => { const r = e.getBoundingClientRect(); return [r.left, r.right]; }));
-  const gapX = (cols[0][1] + cols[1][0]) / 2;
-  const top = (await page.locator('#project.td-board').boundingBox()).y + 40;
-  expect(cols[1][0] - cols[0][1]).toBeGreaterThan(4);
-  await fingers(page, [line(gapX, top, -150, 0, 12)]);
-  await expect.poll(() => scrollLeft(page), { timeout: 5000 }).toBeGreaterThan(100);
+  // a gap: the board pages (measured again while a synced change draws the board anew; dragged past half a column, so
+  // the board pages even when a busy machine stretches the swipe into a slow drag with no throw)
+  let gapX = 0, top = 0;
+  await expect(async () => {
+    const cols = await page.locator('#project .td-col').evaluateAll(els => els.map(e => { const r = e.getBoundingClientRect(); return [r.left, r.right]; }));
+    expect(cols[1][0] - cols[0][1]).toBeGreaterThan(4);
+    gapX = (cols[0][1] + cols[1][0]) / 2;
+    top = (await boxOf(page, '#project.td-board')).y + 40;
+  }).toPass({ timeout: 10_000 });
+  await fingers(page, [line(gapX, top, -260, 0, 12)]);
+  await expect.poll(() => scrollStill(page), { timeout: 5000 }).toBeGreaterThan(100);
   await page.locator('#project.td-board').evaluate(el => { el.scrollLeft = 0; });
+  await expect.poll(() => scrollStill(page), { timeout: 5000 }).toBe(0);
 
   // right: done, with Undo
   [x, y] = await centre(page, card(a));
