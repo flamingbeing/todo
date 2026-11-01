@@ -22,6 +22,13 @@
   Display per list on this device (layout, completed tasks, grouping, sorting, direction, a priority, label or date
   filter); Reschedule on Overdue (Today and Upcoming, with Undo); Upcoming's month and week strip (swipes by week,
   dots, tap goes to the day, a task dragged onto a day moves to it; the month opens a month picker).
+- Part 4 of 4 (2026-11-01): Settings > Import (a personal API token typed once, used in the browser only and
+  never kept; a preview of what would come over, then the writes through the write queue; a second import adds nothing
+  twice); deadlines (a Deadline row in the task sheet, the target and "in 5 days" on a row, purple and red when past,
+  the quick add's "..." > Deadline and the `{march 30}` words); the install row checked (first in Settings > About,
+  hidden once installed, nothing prompts on load); a pass over every screen in light and dark against the references
+  (row 74 pt, checkbox 22, add button 56, bars on the grouped ground, the sync chip only when it has news); row sizes
+  now have a test (`e2e/metrics.spec.mjs`).
 - Known gaps: no auto-scroll while dragging near a list's edge (a board scrolls sideways); on Today and Upcoming a drag
   moves a row within the flat day list only (no subtasks there); in a sorted or grouped list a drag does not reorder;
   board cards have no swipe actions; Back on a tab other than Inbox goes to Inbox (the kit's first-tab rule) though the
@@ -36,7 +43,8 @@
 
 ## Next
 
-- Part 4: import, the rest of Settings, Calendar layout.
+- Calendar layout; the import has been proven against route-mocked answers only (not the live service); a Deadline
+  action in select mode.
 
 ## Decisions (dated)
 

@@ -11,6 +11,8 @@ accounts and task texts and checks only those; they run side by side.
   `node tools/shot.mjs out.png [--dark] [--tab upcoming-page] [--project <name>] [--task <title>] [--settings About]
   [--click <selector>] [--eval <js>] [--keep]...` (needs Java and `PW_CHROMIUM`; it starts the emulators and the e2e
   server unless already up, and stops them unless `--keep`; seeds `tools/shot-seed.json`, `--seed` for another).
+  `--wait <ms>` pauses and `--full` takes the whole page; shots of the Import page mock the network from `--eval`
+  (replace `window.fetch`, fill `#import-token`, click the Preview button). A set of every screen: one call per screen.
   `--tab` takes a tab page id (`inbox-page`, `today-page`, `upcoming-page`, `search-page`, `browse-page`); `--project`
   opens a project from Browse's rows; `--task` opens a task's sheet; `--settings` opens Settings from Browse's gear.
 - The icon: `node tools/icons.mjs` writes `app/public/icons/icon.svg` and renders the PNGs (192, 512, maskable, Apple
@@ -49,6 +51,25 @@ signed in paints the list as last drawn, read-only, until the real list replaces
 100 rows, cleared whenever the sign-in says signed out); `modules.json` entries marked `"preload"` get a
 `<link rel="modulepreload">` each (written by `node tools/modules.mjs`). Not here: lazy sheets (the starter has none;
 an app with many gets them from its own module) and the Vite bundle (`npm run vite`, still opt-in).
+
+## Import (Settings > Data)
+
+`app/src/screens/import.js` (the page, loaded when it is first shown) and `app/src/import-map.js` (the pure mapper,
+`mapImport(sync, { today, id, now, existing })`). The person pastes their personal API token; the page POSTs one full
+sync (`sync_token=*`, projects, sections, labels, items, filters) straight from the browser to the service's own host,
+which answers any origin, so no relay is used (that host is the one extra `connect-src` in `worker/headers.js`).
+- The token lives in the field and one variable. It is never stored (not in storage, options, drafts, logs, reports or
+  Firestore), and is emptied as soon as the answer arrives and again on leaving the page (`e2e/import.spec.mjs` dumps
+  every store after an import and looks for it).
+- Mapping: the priority is inverted (ours = 5 - theirs); due strings with a zone become the device's local time; a
+  repeat is kept only when `recur.js` reads the whole phrase (else it is listed as unparsed and comes in as a dated
+  task); colour names map to our 20 keys (unknown: charcoal); the Inbox merges into `inbox`; order becomes 1..n among
+  siblings; label names become label ids (missing ones are made). Every record keeps its source id in `extId`, so a
+  second import updates instead of adding; `keep` leaves a local done state and day order alone.
+- Writes go through `app.writeRecord` (the write queue), 20 at a time with a progress bar; a refusal stops the run and
+  says how far it got. The preview and the confirm come first; nothing is written before the second tap.
+- Tested with route-mocked answers only (`e2e/import.spec.mjs`, `app/test/import.unit.test.mjs` with made-up data), not
+  against the live service.
 
 ## Later
 

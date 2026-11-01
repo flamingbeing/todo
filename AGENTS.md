@@ -1,8 +1,9 @@
 # Todo
 
 Instructions for every AI assistant working here (Claude Code reads this through `CLAUDE.md`).
-A task manager for one person: tasks in an Inbox and in projects with sections, subtasks, priorities and due dates,
-shown by day (Today, Upcoming); installable, works offline, syncs between the person's devices.
+A task manager for one person: tasks in an Inbox and in projects (list or board) with sections, subtasks, labels, filters,
+priorities, due dates, repeats and deadlines, shown by day (Today, Upcoming); can bring a list over from another task
+app; installable, works offline, syncs between the person's devices.
 
 ## Public here, private elsewhere
 
