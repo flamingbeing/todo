@@ -181,3 +181,28 @@ test('titleOf and shiftRanges', () => {
   assert.deepEqual(shiftRanges('Call tom', 'Call tom now', [{ start: 5, end: 8 }]), [{ start: 5, end: 8 }]);
   assert.deepEqual(shiftRanges('Call tom', 'Call tim', [{ start: 5, end: 8 }]), []);
 });
+
+test('{march 30}: a deadline, a day only, apart from the date', () => {
+  const r = p('Tax return {dec 5} tmr');
+  assert.equal(r.title, 'Tax return');
+  assert.equal(r.deadline, '2026-12-05');
+  assert.deepEqual(r.due, { date: '2026-11-02' }, 'the date is still read');
+  assert.deepEqual(r.tokens.map(t => t.kind), ['deadline', 'date']);
+  assert.equal(p('Pay {next friday}').deadline, '2026-11-06');
+  assert.equal(p('Pay {end of month}').deadline, '2026-11-30');
+  assert.equal(p('Pay {dec 5 at 3pm}').due, null, 'the braces hide the time from the date scan');
+  assert.equal(p('Pay {dec 5 at 3pm}').deadline, '2026-12-05', 'and only the day counts');
+  assert.equal(p('Pay {tod}').due, null, 'not a date');
+});
+
+test('{...} that is not a day stays text', () => {
+  for (const t of ['Fix {the thing}', 'Fix {}', 'Fix {march}', 'Fix {99/99}']) {
+    const r = p(t);
+    assert.equal(r.deadline, null, t);
+    assert.equal(r.title, t, t);
+  }
+  assert.equal(p('Fix {dec 5}', { chrono: null }).deadline, null, 'without the library, only the shortcuts');
+  assert.equal(p('Fix {dec 5}', { smartDates: false }).deadline, null, 'smart dates off');
+  assert.equal(p('Fix {dec 5}', { ignore: [{ start: 4, end: 11 }] }).deadline, null, 'a cleared range stays text');
+  assert.equal(p('Fix {tmr} {dec 5}').deadline, '2026-11-02', 'the first one counts');
+});

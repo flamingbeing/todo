@@ -128,6 +128,7 @@ button.td-group-title { display: flex; align-items: center; gap: 6px; width: 100
 .td-date[data-tone="week"] { color: var(--td-d-week); }
 .td-date[data-tone="weekend"] { color: var(--td-d-weekend); }
 .td-date[data-tone="later"] { color: var(--td-d-later); }
+.td-date[data-tone="deadline"], .td-chip[data-tone="deadline"], .td-attr [data-tone="deadline"] { color: var(--td-d-week); }
 .td-place { margin-inline-start: auto; color: var(--td-text-2); }
 .td-place .td-meta-icon { color: var(--td-place, var(--td-text-3)); }
 .td-fold { flex: none; display: grid; place-items: center; width: 40px; height: 48px; padding: 0; border: 0; background: none; color: var(--td-text-3); cursor: pointer; }
@@ -223,6 +224,7 @@ span.td-sheet-parent { cursor: default; }
 .td-attr-value { color: var(--td-text-2); }
 .td-attr-chevron { width: 18px !important; height: 18px !important; color: var(--td-text-3); }
 .td-attr-empty { color: var(--td-text-2); }
+.td-attr .td-deadline-icon { color: var(--td-d-week); }
 .td-attr-static { cursor: default; }
 .td-attr [data-tone="overdue"] { color: var(--td-d-overdue); }
 .td-attr [data-tone="today"] { color: var(--td-d-today); }
@@ -275,7 +277,7 @@ div.td-chip { gap: 0; padding: 0; cursor: default; }
 .td-chip-main .ui-icon { width: 16px; height: 16px; }
 .td-chip-x { display: grid; place-items: center; width: 28px; height: 100%; margin: 0; padding: 0 6px 0 0; border: 0; background: none;
   color: var(--td-text-3); cursor: pointer; }
-.td-chip-x[hidden] { display: none; }
+.td-chip[hidden], .td-chip-x[hidden] { display: none; }
 .td-chip-x .ui-icon { width: 14px; height: 14px; }
 .td-chip .td-chip-repeat { width: 14px; height: 14px; }
 .td-chip[data-tone] { border-color: color-mix(in srgb, currentColor 30%, var(--td-hair)); }

@@ -10,7 +10,7 @@ export const dayKey = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth()
 /** @param {Date} [d] @returns {string} the local time, HH:MM */
 export const timeKey = (d = new Date()) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 /** @param {unknown} v */
-export const isDay = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.UTC(+v.slice(0, 4), +v.slice(5, 7) - 1, +v.slice(8)));
+export const isDay = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && new Date(Date.UTC(+v.slice(0, 4), +v.slice(5, 7) - 1, +v.slice(8))).toISOString().slice(0, 10) === v;
 /** @param {unknown} v */
 export const isTime = v => typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
 /** @param {string} key @returns {Date} noon UTC of that day (day maths only) */
@@ -59,6 +59,15 @@ export function dayWords(key, today) {
   if (n === 1) return 'Tomorrow';
   if (n === -1) return 'Yesterday';
   return n > 1 && n <= 6 ? weekdayName(key) : shortDate(key, today);
+}
+
+/** a deadline in words: "Today", "Tomorrow", "in 5 days" (within two weeks), else "3 Nov"; past ones are red, the rest purple
+ * @param {unknown} date @param {string} today @returns {{ text: string, tone: 'overdue' | 'deadline' } | null} */
+export function deadlineLine(date, today) {
+  if (typeof date !== 'string' || !isDay(date)) return null;
+  const n = daysBetween(today, date);
+  const text = n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : n > 1 && n <= 14 ? `in ${n} days` : shortDate(date, today);
+  return { text, tone: n < 0 ? 'overdue' : 'deadline' };
 }
 
 /**

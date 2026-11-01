@@ -1,5 +1,5 @@
 // The task sheet (#task-sheet): the task's title and description in a card, then a row each for its project, date,
-// priority and labels, then its subtasks with "Add sub-task". Every change saves as it is made (on change or when a
+// deadline, priority and labels, then its subtasks with "Add sub-task". Every change saves as it is made (on change or when a
 // field is left), through the write queue; there is no Save button, and closing keeps what was typed. The "…" has
 // Duplicate, Move to and Delete (with an undo). Opening a subtask shows it in the same sheet, with its parent's name
 // at the top to go back up.
@@ -7,7 +7,7 @@ import { icon, confirmModal } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { REFUSED } from '../items.js';
 import { priorityOf, placeText, projectOf, labelsOf } from '../tasks.js';
-import { dueLine, dayKey } from '../dates.js';
+import { dueLine, deadlineLine, dayKey } from '../dates.js';
 import { colorHex } from '../colors.js';
 import { flatten, descendants, canNest } from '../tree.js';
 import { byOrder } from '../order.js';
@@ -121,18 +121,20 @@ function draw(ctx) {
   // the rows: project, date, priority, labels
   const rows = el('div', 'td-card td-attrs');
   const place = attrRow(ICONS.hash, 'Project', []), date = attrRow(ICONS.calendar, 'Date', []), prio = attrRow(ICONS.flag, 'Priority', []);
-  const labels = attrRow(ICONS.tag, 'Labels', []);
-  for (const b of [place, date, prio, labels]) b.disabled = !writable;
+  const labels = attrRow(ICONS.tag, 'Labels', []), deadline = attrRow(ICONS.target, 'Deadline', []);
+  for (const b of [place, date, deadline, prio, labels]) b.disabled = !writable;
   const move = () => { const now = current(ctx); if (now) pickPlace(ctx.data(), { projectId: projectOf(now), sectionId: now.sectionId }, async to => {
     const at = current(ctx);
     if (at && await ctx.app.moveTask(at, { ...to, parentId: null })) ctx.toast(REFUSED);
   }); };
   place.addEventListener('click', move);
   date.addEventListener('click', () => pickDate(current(ctx)?.due, due => save({ due }), { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1) }));
+  deadline.addEventListener('click', () => { const now = current(ctx); if (now) pickDate(now.deadline ? { date: now.deadline } : null, d => save({ deadline: d?.date ?? null }),
+    { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1), dateOnly: true }); });
   labels.addEventListener('click', () => { const now = current(ctx); if (now) pickLabels(ctx, ticksOf(now, ctx.data().labels), ticks => save({ labels: onIds(ticks) })); });
   prio.addEventListener('click', () => openMenu(prio, [1, 2, 3, 4].map(p => ({ label: `Priority ${p}`, icon: ICONS.flag, color: PRIORITY_COLOR[p],
     checked: priorityOf(/** @type {Task} */ (current(ctx))) === p, run: () => save({ priority: p }) })), { label: 'Priority' }));
-  rows.append(place, date, prio, labels);
+  rows.append(place, date, deadline, prio, labels);
 
   // subtasks
   const subs = el('section', 'td-subtasks');
@@ -169,6 +171,10 @@ function draw(ctx) {
     if (due) { cal.dataset.tone = due.tone; dueText.dataset.tone = due.tone; }
     date.replaceChildren(cal, dueText, ...(due?.repeats ? [icon(ICONS.repeat, { class: 'td-meta-icon td-repeat' })] : []));
     date.setAttribute('aria-label', due ? `Date: ${due.text}` : 'Date');
+    const dl = deadlineLine(now.deadline, dayKey());
+    deadline.replaceChildren(icon(ICONS.target, { class: 'td-attr-icon td-deadline-icon' }), el('span', `td-attr-text${dl ? '' : ' td-attr-empty'}`, dl ? dl.text : 'Deadline'));
+    if (dl) /** @type {HTMLElement} */ (deadline.lastElementChild).dataset.tone = dl.tone;
+    deadline.setAttribute('aria-label', dl ? `Deadline: ${dl.text}` : 'Deadline');
     const flag = icon(ICONS.flag, { class: `td-attr-icon td-flag${p < 4 ? ' is-filled' : ''}` });
     flag.style.color = PRIORITY_COLOR[p];
     prio.replaceChildren(flag, el('span', 'td-attr-text', `Priority ${p}`));

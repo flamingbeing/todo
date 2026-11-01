@@ -4,7 +4,7 @@
 // that have tasks, the chosen day's "Mon 4 Nov · 5 tasks due" and a bar of its tasks in their projects' colours; then
 // the Time row and the Repeat row (its menu of ready rules, and Custom: based on the scheduled or the completed date,
 // every N days, weeks, months or years, on which weekdays, and when it ends). A shortcut row sets the date at once;
-// a day in the calendar, a time or a repeat waits for Done.
+// a day in the calendar, a time or a repeat waits for Done. With dateOnly (a deadline) the Time and Repeat rows are left out.
 import { icon } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { INBOX } from '../items.js';
@@ -16,7 +16,7 @@ import { openMenu } from '../ui/menu.js';
 import { el } from './pick.js';
 
 /** @typedef {import('../dates.js').Due} Due */
-/** @typedef {{ data?: import('../items.js').Data, weekStart?: number }} ScheduleOptions */
+/** @typedef {{ data?: import('../items.js').Data, weekStart?: number, dateOnly?: boolean }} ScheduleOptions  dateOnly: the Deadline sheet, a day and nothing else (no time, no repeat) */
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -42,13 +42,13 @@ export function pickDate(due, done, o = {}) {
   let pending = /** @type {Due | null} */ (dueOf(due) ? { ...due } : null);
   /** typed words that read as a date */
   let typed = /** @type {Due | null} */ (null);
-  const finish = (/** @type {Due | null} */ v) => { d.close(); void done(v); };
+  const finish = (/** @type {Due | null} */ v) => { d.close(); void done(v && o.dateOnly ? { date: v.date } : v); };
 
   // ---- the head
   const head = el('div', 'td-sheet-head td-sched-head');
   const cancel = textButton('Cancel', 'td-text-btn');
   cancel.addEventListener('click', () => d.close());
-  const h = el('h2', 'td-sheet-title', 'Schedule');
+  const h = el('h2', 'td-sheet-title', o.dateOnly ? 'Deadline' : 'Schedule');
   h.id = 'schedule-sheet-title';
   d.setAttribute('aria-labelledby', h.id);
   const ok = textButton('Done', 'td-text-btn td-text-btn-strong');
@@ -85,7 +85,7 @@ export function pickDate(due, done, o = {}) {
   const quick = [
     ['Today', ICONS.calendar, 'today', today], ['Tomorrow', ICONS.sun, 'tomorrow', addDays(today, 1)],
     ...(wd >= 1 && wd <= 3 ? [/** @type {[string, import('app-ui/icons/lucide.js').IconNodes, string, string | null]} */ (['Later this week', ICONS.calendarRange, 'week', addDays(today, 2)])] : []),
-    ['This weekend', ICONS.sofa, 'weekend', sat], ['Next week', ICONS.calendarArrowUp, 'week', mon], ['No date', ICONS.circleSlash, 'none', null],
+    ['This weekend', ICONS.sofa, 'weekend', sat], ['Next week', ICONS.calendarArrowUp, 'week', mon], [o.dateOnly ? 'No deadline' : 'No date', ICONS.circleSlash, 'none', null],
   ];
   const rows = el('ul', 'td-sched-quick');
   rows.setAttribute('aria-label', 'Quick dates');
@@ -306,7 +306,7 @@ export function pickDate(due, done, o = {}) {
 
   const field = el('div', 'td-sched-field');
   field.append(words, hint);
-  const main = [head, field, rows, cal, more];
+  const main = o.dateOnly ? [head, field, rows, cal] : [head, field, rows, cal, more];
   body.replaceChildren(...main);
   words.value = shownWords();
   drawRows();

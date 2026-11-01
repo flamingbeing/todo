@@ -4,7 +4,7 @@
 // the box completes it (the row then fades out and the list shows the undo toast).
 import { icon } from '@core/ui';
 import { ICONS } from '../icons.js';
-import { dueLine } from '../dates.js';
+import { dueLine, deadlineLine } from '../dates.js';
 import { countText } from '../tree.js';
 import { colorHex } from '../colors.js';
 import { priorityOf, projectOf, labelsOf } from '../tasks.js';
@@ -36,6 +36,14 @@ function meta(line, c) {
     d.dataset.tone = due.tone;
     if (due.text) d.append(icon(ICONS.calendar, { class: 'td-meta-icon' }), due.text);
     if (due.repeats) d.append(icon(ICONS.repeat, { class: 'td-meta-icon td-repeat' }));
+    parts.push(d);
+  }
+  const dl = deadlineLine(t.deadline, c.today);
+  if (dl) {
+    const d = el('span', 'td-date td-deadline');
+    d.dataset.tone = dl.tone;
+    d.setAttribute('aria-label', `Deadline: ${dl.text}`);
+    d.append(icon(ICONS.target, { class: 'td-meta-icon' }), dl.text);
     parts.push(d);
   }
   const count = countText(line);

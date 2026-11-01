@@ -10,7 +10,7 @@ import { icon, draftSlot, confirmModal, plural } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { INBOX, REFUSED } from '../items.js';
 import { placeText } from '../tasks.js';
-import { dueLine, dayKey } from '../dates.js';
+import { dueLine, deadlineLine, dayKey } from '../dates.js';
 import { colorHex } from '../colors.js';
 import { byOrder } from '../order.js';
 import { parse, shiftRanges } from '../parse.js';
@@ -51,7 +51,7 @@ export function openQuickAdd(ctx, start, hold = null) {
   const settings = ctx.app.settings;
   const smart = () => { try { return settings.get('smartDates') !== false; } catch { return true; } };
   /** what the person set by hand (a chip or the foot): it wins over the words */
-  const manual = /** @type {{ due?: Due | null, priority?: number, labels?: string[], place?: { projectId: string, sectionId: string | null } }} */ ({});
+  const manual = /** @type {{ due?: Due | null, priority?: number, labels?: string[], deadline?: string | null, place?: { projectId: string, sectionId: string | null } }} */ ({});
   /** where the page shown says a task goes, and its date */
   const base = { projectId: start.projectId ?? INBOX, sectionId: start.sectionId ?? null, parentId: start.parentId ?? null, due: start.due ?? null, order: typeof start.order === 'number' ? start.order : undefined };
   /** cleared ranges of the name: the words stay text */
@@ -114,6 +114,7 @@ export function openQuickAdd(ctx, start, hold = null) {
       due: manual.due !== undefined ? manual.due : parsed.due ?? (parsed.noDate ? null : base.due),
       priority: manual.priority ?? parsed.priority ?? 4,
       labels: [...new Set([...(manual.labels ?? []), ...parsed.labels])],
+      deadline: manual.deadline !== undefined ? manual.deadline : parsed.deadline,
     };
   };
   /** the words of a kind leave the marks (they stay text) @param {string[]} kinds */
@@ -136,7 +137,7 @@ export function openQuickAdd(ctx, start, hold = null) {
     c.x.hidden = !set;
     c.x.onclick = clear && (() => { clear(); reparse(); title.focus(); });
   };
-  const dateC = chip('Date'), prioC = chip('Priority'), labelC = chip('Labels');
+  const dateC = chip('Date'), prioC = chip('Priority'), labelC = chip('Labels'), deadC = chip('Deadline');
   const dateChip = dateC.main, prioChip = prioC.main, labelChip = labelC.main;
   const drawChips = () => {
     const v = value(), today = dayKey(), line = v.due ? dueLine(v.due, today) : null;
@@ -154,7 +155,19 @@ export function openQuickAdd(ctx, start, hold = null) {
     labelChip.setAttribute('aria-label', v.labels.length ? `Labels: ${v.labels.join(', ')}` : 'Labels');
     setX(labelC, v.labels.length > 0, () => { unmark(['label']); delete manual.labels; });
     labelC.box.hidden = !v.labels.length;
+    const dl = deadlineLine(v.deadline, today);
+    deadC.main.replaceChildren(icon(ICONS.target), el('span', '', dl?.text ?? 'Deadline'));
+    deadC.main.setAttribute('aria-label', dl ? `Deadline: ${dl.text}` : 'Deadline');
+    setX(deadC, !!dl, () => { unmark(['deadline']); manual.deadline = null; });
+    deadC.box.hidden = !dl;
+    if (dl) deadC.box.dataset.tone = dl.tone; else delete deadC.box.dataset.tone;
   };
+  /** @param {string | null | undefined} date */
+  const deadlineOf = date => (date ? { date } : null);
+  const openDeadline = () => pickDate(deadlineOf(value().deadline), d => {
+    unmark(['deadline']); manual.deadline = d?.date ?? null; reparse(); title.focus();
+  }, { data: ctx.data(), weekStart: Number(settings.get('weekStart') ?? 1), dateOnly: true });
+  deadC.main.addEventListener('click', openDeadline);
   dateChip.addEventListener('click', () => pickDate(value().due, due => {
     unmark(['date', 'recur']); manual.due = due; reparse(); title.focus();
   }, { data: ctx.data(), weekStart: Number(settings.get('weekStart') ?? 1) }));
@@ -175,8 +188,8 @@ export function openQuickAdd(ctx, start, hold = null) {
   labelChip.addEventListener('click', openLabels);
   const moreChip = button('td-chip td-chip-more', 'More options');
   moreChip.append(icon(ICONS.ellipsis));
-  moreChip.addEventListener('click', () => openMenu(moreChip, [{ label: 'Labels', icon: ICONS.tag, run: openLabels }], { label: 'More options' }));
-  chips.append(dateC.box, prioC.box, labelC.box, moreChip);
+  moreChip.addEventListener('click', () => openMenu(moreChip, [{ label: 'Labels', icon: ICONS.tag, run: openLabels }, { label: 'Deadline', icon: ICONS.target, run: openDeadline }], { label: 'More options' }));
+  chips.append(dateC.box, prioC.box, labelC.box, deadC.box, moreChip);
 
   // names as they are typed after #, /, @ or %
   const list = el('div', 'td-suggest');
@@ -257,11 +270,11 @@ export function openQuickAdd(ctx, start, hold = null) {
       if (!r.refused) { made.set(n.toLowerCase(), r.id); ids.push(r.id); }
     }
     return ctx.app.addTask({ title: p.title, description: about || undefined, projectId: v.projectId, sectionId: v.sectionId, parentId: v.parentId,
-      priority: v.priority, labels: ids.length ? [...new Set(ids)] : undefined, due: v.due ?? undefined, order: atDrop(v) });
+      priority: v.priority, labels: ids.length ? [...new Set(ids)] : undefined, due: v.due ?? undefined, deadline: v.deadline ?? undefined, order: atDrop(v) });
   };
   const clearAll = () => {
     title.value = ''; desc.value = ''; desc.style.height = ''; ignore = []; was = '';
-    for (const k of /** @type {const} */ (['due', 'priority', 'labels'])) delete manual[k];
+    for (const k of /** @type {const} */ (['due', 'priority', 'labels', 'deadline'])) delete manual[k];
     try { draft.clear(); } catch { /* storage blocked */ }
     reparse();
   };
@@ -309,7 +322,7 @@ export function openQuickAdd(ctx, start, hold = null) {
       const p = parse(line, { ...context(), ignore: [] });
       if (!p.title) continue;
       const v = { ...v0, ...(p.projectId ? { projectId: p.projectId, sectionId: p.sectionId, parentId: null } : {}),
-        ...(p.due ? { due: p.due } : p.noDate ? { due: null } : {}), ...(p.priority ? { priority: p.priority } : {}),
+        ...(p.due ? { due: p.due } : p.noDate ? { due: null } : {}), ...(p.priority ? { priority: p.priority } : {}), ...(p.deadline ? { deadline: p.deadline } : {}),
         labels: [...new Set([...v0.labels, ...p.labels])] };
       refused ||= await addOne(p, v, '');
     }

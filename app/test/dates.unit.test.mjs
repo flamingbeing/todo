@@ -1,7 +1,7 @@
 // dates.js: day maths, the tone and words of a due date, group headers. node --test app/test/dates.unit.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dayKey, timeKey, addDays, daysBetween, isDay, isTime, weekdayName, shortDate, dateTone, dayWords, dueLine, dayTitle, timeText, weekOf, monthGrid, monthTitle } from '../src/dates.js';
+import { dayKey, timeKey, addDays, daysBetween, isDay, isTime, weekdayName, shortDate, dateTone, dayWords, deadlineLine, dueLine, dayTitle, timeText, weekOf, monthGrid, monthTitle } from '../src/dates.js';
 
 const T = '2026-11-01';   // a Sunday
 
@@ -78,4 +78,15 @@ test('a month grid: whole weeks from the 1st\'s week to the last day\'s', () => 
   assert.ok(mon.every(w => w.length === 7));
   assert.equal(monthGrid('2027-02', 1).length, 4, 'February 2027 starts on a Monday and fills four weeks');
   assert.equal(monthTitle('2026-11-04'), 'November 2026');
+});
+
+test('a deadline in words: today, tomorrow, "in N days" within two weeks, else the date; past is red', () => {
+  assert.deepEqual(deadlineLine(T, T), { text: 'Today', tone: 'deadline' });
+  assert.deepEqual(deadlineLine('2026-11-02', T), { text: 'Tomorrow', tone: 'deadline' });
+  assert.deepEqual(deadlineLine('2026-11-06', T), { text: 'in 5 days', tone: 'deadline' });
+  assert.deepEqual(deadlineLine('2026-11-15', T), { text: 'in 14 days', tone: 'deadline' });
+  assert.deepEqual(deadlineLine('2026-11-16', T), { text: '16 Nov', tone: 'deadline' });
+  assert.deepEqual(deadlineLine('2027-01-02', T), { text: '2 Jan 2027', tone: 'deadline' });
+  assert.deepEqual(deadlineLine('2026-10-30', T), { text: '30 Oct', tone: 'overdue' });
+  for (const bad of [null, undefined, '', '2026-13-45', 5]) assert.equal(deadlineLine(bad, T), null);
 });

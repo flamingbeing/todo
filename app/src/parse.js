@@ -1,6 +1,6 @@
 // Quick add's words: a task's name as typed becomes its title and its parts. "#Work" picks a project (the longest
 // known name, so "#Home Renovation" works), "/Admin" a section, "@errand" and "%errand" labels, "p1".."p4" a priority,
-// "every …" a repeat (recur.js), and dates: the app's own shortcuts first ("tod", "tmr", "next week", "this weekend",
+// "every …" a repeat (recur.js), "{march 30}" a deadline (a day, no time, no repeat), and dates: the app's own shortcuts first ("tod", "tmr", "next week", "this weekend",
 // "evening", "mid jan", "end of month", "in 3 days", "+3 days"), then the chrono library for the rest ("next friday",
 // "dec 5", "at 5pm"). Each part found is a token with where it sits in the text, so the editor can colour it and the
 // chip can clear it; a range the person cleared (ignore) stays text. With smart dates off only #, /, @, % and p count.
@@ -8,7 +8,7 @@
 import { addDays, dayKey, timeKey, weekdayOf, isDay } from './dates.js';
 import { findRecur, timeOf, firstDay, TIME_RE } from './recur.js';
 
-/** @typedef {'project' | 'section' | 'label' | 'priority' | 'date' | 'recur'} TokenKind */
+/** @typedef {'project' | 'section' | 'label' | 'priority' | 'date' | 'recur' | 'deadline'} TokenKind */
 /** @typedef {{ start: number, end: number, kind: TokenKind, value: unknown }} Token */
 /** @typedef {{ id: string, name: string }} Named */
 /** @typedef {{ id: string, name: string, projectId: string }} SectionLike */
@@ -24,7 +24,7 @@ import { findRecur, timeOf, firstDay, TIME_RE } from './recur.js';
 /**
  * @typedef {{
  *   title: string, tokens: Token[], due: import('./dates.js').Due | null, noDate: boolean,
- *   projectId: string | null, sectionId: string | null, labels: string[], priority: number | null,
+ *   projectId: string | null, sectionId: string | null, labels: string[], priority: number | null, deadline: string | null,
  * }} Parsed
  */
 
@@ -77,6 +77,18 @@ function timeAfter(s, i) {
   if (!m) return null;
   const time = timeOf(m[2].toLowerCase().replace(/\s+/g, ''), !!m[1]);
   return time ? { time, end: i + m[0].length } : null;
+}
+
+/** the day some words name (the app's shortcuts, else chrono), or null @param {string} s @param {{ today: string, nextWeekDay: number, weekendDay: number }} c @param {Date} now @param {ParseContext['chrono']} [chrono] */
+function dayOf(s, c, now, chrono) {
+  for (const sc of SHORTCUTS) {
+    const m = new RegExp(`^(?:${sc.re})$`, 'iu').exec(s);
+    if (m) return sc.day(/** @type {RegExpExecArray} */ (/** @type {unknown} */ (m.slice(0).map(x => x?.toLowerCase()))), c)?.date ?? null;
+  }
+  const g = chrono?.parse(s, now, { forwardDate: true })[0]?.start;
+  if (!g?.isCertain('day') && !g?.isCertain('weekday')) return null;
+  const date = `${g.get('year')}-${pad(g.get('month') ?? 0)}-${pad(g.get('day') ?? 0)}`;
+  return isDay(date) ? date : null;
 }
 
 /**
@@ -155,7 +167,15 @@ export function parse(text, ctx = {}) {
   /** @type {import('./dates.js').Due | null} */
   let due = null;
   let noDate = false;
+  let deadline = /** @type {string | null} */ (null);
   if (ctx.smartDates !== false) {
+    // {march 30}: a deadline, read by the shortcuts or chrono; the braces hide it from the date scan below
+    for (const m of text.matchAll(/\{([^{}]+)\}/g)) {
+      const i = /** @type {number} */ (m.index), end = i + m[0].length;
+      if (!free(i, end)) continue;
+      const day = dayOf(m[1].trim(), { today, nextWeekDay, weekendDay }, now, ctx.chrono);
+      if (day) { deadline = day; take(i, end, 'deadline', day); break; }
+    }
     // every …: the repeat, its time and its start
     const r = findRecur(masked(), { today });
     let recur = null;
@@ -217,7 +237,7 @@ export function parse(text, ctx = {}) {
     }
   }
   tokens.sort((a, b) => a.start - b.start);
-  return { title: titleOf(text, tokens), tokens, due, noDate, projectId, sectionId, labels, priority };
+  return { title: titleOf(text, tokens), tokens, due, noDate, projectId, sectionId, labels, priority, deadline };
 }
 
 /** the text without its tokens, spaces tidied @param {string} text @param {Token[]} tokens */
