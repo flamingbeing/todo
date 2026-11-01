@@ -1,6 +1,6 @@
 // Quick add's words: a task's name as typed becomes its title and its parts. "#Work" picks a project (the longest
 // known name, so "#Home Renovation" works), "/Admin" a section, "@errand" and "%errand" labels, "p1".."p4" a priority,
-// "every …" a repeat (recur.js), "{march 30}" a deadline (a day, no time, no repeat), and dates: the app's own shortcuts first ("tod", "tmr", "next week", "this weekend",
+// "every …" a repeat (recur.js), "{march 30}" a deadline (a day, no time, no repeat), "for 45 min" a duration, and dates: the app's own shortcuts first ("tod", "tmr", "next week", "this weekend",
 // "evening", "mid jan", "end of month", "in 3 days", "+3 days"), then the chrono library for the rest ("next friday",
 // "dec 5", "at 5pm"). Each part found is a token with where it sits in the text, so the editor can colour it and the
 // chip can clear it; a range the person cleared (ignore) stays text. With smart dates off only #, /, @, % and p count.
@@ -8,7 +8,7 @@
 import { addDays, dayKey, timeKey, weekdayOf, isDay } from './dates.js';
 import { findRecur, timeOf, firstDay, firstDayPlain, TIME_RE } from './recur.js';
 
-/** @typedef {'project' | 'section' | 'label' | 'priority' | 'date' | 'recur' | 'deadline'} TokenKind */
+/** @typedef {'project' | 'section' | 'label' | 'priority' | 'date' | 'recur' | 'deadline' | 'duration'} TokenKind */
 /** @typedef {{ start: number, end: number, kind: TokenKind, value: unknown }} Token */
 /** @typedef {{ id: string, name: string }} Named */
 /** @typedef {{ id: string, name: string, projectId: string }} SectionLike */
@@ -25,6 +25,7 @@ import { findRecur, timeOf, firstDay, firstDayPlain, TIME_RE } from './recur.js'
  * @typedef {{
  *   title: string, tokens: Token[], due: import('./dates.js').Due | null, noDate: boolean,
  *   projectId: string | null, sectionId: string | null, labels: string[], priority: number | null, deadline: string | null,
+ *   duration: number | null,
  * }} Parsed
  */
 
@@ -170,7 +171,14 @@ export function parse(text, ctx = {}) {
   let due = null;
   let noDate = false;
   let deadline = /** @type {string | null} */ (null);
+  let duration = /** @type {number | null} */ (null);
   if (ctx.smartDates !== false) {
+    // for 45 min, for 1h, for 2h 30m, for 90 minutes, for 1.5 hours: how long (minutes, 1 to 1440)
+    for (const m of text.matchAll(/(?<=^|\s)for\s+(?:(\d{1,2}(?:\.\d)?)\s*(?:h|hrs?|hours?)(?:\s*(\d{1,2})\s*(?:m|mins?|minutes?))?|(\d{1,4})\s*(?:m|mins?|minutes?))(?=$|[\s,.;])/gi)) {
+      const i = /** @type {number} */ (m.index), n = Math.round(m[3] ? +m[3] : +m[1] * 60 + +(m[2] ?? 0));
+      if (!free(i, i + m[0].length) || n < 1 || n > 1440) continue;
+      duration = n; take(i, i + m[0].length, 'duration', n); break;
+    }
     // {march 30}: a deadline, read by the shortcuts or chrono; the braces hide it from the date scan below
     for (const m of text.matchAll(/\{([^{}]+)\}/g)) {
       const i = /** @type {number} */ (m.index), end = i + m[0].length;
@@ -240,7 +248,7 @@ export function parse(text, ctx = {}) {
     }
   }
   tokens.sort((a, b) => a.start - b.start);
-  return { title: titleOf(text, tokens), tokens, due, noDate, projectId, sectionId, labels, priority, deadline };
+  return { title: titleOf(text, tokens), tokens, due, noDate, projectId, sectionId, labels, priority, deadline, duration };
 }
 
 /** the text without its tokens, spaces tidied @param {string} text @param {Token[]} tokens */

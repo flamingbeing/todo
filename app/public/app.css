@@ -757,3 +757,13 @@ body {
 .td-cv-pick[aria-checked="true"] .td-cv-pick-circle { border: 6px solid var(--td-fill); }
 .td-cv-pick-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .td-cv-pick-place { flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--td-text-2); }
+
+/* ---- slice 4: Today's summary under the title ("5 tasks · 2 h 30 min") */
+.td-day-sum { display: flex; align-items: center; gap: 6px; margin: -4px 0 6px; padding-inline: 16px; font-size: 13px; color: var(--td-text-3); }
+.td-day-sum:empty { display: none; }
+.td-day-sum .ui-icon { width: 14px; height: 14px; flex: none; }
+.td-sched-min { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 16px 0 52px; }
+.td-sched-min[hidden] { display: none; }
+.td-sched-min .td-choice-label { flex: 1; font-size: 16px; }
+.td-sched-min-in { box-sizing: border-box; width: 88px; height: 36px; padding: 0 10px; border: 0; border-radius: 8px; background: light-dark(#f2f2f2, #333);
+  color: inherit; font: inherit; font-size: 16px; text-align: end; }

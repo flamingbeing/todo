@@ -1,6 +1,6 @@
 // The scheduler, from the task sheet's Date: a quick row sets the day and closes; a calendar day, a time and a repeat
 // wait for Done; the custom repeat builds its rule; typed words set the date. A repeating task, ticked, stays open on
-// its next date, and Undo puts the old one back. The sheet and the custom screen pass axe.
+// its next date, and Undo puts the old one back. The sheet and the custom screen pass axe. Duration (a menu or typed minutes) and Postpone (the next day, time kept).
 import AxeBuilder from './axe.mjs';
 import { test, expect, signIn, synced, uniq, today, db, clickOpens } from './fixtures.mjs';
 
@@ -102,4 +102,53 @@ test('a repeating task, ticked, moves to its next date; Undo puts it back', asyn
   await page.locator('.toast').last().getByRole('button', { name: 'Undo' }).click();
   await expect(page.locator('#today')).toContainText(t);
   await expect.poll(async () => (await dueOf(t))?.date, { timeout: 15_000 }).toBe(day(0));
+});
+
+test('Duration: a length from the menu or typed minutes waits for Done; the row and the sheet show the range', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const t = uniq('dur');
+  await put(t, { title: t, due: { date: day(0), time: '10:00' } });
+  await synced(page);
+  await openScheduler(page, t);
+  const row = page.locator(`${sheet} .td-sched-row`).filter({ hasText: 'Duration' });
+  await expect(row).toContainText('None');
+  await row.click();
+  await page.getByRole('menuitemradio', { name: '45 min' }).or(page.getByRole('menuitem', { name: '45 min' })).click();
+  await expect(row).toContainText('45 min');
+  expect(await AxeBuilder(page)).toEqual([]);
+  await page.locator(`${sheet} .td-text-btn`).filter({ hasText: 'Done' }).click();
+  await expect(page.locator(sheet)).toBeHidden();
+  await expect.poll(async () => (await db.get(`spaces/_/tasks/${t}`))?.duration, { timeout: 15_000 }).toBe(45);
+  await expect(page.locator('#task-sheet .td-attr[aria-label^="Date"]')).toContainText(/10:00\s?AM–10:45\s?AM/);
+
+  // Custom: minutes typed
+  await page.locator('#task-sheet .td-attr[aria-label^="Date"]').click();
+  await row.click();
+  await page.getByRole('menuitemradio', { name: 'Custom' }).or(page.getByRole('menuitem', { name: 'Custom' })).click();
+  await page.locator('#td-sched-min').fill('50');
+  await expect(row).toContainText('50 min');
+  await page.locator(`${sheet} .td-text-btn`).filter({ hasText: 'Done' }).click();
+  await expect.poll(async () => (await db.get(`spaces/_/tasks/${t}`))?.duration, { timeout: 15_000 }).toBe(50);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#today .td-row').filter({ hasText: t })).toContainText(/10:00\s?AM–10:50\s?AM/);
+  await expect(page.locator('#today-sum')).toContainText('50 min');
+});
+
+test('Postpone moves the day by one and keeps the time; a repeating task moves this time only', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const t = uniq('later'), r = uniq('weekly');
+  await put(t, { title: t, due: { date: day(0), time: '18:15' } });
+  await put(r, { title: r, due: { date: day(0), rrule: 'FREQ=WEEKLY', string: 'every week' } });
+  await synced(page);
+  await openScheduler(page, t);
+  await page.locator(`${sheet} .td-sched-row`).filter({ hasText: 'Postpone' }).click();
+  await expect(page.locator(sheet)).toBeHidden();
+  await expect.poll(() => dueOf(t), { timeout: 15_000 }).toEqual({ date: day(1), time: '18:15' });
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#task-sheet')).toBeHidden();
+  await openScheduler(page, r);
+  await page.locator(`${sheet} .td-sched-row`).filter({ hasText: 'Postpone' }).click();
+  await expect.poll(async () => { const d = await dueOf(r); return d && [d.date, d.rrule]; }, { timeout: 15_000 }).toEqual([day(1), 'FREQ=WEEKLY']);
 });

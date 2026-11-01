@@ -7,7 +7,7 @@ import { icon, confirmModal } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { REFUSED } from '../items.js';
 import { priorityOf, placeText, projectOf, labelsOf } from '../tasks.js';
-import { dueLine, deadlineLine, dayKey } from '../dates.js';
+import { dueLine, deadlineLine, dayKey, minutesText } from '../dates.js';
 import { colorHex } from '../colors.js';
 import { flatten, descendants, canNest } from '../tree.js';
 import { byOrder } from '../order.js';
@@ -128,7 +128,8 @@ function draw(ctx) {
     if (at && await ctx.app.moveTask(at, { ...to, parentId: null })) ctx.toast(REFUSED);
   }); };
   place.addEventListener('click', move);
-  date.addEventListener('click', () => pickDate(current(ctx)?.due, due => save({ due }), { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1) }));
+  date.addEventListener('click', () => { const now = current(ctx); pickDate(now?.due, (due, duration) => save({ due, ...(duration !== undefined ? { duration } : {}) }),
+    { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1), duration: now?.duration ?? null }); });
   deadline.addEventListener('click', () => { const now = current(ctx); if (now) pickDate(now.deadline ? { date: now.deadline } : null, d => save({ deadline: d?.date ?? null }),
     { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1), dateOnly: true }); });
   labels.addEventListener('click', () => { const now = current(ctx); if (now) pickLabels(ctx, ticksOf(now, ctx.data().labels), ticks => save({ labels: onIds(ticks) })); });
@@ -165,12 +166,14 @@ function draw(ctx) {
     const where = placeText(now, data.projects, data.sections);
     place.replaceChildren(hash, el('span', 'td-attr-text', where));
     place.setAttribute('aria-label', `Project: ${where}`);
-    const due = dueLine(now.due, dayKey());
-    const dueText = el('span', `td-attr-text${due ? '' : ' td-attr-empty'}`, due ? due.text : 'Date');
+    const due = dueLine(now.due, dayKey(), { dur: now.duration });
+    // the duration: in the time's range when there is one, else after the day ("Tomorrow · 45 min")
+    const long = due && now.duration && !now.due?.time ? ` · ${minutesText(now.duration)}` : '';
+    const dueText = el('span', `td-attr-text${due ? '' : ' td-attr-empty'}`, due ? due.text + long : 'Date');
     const cal = icon(ICONS.calendar, { class: 'td-attr-icon' });
     if (due) { cal.dataset.tone = due.tone; dueText.dataset.tone = due.tone; }
     date.replaceChildren(cal, dueText, ...(due?.repeats ? [icon(ICONS.repeat, { class: 'td-meta-icon td-repeat' })] : []));
-    date.setAttribute('aria-label', due ? `Date: ${due.text}` : 'Date');
+    date.setAttribute('aria-label', due ? `Date: ${due.text}${long}` : 'Date');
     const dl = deadlineLine(now.deadline, dayKey());
     deadline.replaceChildren(icon(ICONS.target, { class: 'td-attr-icon td-deadline-icon' }), el('span', `td-attr-text${dl ? '' : ' td-attr-empty'}`, dl ? dl.text : 'Deadline'));
     if (dl) /** @type {HTMLElement} */ (deadline.lastElementChild).dataset.tone = dl.tone;

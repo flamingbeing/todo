@@ -4,10 +4,11 @@
 // Completed load the first time they are needed (lazyModules), then in idle moments after the first screen; so do
 // Filters & Labels, Search's results, a project's board, the Display sheet and Upcoming's week strip.
 // Display's choices (grouping, order, what shows) are kept per list on this device (the option "display").
-import { conflictSheet, refusedList, toaster, undoToast, loadState, lazyModules, glide, holdKeyboard, captured } from '@core/ui';
+import { conflictSheet, refusedList, toaster, undoToast, loadState, lazyModules, glide, holdKeyboard, captured, icon, plural } from '@core/ui';
+import { ICONS } from '../icons.js';
 import { COLL, REFUSED, INBOX, itemText } from '../items.js';
 import { projectView, todayView, isTask, placeText, projectOf, priorityOf, cleanDisplay, plainDisplay } from '../tasks.js';
-import { dayKey, dayTitle, dueLine } from '../dates.js';
+import { dayKey, dayTitle, dueLine, minutesText } from '../dates.js';
 import { colorHex } from '../colors.js';
 import { $, sectionScreen } from '../dom.js';
 import { rowList, addRow, groupHead, emptyNote } from '../ui/row.js';
@@ -300,6 +301,9 @@ export function views(app) {
 
   const paintToday = () => {
     const today = drawnDay = dayKey(), d = disp('today');
+    // under the title: how many tasks are open for today (overdue too) and, when some have one, their planned time
+    const open = filtered().filter(t => isTask(t) && !t.done && !!t.due?.date && t.due.date <= today), mins = open.reduce((n, t) => n + (t.duration || 0), 0);
+    $('today-sum').replaceChildren(...(open.length ? [icon(ICONS.circleCheck), [plural(open.length, 'task'), mins && minutesText(mins)].filter(Boolean).join(' · ')] : []));
     if (inCal('today')) { shownToday = []; drawCal('today', $('today'), $('today-empty'), filtered().filter(t => !!t.due?.date), { projectId: INBOX }); return; }
     const host = $('today'), base = { projectId: INBOX, due: { date: today } }, ts = filtered().filter(t => { const k = t.due?.date; return !!k && (t.done ? k === today : k <= today); });
     host.toggleAttribute('data-sorted', d.sort !== 'manual');

@@ -1,7 +1,7 @@
 // dates.js: day maths, the tone and words of a due date, group headers. node --test app/test/dates.unit.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dayKey, timeKey, addDays, daysBetween, isDay, isTime, weekdayName, shortDate, dateTone, dayWords, deadlineLine, dueLine, dayTitle, timeText, weekOf, monthGrid, monthTitle } from '../src/dates.js';
+import { dayKey, timeKey, addDays, daysBetween, isDay, isTime, weekdayName, shortDate, dateTone, dayWords, deadlineLine, dueLine, dayTitle, timeText, minutesText, weekOf, monthGrid, monthTitle } from '../src/dates.js';
 
 const T = '2026-11-01';   // a Sunday
 
@@ -50,6 +50,9 @@ test('a row’s date line: the time joins the words; the group’s own day is no
   assert.deepEqual(dueLine({ date: '2026-11-02', time: '09:00' }, T, { now: '08:00' }), { text: `Tomorrow ${nine}`, tone: 'tomorrow', repeats: false });
   assert.deepEqual(dueLine({ date: T, time: '09:00' }, T, { own: T, now: '08:00' }), { text: nine, tone: 'today', repeats: false });
   assert.deepEqual(dueLine({ date: T, rrule: 'FREQ=DAILY' }, T, { own: T }), { text: '', tone: 'today', repeats: true });
+  assert.equal(dueLine({ date: T, time: '10:00' }, T, { own: T, dur: 45 }).text, `${timeText('10:00')}–${timeText('10:45')}`, 'a duration: the end time');
+  assert.equal(dueLine({ date: T, time: '23:30' }, T, { own: T, dur: 60 }).text, `${timeText('23:30')}–${timeText('00:30')}`, 'past midnight');
+  assert.equal(dueLine({ date: T }, T, { own: T, dur: 45 }).text, '', 'no time: no range');
   assert.equal(dueLine(null, T), null);
   assert.equal(dueLine({ date: 'soon' }, T), null);
 });
@@ -89,4 +92,8 @@ test('a deadline in words: today, tomorrow, "in N days" within two weeks, else t
   assert.deepEqual(deadlineLine('2027-01-02', T), { text: '2 Jan 2027', tone: 'deadline' });
   assert.deepEqual(deadlineLine('2026-10-30', T), { text: '30 Oct', tone: 'overdue' });
   for (const bad of [null, undefined, '', '2026-13-45', 5]) assert.equal(deadlineLine(bad, T), null);
+});
+
+test('a duration in words', () => {
+  assert.deepEqual([15, 45, 60, 90, 150, 180].map(minutesText), ['15 min', '45 min', '1 h', '1 h 30 min', '2 h 30 min', '3 h']);
 });

@@ -50,10 +50,11 @@ export async function deleteTasks(ctx, tasks) {
 /** A new date for tasks (the scheduler; a repeat set there goes to each) @param {Ctx} ctx @param {Task[]} tasks @param {() => void} [after] */
 export function scheduleTasks(ctx, tasks, after) {
   if (!tasks.length) return;
-  pickDate(tasks.length === 1 ? tasks[0].due : null, async due => {
-    for (const t of tasks) if (await ctx.app.editTask(t, { due: due ? { ...due } : null })) { ctx.toast(REFUSED); break; }
+  const one = tasks.length === 1;
+  pickDate(one ? tasks[0].due : null, async (due, duration) => {
+    for (const t of tasks) if (await ctx.app.editTask(t, { due: due ? { ...due } : null, ...(duration !== undefined ? { duration } : {}) })) { ctx.toast(REFUSED); break; }
     after?.();
-  }, { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1) });
+  }, { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1), ...(one ? { duration: tasks[0].duration ?? null } : {}) });
 }
 
 /** A deadline for tasks (the scheduler's date-only sheet, "No deadline" clears it); one save each, one Undo for them all

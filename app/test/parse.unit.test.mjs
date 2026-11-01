@@ -227,3 +227,21 @@ test('a repeat before the rule library has loaded: its first day all the same (t
   assert.equal(due('Rent every month on the 15th', none)?.date, due('Rent every month on the 15th')?.date);
   assert.equal(due('Water plants every day', none)?.date, '2026-11-01');
 });
+
+test('for 45 min, for 1h, for 2h 30m, for 90 minutes: a duration, marked, out of the title', () => {
+  const r = p('Call the plumber tomorrow 10am for 45 min p2');
+  assert.equal(r.duration, 45);
+  assert.equal(r.title, 'Call the plumber');
+  assert.deepEqual(r.tokens.find(t => t.kind === 'duration'), { start: 31, end: 41, kind: 'duration', value: 45 });
+  assert.equal(r.due.time, '10:00');
+  assert.equal(p('a for 1h').duration, 60);
+  assert.equal(p('a for 2h 30m').duration, 150);
+  assert.equal(p('a for 90 minutes').duration, 90);
+  assert.equal(p('a for 1.5 hours').duration, 90);
+  assert.equal(p('a for 2 hrs, then rest').duration, 120);
+  assert.equal(p('a for 25 hours').duration, null, 'over a day stays text');
+  assert.equal(p('a for 0 min').duration, null);
+  assert.equal(p('shop for milk').duration, null);
+  assert.equal(p('a for 45 min', { smartDates: false }).duration, null, 'smart dates off');
+  assert.equal(p('a for 45 min', { ignore: [{ start: 2, end: 12 }] }).duration, null, 'cleared: text');
+});

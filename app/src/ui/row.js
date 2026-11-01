@@ -30,7 +30,7 @@ const el = (tag, cls, text) => { const e = document.createElement(tag); e.classN
 /** the meta line's parts, or null when there are none @param {import('../tree.js').Line<Task>} line @param {RowContext} c */
 function meta(line, c) {
   const t = line.task, parts = [];
-  const due = dueLine(t.due, c.today, { own: c.own });
+  const due = dueLine(t.due, c.today, { own: c.own, dur: t.duration });
   if (due && (due.text || due.repeats)) {
     const d = el('span', 'td-date');
     d.dataset.tone = due.tone;
