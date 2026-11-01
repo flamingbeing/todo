@@ -32,6 +32,10 @@ body {
   --td-d-weekend: light-dark(#1f63c9, #64a0f5);
   --td-d-later: light-dark(#6b6b6b, #a0a0a0);
   --td-tabbar-h: 49px;
+  /* dragging: the drop line, Today's postpone place, a board card's edge */
+  --td-drop: #db4e3f;
+  --td-postpone: light-dark(#efefed, #2a2a2a);
+  --td-card-edge: light-dark(#efefef, #3d3d3d);
   /* the kit's own parts in these colours */
   --bg: var(--td-ground);
   --surface: var(--td-card);
@@ -432,13 +436,30 @@ body:has(dialog[open]) .ui-fab.td-fab { display: none; }
 .td-row.is-lifted { z-index: 6; background: var(--td-ground); border-radius: 10px; box-shadow: 0 10px 28px rgb(0 0 0 / .2), 0 1px 4px rgb(0 0 0 / .12); }
 .td-row.is-lifted::after { display: none; }
 .td-drop-clip { position: fixed; left: 0; top: 0; height: 100%; overflow: hidden; z-index: 20; pointer-events: none; }
-.td-drop-line { position: absolute; left: 0; top: 0; height: 2px; border-radius: 1px; background: var(--td-accent); opacity: 0; }
-.td-drop-line::before { content: ""; position: absolute; left: -3px; top: -2px; width: 6px; height: 6px; border-radius: 50%; background: var(--td-accent); }
-.td-fab-cancel { position: fixed; left: 0; top: 0; z-index: 19; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%;
-  background: light-dark(#e5e5e5, #444); color: var(--td-text-2); pointer-events: none; }
-.td-fab-cancel.is-over { background: light-dark(#8f8f8f, #777); color: #fff; }
-.td-fab-cancel > svg { width: 22px; height: 22px; }
-.ui-fab.td-fab.is-dragging { z-index: 21; box-shadow: 0 12px 28px rgb(0 0 0 / .28); }
+.td-drop-line { position: absolute; left: 0; top: 0; height: 2px; border-radius: 1px; background: var(--td-drop); opacity: 0; }
+.td-drop-line::before { content: ""; position: absolute; left: -3.5px; top: -2.5px; width: 7px; height: 7px; border-radius: 50%; background: var(--td-drop); }
+/* the + while dragged: 96 px (a scale, set in ui/row-drag.js), the accent at 60 %; the grey x where it was */
+.td-fab-cancel { position: fixed; left: 0; top: 0; z-index: 19; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+  background: #676767; color: #fff; pointer-events: none; transition: transform .15s ease-out; }
+.td-fab-cancel.is-over { background: #4a4a4a; }
+.td-fab-cancel > svg { width: 20px; height: 20px; stroke-width: 2.5; }
+.ui-fab.td-fab.is-dragging { z-index: 21; background: color-mix(in srgb, var(--td-fill) 60%, var(--td-ground)); box-shadow: 0 12px 28px rgb(0 0 0 / .22); }
+/* Today's postpone place, at the foot of the list while a row is dragged (ui/row-drag.js); it fades in, over
+   the lifted row so its words stay readable under a finger */
+.td-postpone { position: fixed; z-index: 18; left: calc(16px + env(safe-area-inset-left, 0px)); right: calc(16px + env(safe-area-inset-right, 0px));
+  bottom: calc(max(var(--ui-tabbar-room, 0px), env(safe-area-inset-bottom, 0px)) + 88px); display: flex; align-items: center; justify-content: center; gap: 8px;
+  box-sizing: border-box; height: 56px; padding: 0 12px; border: 1.5px dashed light-dark(#d0d0ce, #555); border-radius: 8px; background: var(--td-postpone);
+  color: var(--td-text-2); font-size: 15px; pointer-events: none; opacity: 0; transition: opacity .18s ease-out; }
+.td-postpone.is-on { opacity: 1; }
+.td-postpone b { color: var(--td-text); font-weight: 600; }
+.td-postpone-icon { flex: none; width: 18px !important; height: 18px !important; color: var(--td-d-today); }
+.td-postpone.is-over { border-color: var(--td-d-today); border-style: solid; }
+/* a group's "+" (Display's groups): quick add with its value */
+.td-group-add { color: var(--td-text-3); }
+.td-group-add .ui-icon { width: 20px; height: 20px; }
+.td-subgroup { display: flex; align-items: center; justify-content: space-between; min-height: 36px; }
+.td-subgroup-name { margin: 0; font: inherit; color: inherit; }
+.td-subgroup .td-group-add { width: 32px; height: 32px; margin-inline-end: -8px; }
 .td-drop-section { display: flex; align-items: center; gap: 8px; margin: 12px 16px; color: var(--td-accent-text); font-size: 13px; font-weight: 600; }
 .td-drop-section > span:not(:nth-child(2)) { flex: 1; height: 1px; background: currentColor; opacity: .45; }
 .td-drop-section.is-over > span:not(:nth-child(2)) { height: 2px; opacity: 1; }
@@ -518,16 +539,17 @@ body:has(dialog[open]) .ui-fab.td-fab { display: none; }
 .td-board::-webkit-scrollbar { display: none; }
 .td-board > .td-col { flex: none; box-sizing: border-box; width: 90%; max-width: 360px; scroll-snap-align: start; }
 .td-col-head { display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 0 0 4px; }
-.td-col-title { min-width: 0; margin: 0; font-size: 16px; font-weight: 600; color: var(--td-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td-col-title { min-width: 0; margin: 0; font-size: 15px; font-weight: 600; color: var(--td-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .td-col-count { flex: 1; font-size: 14px; color: var(--td-text-3); }
 .td-board .td-rows { display: flex; flex-direction: column; gap: 8px; min-height: 8px; margin: 0; padding: 0; list-style: none; }
-.td-board .td-row { min-height: 0; padding: 0; border: 1px solid var(--td-hair); border-radius: 10px; background: var(--td-card); box-shadow: 0 1px 3px rgb(0 0 0 / .08); }
+.td-board .td-row { min-height: 0; padding: 0; border: 1px solid var(--td-card-edge); border-radius: 8px; background: var(--td-card); box-shadow: 0 1px 2px rgb(0 0 0 / .05); }
+.td-board .td-meta-icon { width: 12px !important; height: 12px !important; }
 .td-board .td-row::after { display: none; }
-.td-board .td-row .td-check { margin: 13px 10px 0 12px; }
-.td-board .td-row-main { padding: 12px 12px 12px 0; }
+.td-board .td-row .td-check { margin: 11px 10px 0 12px; }
+.td-board .td-row-main { padding: 10px 12px 10px 0; }
 .td-board .td-title + .td-meta { margin-top: 0; }
 .td-board .td-row.is-lifted { box-shadow: 0 10px 24px rgb(0 0 0 / .2); }
-.td-board .td-add-row { margin-top: 8px; padding: 0 12px; border-radius: 10px; }
+.td-board .td-add-row { margin-top: 8px; padding: 0 12px; border-radius: 8px; }
 .td-board .td-name-field { margin: 0; }
 .td-col-new { padding-top: 40px; }
 .td-col-add-section { width: 100%; margin: 0; min-height: 44px; padding: 0 12px; border: 1px dashed var(--td-hair); border-radius: 10px; }

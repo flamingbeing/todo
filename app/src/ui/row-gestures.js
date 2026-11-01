@@ -14,6 +14,7 @@ import { holdMenu, startSelect, selecting, endSelect, scheduleTasks, deleteTasks
  * @property {() => string} projectId  the project the project page shows
  * @property {(o: import('../screens/views.js').AddContext) => void} add  quick add for a place
  * @property {(projectId: string) => void} newSection
+ * @property {() => string} view  the list on top, as Display keeps it
  */
 
 /** @param {Ctx} ctx @param {Lists} l */
@@ -34,7 +35,7 @@ export function wire(ctx, l) {
       if (w === 'delete') return deleteTasks(ctx, [t]);
       return false;
     } });
-    dragRows(host, ctx, { kind: () => kind, projectId: () => (id === INBOX ? INBOX : l.projectId()), can, menu: (t, row) => holdMenu(ctx, t, row, host) });
+    dragRows(host, ctx, { kind: () => kind, projectId: () => (id === INBOX ? INBOX : l.projectId()), can, view: l.view, menu: (t, row) => holdMenu(ctx, t, row, host) });
   }
   const fab = document.getElementById('fab');
   if (fab) dragFab(fab, ctx, { kind: () => l.hosts[l.top()] ?? null, projectId: () => (l.top() === INBOX ? INBOX : l.projectId()),

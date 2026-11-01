@@ -73,7 +73,7 @@ test('grouping by priority, by name descending, done tasks shown: kept per list,
   await expect(other.locator('#project .td-group-title')).toHaveCount(0);
 });
 
-test('Today and the Inbox offer List and Calendar (no Board); Calendar is kept for that list on this device', async ({ phone }) => {
+test('Today and the Inbox offer List, Board and Calendar; Calendar is kept for that list on this device', async ({ phone }) => {
   const page = await phone();
   await signIn(page, 'member');
   await synced(page);
@@ -81,9 +81,8 @@ test('Today and the Inbox offer List and Calendar (no Board); Calendar is kept f
     await openTab(page, tab);
     const sheet = await display(page);
     const layouts = sheet.getByRole('radiogroup', { name: 'Layout' }).getByRole('radio');
-    await expect(layouts).toHaveText(['List', 'Calendar']);
+    await expect(layouts).toHaveText(['List', 'Board', 'Calendar']);
     await expect(sheet.getByRole('radio', { name: 'List' })).toHaveAttribute('aria-checked', 'true');
-    await expect(sheet.getByRole('radio', { name: 'Board' })).toHaveCount(0);
     expect(await AxeBuilder(page)).toEqual([]);
     await sheet.getByRole('radio', { name: 'Calendar' }).click();
     await expect(sheet.getByRole('radio', { name: 'Calendar' })).toHaveAttribute('aria-checked', 'true');

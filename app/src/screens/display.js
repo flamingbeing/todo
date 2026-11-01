@@ -84,7 +84,6 @@ export function openDisplay(ctx, view, project) {
     tiles.setAttribute('role', 'radiogroup');
     tiles.setAttribute('aria-label', 'Layout');
     for (const [key, label] of /** @type {const} */ ([['list', 'List'], ['board', 'Board'], ['calendar', 'Calendar']])) {
-      if (key === 'board' && !now) continue;
       const b = /** @type {HTMLButtonElement} */ (el('button', 'td-layout'));
       b.type = 'button';
       b.setAttribute('role', 'radio');
@@ -93,7 +92,8 @@ export function openDisplay(ctx, view, project) {
       b.append(picture(key), el('span', 'td-layout-name', label));
       b.addEventListener('click', async () => {
         if (on) return;
-        if (key === 'calendar' || !now) { save({ layout: key === 'calendar' ? 'calendar' : '' }); return; }
+        // (a list that is not a project: its board is this device's too)
+        if (key === 'calendar' || !now) { save({ layout: key === 'list' ? '' : key }); return; }
         if (d.layout) save({ layout: '' });
         if ((now.view ?? 'list') !== key) {
           if (!ctx.canWrite()) return;

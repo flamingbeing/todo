@@ -236,7 +236,9 @@ test('Display: the layout, the calendar\'s kind and colouring, the all-day row a
   assert.deepEqual([p.layout, p.cal, p.color, p.allDay, p.future], ['calendar', 'month', 'label', false, true]);
   assert.ok(!plainDisplay(p, 'project:p1'));
   assert.equal(cleanDisplay({ layout: 'board' }, 'project:p1').layout, 'board');
-  assert.equal(cleanDisplay({ layout: 'board' }, 'inbox').layout, '', 'a board is a project\'s');
+  assert.equal(cleanDisplay({ layout: 'board' }, 'inbox').layout, 'board', 'any list may be a board');
+  assert.equal(cleanDisplay({ layout: 'board' }, 'today').layout, 'board');
+  assert.equal(cleanDisplay({ layout: 'board' }, 'labels:l1').layout, 'board');
   assert.equal(cleanDisplay({ layout: 'x' }, 'inbox').layout, '');
   assert.equal(cleanDisplay({ cal: 'agenda' }, 'labels:l1').cal, 'agenda');
   assert.equal(cleanDisplay({ cal: 'agenda' }, 'upcoming').cal, 'week', 'Upcoming has no agenda');

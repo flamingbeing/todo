@@ -30,6 +30,10 @@ export function drawDays(ctx, o) {
   const today = dayKey(), d = o.d, n = shown.get(o.list) ?? STEP;
   const v = upcomingView(narrowTasks(o.tasks, d, ctx.data().labels, today), today, n, sorter(d.sort, d.dir, dayOrder)), parts = [];
   o.list.toggleAttribute('data-sorted', d.sort !== 'manual');
+  // (back from Upcoming's board or calendar)
+  o.list.classList.remove('td-board');
+  o.list.removeAttribute('data-swipe-own');
+  delete o.list.dataset.grouped;
   if (v.overdue.length) {
     const g = document.createElement('section'); g.className = 'td-group';
     g.append(groupHead('Overdue'), rowList(v.overdue, ctx.rows({ place: o.place }), 'Overdue'));

@@ -52,8 +52,9 @@ export function openQuickAdd(ctx, start, hold = null) {
   const smart = () => { try { return settings.get('smartDates') !== false; } catch { return true; } };
   /** what the person set by hand (a chip or the foot): it wins over the words */
   const manual = /** @type {{ due?: Due | null, priority?: number, labels?: string[], deadline?: string | null, place?: { projectId: string, sectionId: string | null } }} */ ({});
-  /** where the page shown says a task goes, and its date */
-  const base = { projectId: start.projectId ?? INBOX, sectionId: start.sectionId ?? null, parentId: start.parentId ?? null, due: start.due ?? null, order: typeof start.order === 'number' ? start.order : undefined };
+  /** where the page shown says a task goes, and its date (a group's "+": its priority or label too) */
+  const base = { projectId: start.projectId ?? INBOX, sectionId: start.sectionId ?? null, parentId: start.parentId ?? null, due: start.due ?? null, order: typeof start.order === 'number' ? start.order : undefined,
+    priority: start.priority, labels: start.labels };
   /** cleared ranges of the name: the words stay text */
   let ignore = /** @type {{ start: number, end: number }[]} */ ([]);
   let was = '';
@@ -112,8 +113,8 @@ export function openQuickAdd(ctx, start, hold = null) {
       projectId: place?.projectId ?? base.projectId, sectionId: place ? place.sectionId : base.sectionId,
       parentId: place && place.projectId !== base.projectId ? null : base.parentId,
       due: manual.due !== undefined ? manual.due : parsed.due ?? (parsed.noDate ? null : base.due),
-      priority: manual.priority ?? parsed.priority ?? 4,
-      labels: [...new Set([...(manual.labels ?? []), ...parsed.labels])],
+      priority: manual.priority ?? parsed.priority ?? base.priority ?? 4,
+      labels: [...new Set([...(manual.labels ?? base.labels ?? []), ...parsed.labels])],
       deadline: manual.deadline !== undefined ? manual.deadline : parsed.deadline,
     };
   };
@@ -150,10 +151,10 @@ export function openQuickAdd(ctx, start, hold = null) {
     flag.style.color = PRIORITY_COLOR[v.priority];
     prioChip.replaceChildren(flag, el('span', '', v.priority === 4 ? 'Priority' : `P${v.priority}`));
     prioChip.setAttribute('aria-label', v.priority === 4 ? 'Priority' : `Priority: P${v.priority}`);
-    setX(prioC, v.priority !== 4, () => { unmark(['priority']); delete manual.priority; });
+    setX(prioC, v.priority !== 4, () => { unmark(['priority']); delete manual.priority; base.priority = undefined; });
     labelChip.replaceChildren(icon(ICONS.tag), el('span', '', v.labels.length ? v.labels.join(', ') : 'Labels'));
     labelChip.setAttribute('aria-label', v.labels.length ? `Labels: ${v.labels.join(', ')}` : 'Labels');
-    setX(labelC, v.labels.length > 0, () => { unmark(['label']); delete manual.labels; });
+    setX(labelC, v.labels.length > 0, () => { unmark(['label']); delete manual.labels; base.labels = undefined; });
     labelC.box.hidden = !v.labels.length;
     const dl = deadlineLine(v.deadline, today);
     deadC.main.replaceChildren(icon(ICONS.target), el('span', '', dl?.text ?? 'Deadline'));

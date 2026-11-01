@@ -89,14 +89,14 @@ export function taskOps({ save, id, data, now = Date.now, drop = () => {} }) {
      * a dragged task in its new place: its parent, section and order there (its subtasks follow to the project and
      * section), a new day when dropped on one, and the records to renumber first (from order.js placeAt)
      * @param {Task} task @param {{ projectId?: string, sectionId?: string | null, parentId?: string | null, order?: number,
-     *   dayOrder?: number, date?: string }} to @param {{ item: { id: string }, order: number }[]} [renumber] @param {'order' | 'dayOrder'} [key]
+     *   dayOrder?: number, date?: string, fields?: import('./items.js').Fields }} to (fields: what a drop between groups sets) @param {{ item: { id: string }, order: number }[]} [renumber] @param {'order' | 'dayOrder'} [key]
      */
     placeTask: (task, to, renumber = [], key = 'order') => {
       const all = data().tasks;
       const projectId = to.projectId ?? projectOf(task), sectionId = to.sectionId === undefined ? task.sectionId ?? null : to.sectionId;
       const next = { ...task, projectId, sectionId, ...(to.parentId !== undefined ? { parentId: to.parentId } : {}),
         ...(typeof to.order === 'number' ? { order: to.order } : {}), ...(typeof to.dayOrder === 'number' ? { dayOrder: to.dayOrder } : {}),
-        ...(to.date && task.due ? { due: cleanDue({ ...task.due, date: to.date }) } : to.date ? { due: { date: to.date } } : {}) };
+        ...(to.date && task.due ? { due: cleanDue({ ...task.due, date: to.date }) } : to.date ? { due: { date: to.date } } : {}), ...cleanFields(to.fields ?? {}) };
       const moved = projectId !== projectOf(task) || sectionId !== (task.sectionId ?? null);
       const under = moved ? descendants(task.id, all) : [];
       const others = renumber.filter(r => r.item.id !== task.id).map(r => {

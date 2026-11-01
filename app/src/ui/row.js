@@ -140,9 +140,9 @@ export function addRow(label, onClick) {
   return b;
 }
 
-/** a group's header (a section, a day): its title, and optionally a fold chevron and a "…" button
- * @param {string} title @param {{ id?: string, collapsed?: boolean, onFold?: () => void, onMore?: (b: HTMLElement) => void, label?: string }} [o] */
-export function groupHead(title, { id, collapsed, onFold, onMore, label } = {}) {
+/** a group's header (a section, a day): its title, and optionally a fold chevron, a "+" (add a task there) and a "…" button
+ * @param {string} title @param {{ id?: string, collapsed?: boolean, onFold?: () => void, onMore?: (b: HTMLElement) => void, onAdd?: () => void, label?: string }} [o] */
+export function groupHead(title, { id, collapsed, onFold, onMore, onAdd, label } = {}) {
   const h = el('div', 'td-group-head');
   const name = el(onFold ? 'button' : 'h2', 'td-group-title');
   if (id) name.id = id;
@@ -155,6 +155,14 @@ export function groupHead(title, { id, collapsed, onFold, onMore, label } = {}) 
     wrap.append(name);
     h.append(wrap);
   } else { name.textContent = title; h.append(name); }
+  if (onAdd) {
+    const add = /** @type {HTMLButtonElement} */ (el('button', 'td-icon-btn td-group-add'));
+    add.type = 'button';
+    add.setAttribute('aria-label', `Add task to ${label ?? title}`);
+    add.append(icon(ICONS.plus));
+    add.addEventListener('click', onAdd);
+    h.append(add);
+  }
   if (onMore) {
     const more = /** @type {HTMLButtonElement} */ (el('button', 'td-icon-btn td-group-more'));
     more.type = 'button';

@@ -1,7 +1,8 @@
 // Held and dragged, a row moves: up or down among the others (the line shows where), and pulled right under the row
 // above it becomes its subtask; on Today the day's own order is kept. The + button dragged between two rows opens
-// quick add for a task there; let go on its grey x and nothing opens.
-import { test, expect, signIn, synced, uniq, today, db, finger, gesturesReady, openTab, steps, still } from './fixtures.mjs';
+// quick add for a task there; let go on its grey x and nothing opens. On Today a place at the foot shows while a row
+// is dragged: let go there, the task moves to tomorrow (its time kept), with Undo.
+import { test, expect, signIn, synced, uniq, today, db, finger, gesturesReady, openTab, steps, still, press, slide, letGo } from './fixtures.mjs';
 
 const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { projectId: 'inbox', priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
 const get = id => db.get(`spaces/_/tasks/${id}`);
@@ -90,4 +91,30 @@ test('the + button dragged between two rows adds a task there; on its x nothing 
   await expect.poll(async () => (made = (await db.list('spaces/_/tasks')).find(d => d.title === t))?.order, { timeout: 15_000 }).toBeDefined();
   const [oa, ob] = [(await get(a))?.order, (await get(b))?.order];
   expect(made.order > oa && made.order < ob).toBe(true);
+});
+
+test('on Today the postpone place shows while a row is dragged; let go there, it moves to tomorrow, Undo puts it back', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const a = uniq('pp-a');
+  await put(a, { title: a, order: 1, dayOrder: -1e12 - Date.now(), due: { date: today(), time: '09:30' } });
+  await synced(page);
+  await gesturesReady(page);
+  await expect(page.locator(rowIn('today', a))).toBeVisible();
+  await still(page, '#today');
+  await expect(page.locator('.td-postpone')).toHaveCount(0);
+  const r = /** @type {{ y: number, height: number }} */ (await page.locator(rowIn('today', a)).boundingBox());
+  await press(page, rowIn('today', a));
+  await slide(page, { y: r.y + r.height / 2 + 60 }, 6);
+  const zone = page.locator('.td-postpone');
+  await expect(zone).toHaveClass(/is-on/);
+  await expect(zone).toContainText('Tomorrow');
+  await slide(page, { to: '.td-postpone' }, 8);
+  await expect(zone).toHaveClass(/is-over/);
+  await letGo(page);
+  await expect(zone).toHaveCount(0);
+  const tomorrow = today(new Date(Date.now() + 86_400_000));
+  await expect.poll(async () => (await get(a))?.due, { timeout: 15_000 }).toEqual({ date: tomorrow, time: '09:30' });
+  await page.locator('.toast').filter({ hasText: 'Moved to Tomorrow' }).getByRole('button', { name: 'Undo' }).click();
+  await expect.poll(async () => (await get(a))?.due?.date, { timeout: 15_000 }).toBe(today());
 });

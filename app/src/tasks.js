@@ -208,7 +208,7 @@ export function labelsOf(t, labels) {
 }
 
 // ---- Display: a list's grouping, sorting, filter and completed switch (per view, this device; screens/display.js)
-// layout: '' (a project's own view, else list), list, board or calendar; cal: week, month or agenda (Today: its day;
+// layout: '' (a project's own view, else list), list, board (any list; a project's own is its view) or calendar; cal: week, month or agenda (Today: its day;
 // Upcoming: no agenda); color: the calendar's fill (Inbox and projects: not by project); allDay: the all-day row open in full
 // (shut: two a day and "+N")
 /** @typedef {{ group: string, sort: string, dir: 'asc' | 'desc', completed: boolean, priority: number, label: string, date: string,
@@ -228,7 +228,7 @@ export function cleanDisplay(v, view) {
     priority: [1, 2, 3, 4].includes(Number(o.priority)) ? Number(o.priority) : 0,
     label: typeof o.label === 'string' ? o.label.slice(0, 64) : '',
     date: DATE_FILTERS.includes(str('date')) ? str('date') : '',
-    layout: ['list', 'calendar', ...(view.startsWith('project:') ? ['board'] : [])].includes(str('layout')) ? str('layout') : '',
+    layout: ['list', 'calendar', 'board'].includes(str('layout')) ? str('layout') : '',
     cal: ['month', ...(view === 'upcoming' ? [] : ['agenda'])].includes(str('cal')) ? str('cal') : 'week',
     color: ['label', ...(view === 'inbox' || view.startsWith('project:') ? [] : ['project'])].includes(str('color')) ? str('color') : 'priority',
     allDay: o.allDay === true,

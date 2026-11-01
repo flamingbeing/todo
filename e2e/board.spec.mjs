@@ -1,8 +1,9 @@
 // A project as a board: Display > Board turns it on (kept with the project); each section is a column with its name,
 // count and cards, "No section" first when it has tasks; a card held and dragged to the next column moves to that
-// section (the board scrolls when the finger nears its side) and stays there. Passes axe.
+// section (the board scrolls when the finger nears its side) and stays there. Passes axe. Grouped by priority, the
+// columns are the priorities (no Add section), and a card dragged to another column takes that priority.
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, db, openTab, finger, gesturesReady } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, db, openTab, finger, gesturesReady, still, press, slide, letGo } from './fixtures.mjs';
 
 const now = () => ({ createdAt: Date.now(), updatedAt: Date.now() });
 
@@ -56,4 +57,35 @@ test('Display > Board: a column per section, a card dragged to the next one move
   await page.reload();
   await expect(page.locator('#list-view')).toBeVisible();
   await expect.poll(async () => (await db.get(`spaces/_/tasks/${a}`))?.sectionId).toBe(s2);
+});
+
+test('a board grouped by priority: a column per priority, a card dragged to Priority 1 gets it', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const pid = uniq('gb-p'), a = uniq('gb-a'), b = uniq('gb-b');
+  await db.put(`spaces/_/projects/${pid}`, { name: pid, color: 'blue', parentId: null, order: -1e12 - Date.now(), view: 'board', ...now() });
+  await db.put(`spaces/_/tasks/${b}`, { title: b, projectId: pid, priority: 1, order: 1, done: false, ...now() });
+  await db.put(`spaces/_/tasks/${a}`, { title: a, projectId: pid, priority: 4, order: 2, done: false, ...now() });
+  await synced(page);
+  await gesturesReady(page);
+  await openTab(page, 'browse');
+  await page.locator('#browse .td-browse-row').filter({ hasText: pid }).first().click();
+  await expect(page.locator('#project-title')).toHaveText(pid);
+  await page.locator('#more-btn').click();
+  await page.getByRole('menuitem', { name: 'Display' }).click();
+  const sheet = page.locator('#display-sheet');
+  await sheet.getByRole('button', { name: /^Grouping/ }).click();
+  await page.locator('#pick-sheet').getByRole('option', { name: 'Priority', exact: true }).click();
+  await expect(page.locator('#pick-sheet')).toBeHidden();
+  await sheet.getByRole('button', { name: 'Done' }).click();
+  await expect(sheet).toBeHidden();
+  const board = page.locator('#project.td-board');
+  await expect(board.locator('.td-col-title')).toHaveText(['Priority 1', 'No priority']);
+  await expect(board.locator('.td-col-add-section')).toHaveCount(0);
+  await still(page, '#project');
+  await press(page, `#project .td-row[data-id="${a}"]`);
+  await slide(page, { to: `#project .td-row[data-id="${b}"]`, dy: 34 }, 10);
+  await letGo(page);
+  await expect.poll(async () => (await db.get(`spaces/_/tasks/${a}`))?.priority, { timeout: 15_000 }).toBe(1);
+  await expect(board.locator('.td-col').first().locator('.td-row[data-id]')).toHaveCount(2);
 });
