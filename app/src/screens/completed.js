@@ -1,5 +1,5 @@
 // Completed (#completed-page, from Browse): the tasks done, newest first, under the day each was done. A tap on a
-// task's box brings it back (not done); a tap on the row opens it.
+// task's box brings it back (not done); a tap on the row opens it; Select picks several to bring back or delete.
 import { icon } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { REFUSED } from '../items.js';
@@ -8,13 +8,19 @@ import { completedView } from '../arrange.js';
 import { dayKey, dayTitle, timeText } from '../dates.js';
 import { groupHead, emptyNote } from '../ui/row.js';
 import { el } from './pick.js';
+import { startSelect } from './select.js';
 
 /** @typedef {import('./views.js').Ctx} Ctx */
 
 /** @param {Ctx} ctx @param {HTMLElement} host @param {HTMLElement} empty */
 export function drawCompleted(ctx, host, empty) {
   const data = ctx.data(), today = dayKey(), groups = completedView(data.tasks);
-  host.replaceChildren(...groups.map(({ key, tasks }) => {
+  // Select: several at once, to bring back (Not done) or delete
+  const pick = /** @type {HTMLButtonElement} */ (el('button', 'td-text-btn td-completed-select', 'Select'));
+  pick.type = 'button';
+  pick.hidden = !ctx.canWrite();
+  pick.addEventListener('click', () => startSelect(ctx, host, [], { done: true }));
+  host.replaceChildren(...(groups.length ? [pick] : []), ...groups.map(({ key, tasks }) => {
     const g = el('section', 'td-group');
     const title = key ? dayTitle(key, today) : 'Earlier';
     const ul = el('ul', 'td-rows');

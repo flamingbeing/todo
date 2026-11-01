@@ -7,7 +7,8 @@
 // drag, so this one is the app's own.)
 import { confirmModal, plural, haptic, icon } from '@core/ui';
 import { ICONS } from '../icons.js';
-import { REFUSED } from '../items.js';
+import { MORE } from '../icons-more.js';
+import { REFUSED, COLL } from '../items.js';
 import { isTask, priorityOf, projectOf } from '../tasks.js';
 import { rescheduled } from '../recur.js';
 import { descendants } from '../tree.js';
@@ -185,9 +186,10 @@ export function tickRows(ctx, host, ids) {
 }
 
 /**
- * Starts select mode on a page's list. @param {Ctx} ctx @param {HTMLElement} host @param {string[]} [ids] ticked to start
+ * Starts select mode on a page's list (done: Completed's, whose tasks are done: the bar has Not done and Delete).
+ * @param {Ctx} ctx @param {HTMLElement} host @param {string[]} [ids] ticked to start @param {{ done?: boolean }} [o]
  */
-export function startSelect(ctx, host, ids = []) {
+export function startSelect(ctx, host, ids = [], { done = false } = {}) {
   on?.stop();
   const picked = new Set(ids);
   const html = document.documentElement;
@@ -211,12 +213,13 @@ export function startSelect(ctx, host, ids = []) {
   const date = button('Date', 'td-select-act', ICONS.calendar), move = button('Move', 'td-select-act', ICONS.hash);
   const prio = button('Priority', 'td-select-act', ICONS.flag), more = button('More actions', 'td-select-act td-select-more', ICONS.ellipsis, true);
   more.setAttribute('aria-haspopup', 'menu');
-  bar.append(date, move, prio, more);
+  const back = button('Not done', 'td-select-act', MORE.history), gone = button('Delete', 'td-select-act', ICONS.trash2);
+  bar.append(...(done ? [back, gone] : [date, move, prio, more]));
   document.body.append(top, bar);
 
-  const chosen = () => tasksOf(ctx, picked).filter(t => isTask(t) && !t.done);
+  const chosen = () => tasksOf(ctx, picked).filter(t => isTask(t) && !!t.done === done);
   const draw = () => {
-    for (const id of [...picked]) if (!ctx.data().tasks.some(t => t.id === id && !t.done)) picked.delete(id);
+    for (const id of [...picked]) if (!ctx.data().tasks.some(t => t.id === id && !!t.done === done)) picked.delete(id);
     for (const r of rowsOf()) {
       const yes = picked.has(String(r.dataset.id));
       r.classList.toggle('is-selected', yes);
@@ -225,7 +228,7 @@ export function startSelect(ctx, host, ids = []) {
     const n = picked.size;
     count.textContent = `${n} selected`;
     all.textContent = n && shownIds().every(id => picked.has(id)) ? 'Deselect all' : 'Select all';
-    for (const b of [date, move, prio, more]) b.disabled = !n;
+    for (const b of [date, move, prio, more, back, gone]) b.disabled = !n;
   };
   // the rows are drawn again on each change: tick them again
   const watch = new MutationObserver(() => draw());
@@ -263,6 +266,19 @@ export function startSelect(ctx, host, ids = []) {
     if (ids.every(id => picked.has(id))) picked.clear(); else for (const id of ids) picked.add(id);
     draw();
   });
+  back.addEventListener('click', async () => {
+    const list = chosen();
+    stop();
+    if (await ctx.app.untick(list)) { ctx.toast(REFUSED); return; }
+    // (Undo: done again, each with the time it was done, so Completed keeps its order)
+    ctx.undo.show(`${plural(list.length, 'task')} not done`, async () => {
+      for (const t of list) {
+        const now = ctx.data().tasks.find(x => x.id === t.id) ?? t;
+        if (await ctx.app.writeRecord(COLL, { ...now, done: true, doneAt: t.doneAt ?? null }, now)) { ctx.toast(REFUSED); break; }
+      }
+    });
+  });
+  gone.addEventListener('click', async () => { if (await deleteTasks(ctx, chosen())) stop(); });
   date.addEventListener('click', () => scheduleTasks(ctx, chosen(), stop));
   move.addEventListener('click', () => moveTasks(ctx, chosen(), stop));
   prio.addEventListener('click', () => priorityMenu(ctx, prio, chosen(), stop));

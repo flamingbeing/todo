@@ -793,3 +793,8 @@ body {
 .td-md a { color: var(--td-accent-text); text-decoration: underline; pointer-events: auto; }
 :is(.td-md, .td-title) code { padding: 0 4px; border-radius: 4px; background: var(--td-selected); font: .9em ui-monospace, monospace; }
 textarea.has-md { color: transparent; }
+
+/* Completed: Select, at the right above the days (gone while selecting) */
+.td-completed-select { display: block; margin: -4px 8px 0 auto; }
+.td-completed-select[hidden], .is-selecting > .td-completed-select { display: none; }
+.is-selecting .td-row:not(.is-selected) > .td-check { background: var(--tint); }

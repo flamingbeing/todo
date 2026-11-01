@@ -164,3 +164,27 @@ test('"…" > Deadline sets and clears the deadline on every selected task, with
   await page.locator('.toast').last().getByRole('button', { name: 'Undo' }).click();
   await expect.poll(got, { timeout: 15_000 }).toEqual([null, day(5)]);
 });
+
+test('Completed\'s Select: two done tasks picked, Not done brings both back, Undo makes them done again', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const a = uniq('back-a'), b = uniq('back-b'), at = Date.now() - 3_600_000;
+  await put(a, { title: a, done: true, doneAt: at });
+  await put(b, { title: b, done: true, doneAt: at });
+  await synced(page);
+  await openTab(page, 'browse');
+  await page.locator('#browse .td-browse-row', { hasText: 'Completed' }).click();
+  await expect(page.locator(rowIn('completed', b))).toBeVisible();
+  await page.locator('#completed').getByRole('button', { name: 'Select' }).click();
+  await page.locator(`${rowIn('completed', a)} .td-row-main`).click();
+  await page.locator(`${rowIn('completed', b)} .td-row-main`).click();
+  await expect(page.locator('.td-select-count')).toHaveText('2 selected');
+  await expect(page.locator(`${rowIn('completed', a)}.is-selected`)).toBeVisible();
+  expect(await AxeBuilder(page)).toEqual([]);
+  await page.locator('.td-select-bar').getByRole('button', { name: 'Not done' }).click();
+  await expect.poll(async () => [(await get(a))?.done, (await get(b))?.done], { timeout: 15_000 }).toEqual([false, false]);
+  await expect(page.locator(rowIn('completed', a))).toHaveCount(0);
+  await page.locator('.toast').last().getByRole('button', { name: 'Undo' }).click();
+  await expect.poll(async () => [(await get(a))?.done, (await get(a))?.doneAt, (await get(b))?.done], { timeout: 15_000 }).toEqual([true, at, true]);
+  await expect(page.locator(rowIn('completed', b))).toBeVisible();
+});
