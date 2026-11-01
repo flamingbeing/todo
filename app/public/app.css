@@ -74,6 +74,14 @@ input, textarea, select, button { font: inherit; color: inherit; }
 .ui-bar:has(> .td-bar-browse:not([hidden])) > .ui-bar-side:not(.ui-bar-end) { display: none; }
 .td-hidden-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .ui-bar { background: color-mix(in srgb, var(--td-ground) 92%, transparent); }
+/* neutral glass (the default look tints it 7% with the accent: the collapsed bar went pink over a white page) */
+html.glass { --glass-tint: 0%; }
+/* STOPGAP (app-ui ask "scroll-edge scrim"): the kit's scroll edge (glass.css body::before, 76 px tall, blur 8px) reaches
+   27 px below this full-width bar and blurs the top of the large title at rest (a grey smudge over every page's name).
+   The bar turns to glass itself once collapsed, so the edge is not needed here. Drop once the kit skips it under .ui-bar. */
+html.glass body::before { content: none; }
+/* a round button's own blur inside the glass bar draws a square ghost around it (a blur over a blur): the bar's is enough */
+.glass .ui-bar.is-collapsed .td-round { -webkit-backdrop-filter: none; backdrop-filter: none; }
 /* Browse and Settings sit on the grouped ground: the bar takes it too */
 body:has(.ui-screen.td-grouped:not([hidden])) .ui-bar { background: color-mix(in srgb, var(--td-grouped) 92%, transparent); }
 .ui-bar-title { font-size: 17px; }
