@@ -61,11 +61,13 @@
     <header class="ui-bar">
       <span class="ui-bar-side" data-bar-lead></span>
       <h2 class="ui-bar-title" aria-hidden="true">Today</h2>
+      <!-- Browse's top (the person and the Settings gear) sits in the bar's row while Browse is shown (screens/browse.js) -->
+      <div class="td-bar-browse" id="browse-top" hidden></div>
       <span class="ui-bar-side ui-bar-end">
         <!-- cloud{ the sync button (app-ui's syncButton): the state as a cloud icon, a tap syncs now -->
         <button type="button" id="sync-btn" aria-label="Connecting…" title="Connecting…"></button>
         <!-- }cloud -->
-        <button type="button" class="td-round" id="more-btn" aria-label="More" aria-haspopup="menu" hidden><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+        <button type="button" class="td-round" id="more-btn" aria-label="More" aria-haspopup="menu" hidden><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="2" stroke-width="1.5"/><circle cx="19" cy="12" r="2" stroke-width="1.5"/><circle cx="5" cy="12" r="2" stroke-width="1.5"/></svg></button>
       </span>
     </header>
 

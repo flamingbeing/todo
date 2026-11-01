@@ -34,7 +34,8 @@ test('the bar\'s sync button shows the state as its icon; offline, a tap retries
   await btn.click();
   expect(await page.evaluate(() => window.starter.syncTaps)).toBe(1);
   await page.context().setOffline(false);
-  await btn.click();
+  // (back online it may send at once, and a synced cloud leaves the bar (app.css), so the tap goes to the element)
+  await btn.evaluate(b => /** @type {HTMLElement} */ (b).click());
   await serverHas(t);
   await expect(btn).toHaveAttribute('data-state', 'synced', { timeout: 15_000 });
 });

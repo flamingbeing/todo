@@ -50,15 +50,30 @@ input, textarea, select, button { font: inherit; color: inherit; }
 .status-line { padding-inline: 16px; margin-bottom: 8px; }
 /* the top bar's cloud says "saved"; the chip speaks only when something needs saying (pending, offline, attention) */
 .status-line:has(> #sync-chip:empty), .status-line:has(> #sync-chip [data-state="synced"]) { display: none; }
-.ui-large-title { font-family: var(--td-font); font-size: 34px; font-weight: 700; letter-spacing: .01em; color: var(--td-text); }
+.ui-large-title { margin-block: 8px; font-family: var(--td-font); font-size: 34px; font-weight: 700; letter-spacing: .01em; color: var(--td-text); }
+/* a list's first group sits close under the title (about 12 pt to its first row, as on the phone) */
+.ui-large-title + .td-list > .td-group:first-child > .td-group-head,
+.ui-large-title ~ #list-view > .td-list > .td-group:first-child > .td-group-head { margin-top: 0; }
+/* the bar: a slim row (the kit's gap above and below is 8 px), no sync cloud while all is saved or still connecting
+   (it shows when offline, sending or something needs a look) */
+.ui-shell.td > .ui-bar { padding-top: calc(env(safe-area-inset-top, 0px) + 2px); padding-bottom: 2px; }
+.ui-bar #sync-btn:is([data-state="synced"], [data-state="unknown"]) { display: none; }
+/* Browse's top in the bar's row: the person at the start, the gear at the end, no small title */
+.td-bar-browse { display: flex; flex: 1; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
+.td-bar-browse[hidden] { display: none; }
+.ui-bar:has(> .td-bar-browse:not([hidden])) > .ui-bar-title { display: none; }
+.ui-bar:has(> .td-bar-browse:not([hidden])) > .ui-bar-side { flex: none; }
+.ui-bar:has(> .td-bar-browse:not([hidden])) > .ui-bar-side:not(.ui-bar-end) { display: none; }
 .td-hidden-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .ui-bar { background: color-mix(in srgb, var(--td-ground) 92%, transparent); }
 /* Browse and Settings sit on the grouped ground: the bar takes it too */
 body:has(.ui-screen.td-grouped:not([hidden])) .ui-bar { background: color-mix(in srgb, var(--td-grouped) 92%, transparent); }
 .ui-bar-title { font-size: 17px; }
 
-/* the bar's Back: a chevron and the screen before's name, in the accent */
-.ui-bar .ui-bar-back { display: inline-flex; align-items: center; gap: 2px; padding: 0 8px 0 4px; color: var(--td-accent-text); font-size: 17px; }
+/* the bar's Back: a bare chevron in a round glass button, in the accent (the screen before's name stays its label) */
+.ui-bar .ui-bar-back { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; width: 44px; min-width: 44px; height: 44px; padding: 0;
+  border: 0; border-radius: 50%; background: color-mix(in srgb, var(--td-selected) 80%, transparent); color: var(--td-accent-text); font-size: 0;
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
 .ui-bar .ui-bar-back[hidden] { display: none; }
 .ui-bar .ui-bar-back::before { content: ""; width: 24px; height: 24px; background: currentColor;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m15 18-6-6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
@@ -175,7 +190,7 @@ button.td-group-title { display: flex; align-items: center; gap: 6px; width: 100
 /* ---------- grouped grounds: Browse, Settings ---------- */
 .ui-screen.td-grouped { background: var(--td-grouped); }
 .td-card { box-sizing: border-box; margin: 0 16px; padding: 0; border-radius: 14px; background: var(--td-card); list-style: none; overflow: hidden; }
-.td-browse-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px 16px; }
+#browse > :first-child { margin-top: 8px; }
 .td-pill { display: inline-flex; align-items: center; gap: 8px; min-width: 0; height: 44px; padding: 0 16px 0 6px; border-radius: 22px;
   background: color-mix(in srgb, var(--td-selected) 80%, transparent); font-size: 16px; font-weight: 600; }
 .td-pill-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

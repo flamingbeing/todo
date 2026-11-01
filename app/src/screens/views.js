@@ -178,6 +178,7 @@ export function views(app) {
   const onScreen = () => {
     fab.hidden = !canWrite || !lists.includes(top);
     more.hidden = !canWrite || ![...lists, 'place-page'].includes(top);
+    $('browse-top').hidden = top !== 'browse-page';
     paint(top);
   };
 

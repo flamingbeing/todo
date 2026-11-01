@@ -1,10 +1,12 @@
-// Browse (#browse): the person's pill and the Settings gear at the top, then cards of rows: the Inbox, Today, Upcoming
+// Browse (#browse): the person's pill and the Settings gear in the top bar's row (#browse-top, shown while Browse is
+// the screen on top: views.js), then cards of rows: the Inbox, Today, Upcoming
 // Completed and Filters & Labels; the favourite projects, labels and filters; and "My Projects" with its sub-projects under each and a + for a new one.
 // Counts show when the showCounts option is on. The fold of "My Projects" is kept on this device. "Manage projects"
 // (under them) opens a list to put them in order: a project's grip dragged (or moved with the arrow keys) moves it
 // among the projects beside it at its level, its sub-projects with it.
 import { icon, gripDrag } from '@core/ui';
 import { ICONS } from '../icons.js';
+import { $ } from '../dom.js';
 import { INBOX } from '../items.js';
 import { projectTree, projectCounts, todayCount, upcomingCount, isTask, labelsOf } from '../tasks.js';
 import { MORE } from '../icons-more.js';
@@ -57,8 +59,8 @@ export function drawBrowse(ctx, host) {
   const showCounts = !!ctx.app.settings.get('showCounts');
   const n = (/** @type {number} */ v) => (showCounts ? v : null);
 
-  // the top: the person, and the gear
-  const top = el('div', 'td-browse-top');
+  // the top: the person, and the gear, in the bar's row (index.html #browse-top)
+  const top = $('browse-top');
   const me = el('span', 'td-pill'), u = ctx.user();
   const face = el('span', 'td-avatar');
   if (u?.photo) { const img = Object.assign(document.createElement('img'), { src: u.photo, alt: '', referrerPolicy: 'no-referrer' }); face.append(img); }
@@ -71,7 +73,7 @@ export function drawBrowse(ctx, host) {
   gear.setAttribute('aria-label', 'Settings');
   gear.append(icon(ICONS.settings));
   gear.addEventListener('click', () => screens()?.push('#settings-page'));
-  top.append(me, gear);
+  top.replaceChildren(me, gear);
 
   const places = card('Places', [
     row({ label: 'Inbox', ic: ICONS.inbox, count: n(counts.get(INBOX) ?? 0), run: () => tab('inbox') }),
@@ -84,7 +86,7 @@ export function drawBrowse(ctx, host) {
   const projectRow = (/** @type {import('../items.js').Project} */ p, /** @type {number} */ depth) => row({
     label: p.name, ic: ICONS.hash, color: colorHex(p.color), depth, count: n(counts.get(p.id) ?? 0), run: () => ctx.openProject(p.id) });
 
-  const parts = [top, places];
+  const parts = [places];
   const favs = byOrder(data.projects.filter(p => p.favorite && p.id !== INBOX && p.name));
   const favLabels = byOrder(data.labels.filter(l => l && l.favorite && l.name)), favFilters = byOrder(data.filters.filter(f => f && f.favorite && f.name));
   if (favs.length || favLabels.length || favFilters.length) {
