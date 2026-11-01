@@ -74,6 +74,8 @@ const SHELL = [
   'src/ui/row-swipe.js',
   'src/ui/row.js',
   'src/ui/stick.js',
+  'src/ui/tab-hold.js',
+  'src/ui/two-finger.js',
   'src/ui/week-strip.js',
   'vendor/chrono-node/2.10.3/LICENSE',
   'vendor/chrono-node/2.10.3/chrono.js',

@@ -39,8 +39,14 @@
   faded when asked for. The calendar's maths is in `app/src/cal.js` (unit tested); the screen loads only when used.
 - Dragging (2026-11-01): lists, boards, the + and calendar blocks scroll by themselves near an edge; a row dragged to
   another group takes its date, priority, label or project (Undo); Today has a postpone place; boards group by Display.
-- Known gaps: on Today and Upcoming a drag moves a row within the flat day list only (no subtasks there); a tab
-  tapped while a Settings page is open first closes that page.
+- Gestures and navigation (2026-11-01): the app opens on a Home view (Settings > General, Today unless set); Back on
+  another tab goes Home, Back on Home says "Press Back again to close"; a tab tapped over a Settings page goes straight
+  there (the next Back goes Home); the current tab tapped scrolls to top; a long press on the tab bar opens Settings >
+  Tab bar. Settings > General > "Swipe board cards" (off): a sideways swipe on a card completes or schedules it, and the
+  board still pages from the gaps, headers and dots. Two fingers dragged down over rows select them; select mode's
+  "..." has Deadline (sets or clears it on every selected task, with Undo).
+- Known gaps: on Today and Upcoming a drag moves a row within the flat day list only (no subtasks there); Home, the tab
+  tap over Settings and two-finger select run on app-only stopgaps until the kit has them (see Next).
 - Review fixes (2026-11-01): dark mode fills (+, Done, send) at full colour; top bar without the cloud while saved,
   ring "…", bare-chevron Back, slimmer bar and title gaps, Browse's person and gear in the bar row; Upcoming's + adds
   for the day in sight; the unused ensureInbox dropped. Settings pages are screens of their own (shell.js
@@ -56,13 +62,11 @@
 
 - Calendar: resizing a block to change its duration; tapping a faded future repeat; a block's title in a narrow
   overlap lane breaks mid-word; the kit asks in the owner's private notes (gesture rank, edge auto-scroll).
-- The import has been proven against route-mocked answers only (not the live service); a Deadline
-  action in select mode.
+- app-ui: home tab option, then drop the stopgap (shell.js startShell; the asks are in the owner's private notes).
+- The import has been proven against route-mocked answers only (not the live service).
 - Dragging: Today grouped by none still orders by `order`, not `dayOrder`; the calendar's held block turning the period
   (24 px from the side, 500/700 ms) has no e2e test; a sorted list says why it has no drag (a toast with Manual order)
   rather than allowing one. Edge auto-scroll is an app stopgap (`app/src/ui/edge-scroll.js`), asked of the kit.
-- Board cards: swipe actions.
-- Back on a tab other than Inbox goes to Inbox (the kit's first-tab rule) though the app opens on Today.
 
 ## Decisions (dated)
 
