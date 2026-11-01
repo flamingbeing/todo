@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#1c1c1e" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1e1e1e" media="(prefers-color-scheme: dark)">
   <meta name="robots" content="noindex, nofollow">
   <title>Todo</title>
   <script type="importmap">
@@ -50,27 +50,30 @@
   <script type="module" src="src/app.js"></script>
 </head>
 <body>
-  <!-- The kit shell (ui/shell/shell.css): a bar and tab bar on a phone (the tabs are swipeable pages), a side bar from 600 px,
-       the side bar as a drawer on a phone. src/shell.js starts it. A new app adds its pages as .ui-tab-page sections and a
-       tab and a side link for each. -->
-  <div class="ui-shell">
+  <!-- The kit shell (ui/shell/shell.css): a bar and tab bar on a phone (the tabs are swipeable pages), a side bar from 600 px.
+       Five tab pages (Inbox, Today, Upcoming, Search, Browse) and pushed screens over them (a project, Completed,
+       Settings). src/shell.js starts it; src/screens/ draws the pages. -->
+  <div class="ui-shell td">
+    <!-- the kit's shell follows its first .ui-list for a list-and-detail layout; this app's lists are its own (td-rows) -->
+    <ul class="ui-list" hidden aria-hidden="true"></ul>
     <header class="ui-bar">
-      <span class="ui-bar-side" data-bar-lead><button type="button" class="ui-bar-menu" aria-label="Menu" aria-controls="side">☰</button></span>
-      <h2 class="ui-bar-title" aria-hidden="true">Todo</h2>
+      <span class="ui-bar-side" data-bar-lead></span>
+      <h2 class="ui-bar-title" aria-hidden="true">Today</h2>
       <span class="ui-bar-side ui-bar-end">
         <!-- cloud{ the sync button (app-ui's syncButton): the state as a cloud icon, a tap syncs now -->
         <button type="button" id="sync-btn" aria-label="Connecting…" title="Connecting…"></button>
         <!-- }cloud -->
-        <button type="button" class="ui-primary" id="new-task" hidden>New</button>
+        <button type="button" class="td-round" id="more-btn" aria-label="More" aria-haspopup="menu" hidden><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
       </span>
     </header>
 
     <nav class="ui-sidebar" id="side" aria-label="Sections">
       <p class="ui-sidebar-name"><img class="app-mark" src="icons/icon.svg" alt="" width="28" height="28">Todo</p>
-      <a class="ui-side-link" href="./" data-tab-page="#today-page" aria-current="page">Today</a>
-      <a class="ui-side-link" href="./" data-tab-page="#upcoming-page">Upcoming</a>
-      <a class="ui-side-link" href="./" data-tab-page="#done-page">Done</a>
-      <a class="ui-side-link" href="./" data-tab-page="#settings-page" id="side-settings">Settings</a>
+      <a class="ui-side-link" href="./" data-tab-page="#inbox-page"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>Inbox</a>
+      <a class="ui-side-link" href="./" data-tab-page="#today-page" aria-current="page"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg><span class="today-num" data-today-num>1</span>Today</a>
+      <a class="ui-side-link" href="./" data-tab-page="#upcoming-page"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>Upcoming</a>
+      <a class="ui-side-link" href="./" data-tab-page="#search-page"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>Search</a>
+      <a class="ui-side-link" href="./" data-tab-page="#browse-page"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 8h10"/><path d="M7 12h10"/><path d="M7 16h10"/></svg>Browse</a>
     </nav>
 
     <main class="ui-screens">
@@ -96,38 +99,51 @@
         <div id="list-view" hidden>
           <div id="conflict-sheet"></div>
           <div id="refused-list"></div>
-          <p id="edit-msg" class="small" role="status"></p>
           <div id="list-tools"></div>
-          <div class="list-picker" role="group" aria-label="Lists"></div>
-          <form id="add" autocomplete="off">
-            <label for="new-text">New task</label>
-            <div class="row">
-              <input id="new-text" name="text" maxlength="500" required>
-              <button type="submit">Add</button>
-            </div>
-          </form>
           <div id="today-state"></div>
-          <ul id="today" class="ui-list" aria-label="Today"></ul>
+          <div id="today" class="td-list" data-view="today"></div>
           <div id="today-empty"></div>
         </div>
       </section>
 
+      <section class="ui-screen ui-tab-page" id="inbox-page" aria-labelledby="inbox-title" hidden>
+        <h1 class="ui-large-title" id="inbox-title">Inbox</h1>
+        <div id="inbox" class="td-list" data-view="inbox"></div>
+        <div id="inbox-empty"></div>
+      </section>
+
       <section class="ui-screen ui-tab-page" id="upcoming-page" aria-labelledby="upcoming-title" hidden>
         <h1 class="ui-large-title" id="upcoming-title">Upcoming</h1>
-        <div class="list-picker" role="group" aria-label="Lists"></div>
-        <div id="upcoming" class="task-groups"></div>
-        <div id="upcoming-empty"></div>
+        <div id="upcoming" class="td-list" data-view="upcoming"></div>
       </section>
 
-      <section class="ui-screen ui-tab-page" id="done-page" aria-labelledby="done-title" hidden>
-        <h1 class="ui-large-title" id="done-title">Done</h1>
-        <div class="list-picker" role="group" aria-label="Lists"></div>
-        <p class="done-tools"><button type="button" id="clear-done" hidden>Clear done tasks</button></p>
-        <ul id="done" class="ui-list" aria-label="Done"></ul>
-        <div id="done-empty"></div>
+      <section class="ui-screen ui-tab-page" id="search-page" aria-labelledby="search-title" hidden>
+        <h1 class="ui-large-title" id="search-title">Search</h1>
+        <div class="td-search"><label class="td-search-box"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input id="search-text" type="search" placeholder="Tasks, projects and more" aria-label="Search" autocomplete="off"></label></div>
+        <div id="search" class="td-list" data-view="search"></div>
       </section>
 
-      <section class="ui-screen ui-tab-page" id="settings-page" aria-labelledby="settings-title" hidden>
+      <section class="ui-screen ui-tab-page td-grouped" id="browse-page" aria-labelledby="browse-title" hidden>
+        <h1 class="ui-large-title td-hidden-title" id="browse-title">Browse</h1>
+        <div id="browse"></div>
+      </section>
+
+      <section class="ui-screen" id="project-page" aria-labelledby="project-title" hidden>
+        <button type="button" class="ui-back">Browse</button>
+        <h1 class="ui-large-title" id="project-title">Project</h1>
+        <div id="project" class="td-list" data-view="project"></div>
+        <div id="project-empty"></div>
+      </section>
+
+      <section class="ui-screen" id="completed-page" aria-labelledby="completed-title" hidden>
+        <button type="button" class="ui-back">Browse</button>
+        <h1 class="ui-large-title" id="completed-title">Completed</h1>
+        <div id="completed" class="td-list"></div>
+        <div id="completed-empty"></div>
+      </section>
+
+      <section class="ui-screen td-grouped" id="settings-page" aria-labelledby="settings-title" hidden>
+        <button type="button" class="ui-back">Browse</button>
         <h1 class="ui-large-title" id="settings-title">Settings</h1>
         <!-- cloud{ -->
         <div id="account" class="status-line">
@@ -140,54 +156,33 @@
       </section>
     </main>
 
-    <nav class="ui-tabbar" data-minimise aria-label="Sections">
-      <button type="button" class="ui-tab" data-tab-page="#today-page" data-tab-id="today" aria-current="page"><span class="ui-tab-icon" aria-hidden="true">✓</span>Today</button>
-      <button type="button" class="ui-tab" data-tab-page="#upcoming-page" data-tab-id="upcoming"><span class="ui-tab-icon" aria-hidden="true">▤</span>Upcoming</button>
-      <button type="button" class="ui-tab" data-tab-page="#done-page" data-tab-id="done"><span class="ui-tab-icon" aria-hidden="true">●</span>Done</button>
-      <button type="button" class="ui-tab" data-tab-page="#settings-page" data-tab-id="settings" id="tab-settings"><span class="ui-tab-icon" aria-hidden="true">≡</span>Settings</button>
+    <nav class="ui-tabbar td-tabbar" aria-label="Sections">
+      <button type="button" class="ui-tab" data-tab-page="#inbox-page" data-tab-id="inbox"><span class="ui-tab-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></span>Inbox</button>
+      <button type="button" class="ui-tab" data-tab-page="#today-page" data-tab-id="today" aria-current="page"><span class="ui-tab-icon td-today-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg><span class="today-num" data-today-num>1</span></span>Today</button>
+      <button type="button" class="ui-tab" data-tab-page="#upcoming-page" data-tab-id="upcoming"><span class="ui-tab-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg></span>Upcoming</button>
+      <button type="button" class="ui-tab" data-tab-page="#search-page" data-tab-id="search"><span class="ui-tab-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>Search</button>
+      <button type="button" class="ui-tab" data-tab-page="#browse-page" data-tab-id="browse"><span class="ui-tab-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 8h10"/><path d="M7 12h10"/><path d="M7 16h10"/></svg></span>Browse</button>
     </nav>
+    <button type="button" class="ui-fab td-fab" id="fab" aria-label="Add task" hidden><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>
   </div>
 
   <div id="toasts"></div>
 
-  <dialog class="ui-sheet" id="task-sheet" data-detents="medium large" data-wide="panel" aria-labelledby="task-title">
+  <!-- the sheets: src/screens/ fills each the first time it opens -->
+  <dialog class="ui-sheet td-sheet" id="task-sheet" data-detents="medium large" data-wide="panel" aria-label="Task">
     <div class="ui-sheet-grabber" aria-label="Expand or collapse"></div>
-    <form method="dialog" id="task-form">
-      <div class="ui-sheet-head">
-        <h2 id="task-title">New task</h2>
-        <button type="button" data-close>Cancel</button>
-      </div>
-      <div class="ui-sheet-body">
-        <label class="kit-field">Task <input id="task-text" maxlength="500" required autocomplete="off"></label>
-        <label class="kit-field">Notes <textarea id="task-notes" maxlength="2000" rows="3"></textarea></label>
-        <div class="task-when">
-          <label class="kit-field">Due day <input id="task-due" type="date"></label>
-          <label class="kit-field">Time <input id="task-time" type="time"></label>
-        </div>
-        <label class="kit-field">List <select id="task-list"></select></label>
-        <p id="task-live" class="small" role="status"></p>
-        <div id="edit-extras"></div>
-        <div class="row">
-          <button id="task-save" value="save" class="ui-primary">Save</button>
-          <button id="task-delete" value="delete" type="button" class="danger">Delete</button>
-        </div>
-      </div>
-    </form>
+    <div class="td-sheet-body" data-fill></div>
   </dialog>
-
-  <dialog class="ui-sheet" id="lists-sheet" data-detents="medium large" data-wide="panel" aria-labelledby="lists-title">
+  <dialog class="ui-sheet td-sheet" id="add-sheet" data-wide="panel" aria-label="Add task">
+    <div class="td-sheet-body" data-fill></div>
+  </dialog>
+  <dialog class="ui-sheet td-sheet" id="project-sheet" data-detents="large" data-wide="panel" aria-label="Project">
     <div class="ui-sheet-grabber" aria-label="Expand or collapse"></div>
-    <div class="ui-sheet-head">
-      <h2 id="lists-title">Lists</h2>
-      <button type="button" data-close>Done</button>
-    </div>
-    <div class="ui-sheet-body">
-      <p class="small">Inbox always exists. Deleting a list moves its tasks to Inbox.</p>
-      <ul id="lists-manage" class="ui-list" aria-label="Your lists"></ul>
-      <form id="list-add" autocomplete="off">
-        <label class="kit-field">New list <span class="row"><input id="list-name" maxlength="60" required><button type="submit">Add list</button></span></label>
-      </form>
-    </div>
+    <div class="td-sheet-body" data-fill></div>
+  </dialog>
+  <dialog class="ui-sheet td-sheet" id="pick-sheet" data-detents="medium large" data-wide="panel" aria-label="Choose">
+    <div class="ui-sheet-grabber" aria-label="Expand or collapse"></div>
+    <div class="td-sheet-body" data-fill></div>
   </dialog>
 </body>
 </html>

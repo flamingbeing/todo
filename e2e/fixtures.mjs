@@ -214,22 +214,32 @@ export async function signIn(page, role = 'member', { path = APP } = {}) {
 }
 }static */
 
+// Add a task for today with the + button's quick add (the sheet stays open for the next one: Escape closes it)
 export async function add(page, text) {
-  await page.fill('#new-text', text);
-  await page.click('#add button[type=submit]');
+  await openToday(page);
+  await page.locator('#fab').click();
+  await expect(page.locator('#add-sheet')).toBeVisible();
+  await page.fill('#add-sheet .td-add-title', text);
+  await page.press('#add-sheet .td-add-title', 'Enter');
+  await expect(page.locator('#add-sheet .td-add-title')).toHaveValue('');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#add-sheet')).toBeHidden();
   await expect(page.locator('#today')).toContainText(text);
 }
 // Open a dialog from its button and wait for the dialog. The list redraws its buttons whenever a snapshot lands (the files
 // snapshot follows the first list one); a pointer click whose button is swapped out between press and release is dropped
 // (Firefox). The click event is sent in one step instead, to the button as it is now: nothing in between to be swapped.
-// The Settings page (a tab on a phone, a side-bar link from 600 px) and back to the list
+// The Settings page (from the gear at the top of Browse, a tab on a phone or a side-bar link from 600 px)
 const tabLink = id => `.ui-tab[data-tab-page="#${id}"]:visible, .ui-side-link[data-tab-page="#${id}"]:visible`;
 // (the tab bar folds its other tabs away once the page scrolls down: back at the top they show)
 const toTop = page => page.evaluate(() => { scrollTo(0, 0); document.querySelector('.ui-tabbar')?.classList.remove('is-minimised'); });
 // (Settings opens on its menu; given a page's title, that page opens, from the menu or from another page via its Back)
 export const openSettings = async (page, title) => {
   await toTop(page);
-  await page.locator(tabLink('settings-page')).first().click();
+  if (!(await page.locator('#settings-host').isVisible())) {
+    await page.locator(tabLink('browse-page')).first().click();
+    await page.locator('#browse-settings').click();
+  }
   await expect(page.locator('#settings-host')).toBeVisible();
   if (!title) return;
   const back = page.locator('#settings-host .ui-settings-back:visible');
@@ -237,20 +247,31 @@ export const openSettings = async (page, title) => {
   await page.locator('#settings-host .ui-settings-menu-groups .ui-settings-go').filter({ hasText: new RegExp(`^${title}`) }).click();
   await expect(page.locator('#settings-host .ui-settings-back:visible')).toBeVisible();
 };
-export const openToday = async page => { await toTop(page); await page.locator(tabLink('today-page')).first().click(); await expect(page.locator('#today-page')).toBeVisible(); };
-export const openTab = async (page, name) => { await toTop(page); await page.locator(tabLink(`${name}-page`)).first().click(); await expect(page.locator(`#${name}-page`)).toBeVisible(); };
+// (a tab tapped while a Settings page is open over Browse first closes that page: then a second tap goes)
+export const openTab = async (page, name) => {
+  await toTop(page);
+  await expect(async () => {
+    await page.locator(tabLink(`${name}-page`)).first().click();
+    await expect(page.locator(`#${name}-page`)).toBeVisible({ timeout: 1500 });
+  }).toPass({ timeout: 15_000 });
+};
+export const openToday = page => openTab(page, 'today');
 export const clickOpens = async (button, dialog) => { await button.dispatchEvent('click'); await expect(dialog).toBeVisible(); };
-export const synced = page => expect.poll(() => page.evaluate(() => window.starter.status), { timeout: 15_000 }).toBe('synced');
+// (and the quick add and task sheet loaded, which the page fetches straight after its first draw: a test may go offline next)
+export const synced = async page => {
+  await expect.poll(() => page.evaluate(() => window.starter.status), { timeout: 15_000 }).toBe('synced');
+  await page.waitForFunction(() => performance.getEntriesByType('resource').filter(e => /add-sheet|task-sheet/.test(e.name)).length >= 2, null, { timeout: 15_000 });
+};
 // cloud{
-export const serverHas = text => expect.poll(async () => (await db.list('spaces/_/tasks')).some(d => d.text === text), { timeout: 15_000 }).toBe(true);
-// The id of the shared item with this text (db.list leaves document ids out).
+export const serverHas = text => expect.poll(async () => (await db.list('spaces/_/tasks')).some(d => d.title === text), { timeout: 15_000 }).toBe(true);
+// The id of the shared task with this title (db.list leaves document ids out).
 export async function itemIdOf(text) {
   const host = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
   // (every page: the shared list grows over a long --repeat-each soak, past one page)
   for (let token = ''; ;) {
     const r = await fetch(`http://${host}/v1/projects/demo-todo/databases/(default)/documents/spaces/_/tasks?pageSize=300${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`, { headers: { Authorization: 'Bearer owner' } });
     const j = await r.json();
-    const d = (j.documents || []).find(x => x.fields?.text?.stringValue === text);
+    const d = (j.documents || []).find(x => x.fields?.title?.stringValue === text);
     if (d) return d.name.split('/').pop();
     if (!(token = j.nextPageToken || '')) return undefined;
   }

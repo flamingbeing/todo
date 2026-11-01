@@ -13,45 +13,100 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // A task. due is a day (YYYY-MM-DD) and dueTime a time (HH:MM), both local; optional fields are absent or null (null
-    // clears one). done tasks keep doneAt (ms).
+    // Shared checks for the app's records: d is the record as it would be saved.
+    function gone(d, k) { return !(k in d) || d[k] == null; }
+    function optText(d, k, max) { return gone(d, k) || (d[k] is string && d[k].size() <= max); }
+    function optId(d, k) { return gone(d, k) || (d[k] is string && d[k].size() > 0 && d[k].size() <= 64); }
+    function optNum(d, k) { return gone(d, k) || d[k] is number; }
+    function optBool(d, k) { return gone(d, k) || d[k] is bool; }
+    function text(d, k, max) { return d[k] is string && d[k].size() > 0 && d[k].size() <= max; }
+    function day(v) { return v is string && v.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'); }
+    function colorOk(d) { return d.color is string && d.color in ['berry_red', 'red', 'orange', 'yellow', 'olive_green', 'lime_green', 'green', 'mint_green', 'teal', 'sky_blue', 'light_blue', 'blue', 'grape', 'violet', 'lavender', 'magenta', 'salmon', 'charcoal', 'grey', 'taupe']; }
+    // the sync engine's own fields: updatedAt, _edits (who changed each field), and createdAt, which never changes
+    function synced(d) {
+      return d.updatedAt is number && (!('_edits' in d) || d._edits is map) && optNum(d, 'createdAt')
+        && (resource == null || !('createdAt' in resource.data) || !('createdAt' in d) || d.createdAt == resource.data.createdAt);
+    }
+    function writer(g) { return can(g, ['admin', 'member']) && stamped(); }
+    // a due date: { date, time?, rrule?, string?, fromDone? }, local (floating) day and time
+    function dueOk(d) {
+      return gone(d, 'due') || (d.due is map
+        && d.due.keys().hasOnly(['date', 'time', 'rrule', 'string', 'fromDone'])
+        && day(d.due.date)
+        && (gone(d.due, 'time') || (d.due.time is string && d.due.time.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')))
+        && optText(d.due, 'rrule', 300) && optText(d.due, 'string', 200) && optBool(d.due, 'fromDone'));
+    }
+
+    // A task: in a project (the Inbox is the project 'inbox'), optionally in one of its sections and under a parent task.
+    // priority 1 is the most urgent, 4 the default. Optional fields are absent or null (null clears one).
     match /spaces/{g}/tasks/{id} {
       allow read: if can(g, ['admin', 'member', 'viewer']);
-      allow create, update: if can(g, ['admin', 'member']) && stamped()
-        && request.resource.data.keys().hasOnly(['text', 'notes', 'listId', 'due', 'dueTime', 'done', 'doneAt', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
-        && (!('_edits' in request.resource.data) || request.resource.data._edits is map)
-        && request.resource.data.text is string && request.resource.data.text.size() > 0
-        && request.resource.data.text.size() <= 500
-        && (!('notes' in request.resource.data) || request.resource.data.notes == null
-          || (request.resource.data.notes is string && request.resource.data.notes.size() <= 5000))
-        && (!('listId' in request.resource.data) || request.resource.data.listId == null
-          || (request.resource.data.listId is string && request.resource.data.listId.size() > 0 && request.resource.data.listId.size() <= 64))
-        && (!('due' in request.resource.data) || request.resource.data.due == null
-          || (request.resource.data.due is string && request.resource.data.due.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')))
-        && (!('dueTime' in request.resource.data) || request.resource.data.dueTime == null
-          || (request.resource.data.dueTime is string && request.resource.data.dueTime.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
-            && 'due' in request.resource.data && request.resource.data.due != null))
-        && request.resource.data.done is bool
-        && (!('doneAt' in request.resource.data) || request.resource.data.doneAt == null || request.resource.data.doneAt is number)
-        && request.resource.data.updatedAt is number
-        && (!('createdAt' in request.resource.data) || request.resource.data.createdAt is number)
-        && (resource == null || !('createdAt' in resource.data) || !('createdAt' in request.resource.data) || request.resource.data.createdAt == resource.data.createdAt);
+      allow create, update: if writer(g)
+        && request.resource.data.keys().hasOnly(['title', 'description', 'projectId', 'sectionId', 'parentId', 'order', 'dayOrder',
+          'priority', 'labels', 'due', 'deadline', 'collapsed', 'done', 'doneAt', 'extId', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
+        && text(request.resource.data, 'title', 500)
+        && optText(request.resource.data, 'description', 16000)
+        && text(request.resource.data, 'projectId', 64)
+        && optId(request.resource.data, 'sectionId') && optId(request.resource.data, 'parentId')
+        && request.resource.data.order is number && optNum(request.resource.data, 'dayOrder')
+        && request.resource.data.priority in [1, 2, 3, 4]
+        && (gone(request.resource.data, 'labels') || (request.resource.data.labels is list && request.resource.data.labels.size() <= 20))
+        && dueOk(request.resource.data)
+        && (gone(request.resource.data, 'deadline') || day(request.resource.data.deadline))
+        && optBool(request.resource.data, 'collapsed')
+        && request.resource.data.done is bool && optNum(request.resource.data, 'doneAt')
+        && optId(request.resource.data, 'extId')
+        && synced(request.resource.data);
       allow delete: if can(g, ['admin', 'member']);
     }
 
-    // A list of tasks (Inbox is not stored: it is every task with no list, or one whose list is gone). A list's tasks keep
-    // their listId when it is deleted and show under Inbox.
-    match /spaces/{g}/lists/{id} {
+    // A project. The Inbox is the project with the id 'inbox' (inbox: true), made once by the app and never deleted.
+    match /spaces/{g}/projects/{id} {
       allow read: if can(g, ['admin', 'member', 'viewer']);
-      allow create, update: if can(g, ['admin', 'member']) && stamped()
-        && request.resource.data.keys().hasOnly(['name', 'order', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
-        && (!('_edits' in request.resource.data) || request.resource.data._edits is map)
-        && request.resource.data.name is string && request.resource.data.name.size() > 0
-        && request.resource.data.name.size() <= 60
-        && request.resource.data.order is number
-        && request.resource.data.updatedAt is number
-        && (!('createdAt' in request.resource.data) || request.resource.data.createdAt is number)
-        && (resource == null || !('createdAt' in resource.data) || !('createdAt' in request.resource.data) || request.resource.data.createdAt == resource.data.createdAt);
+      allow create, update: if writer(g)
+        && request.resource.data.keys().hasOnly(['name', 'color', 'parentId', 'order', 'favorite', 'view', 'inbox', 'collapsed', 'extId',
+          'createdAt', 'updatedAt', 'serverAt', '_edits'])
+        && text(request.resource.data, 'name', 120) && colorOk(request.resource.data)
+        && optId(request.resource.data, 'parentId') && request.resource.data.order is number
+        && optBool(request.resource.data, 'favorite') && request.resource.data.view in ['list', 'board']
+        && (gone(request.resource.data, 'inbox') || (request.resource.data.inbox is bool && (request.resource.data.inbox == false || id == 'inbox')))
+        && optBool(request.resource.data, 'collapsed') && optId(request.resource.data, 'extId')
+        && synced(request.resource.data);
+      allow delete: if can(g, ['admin', 'member']) && id != 'inbox';
+    }
+
+    // A section of a project.
+    match /spaces/{g}/sections/{id} {
+      allow read: if can(g, ['admin', 'member', 'viewer']);
+      allow create, update: if writer(g)
+        && request.resource.data.keys().hasOnly(['name', 'projectId', 'order', 'collapsed', 'extId', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
+        && text(request.resource.data, 'name', 120) && text(request.resource.data, 'projectId', 64)
+        && request.resource.data.order is number && optBool(request.resource.data, 'collapsed') && optId(request.resource.data, 'extId')
+        && synced(request.resource.data);
+      allow delete: if can(g, ['admin', 'member']);
+    }
+
+    // A label (a task names it in labels). No #, @, % or / in a name: quick add reads those as other things.
+    match /spaces/{g}/labels/{id} {
+      allow read: if can(g, ['admin', 'member', 'viewer']);
+      allow create, update: if writer(g)
+        && request.resource.data.keys().hasOnly(['name', 'color', 'order', 'favorite', 'extId', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
+        && text(request.resource.data, 'name', 60) && request.resource.data.name.matches('^[^#@%/]+$')
+        && colorOk(request.resource.data) && request.resource.data.order is number
+        && optBool(request.resource.data, 'favorite') && optId(request.resource.data, 'extId')
+        && synced(request.resource.data);
+      allow delete: if can(g, ['admin', 'member']);
+    }
+
+    // A saved filter: a name and a query in the filter language.
+    match /spaces/{g}/filters/{id} {
+      allow read: if can(g, ['admin', 'member', 'viewer']);
+      allow create, update: if writer(g)
+        && request.resource.data.keys().hasOnly(['name', 'query', 'color', 'order', 'favorite', 'extId', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
+        && text(request.resource.data, 'name', 120) && text(request.resource.data, 'query', 1000)
+        && colorOk(request.resource.data) && request.resource.data.order is number
+        && optBool(request.resource.data, 'favorite') && optId(request.resource.data, 'extId')
+        && synced(request.resource.data);
       allow delete: if can(g, ['admin', 'member']);
     }
 
@@ -64,12 +119,10 @@ service cloud.firestore {
     match /spaces/{g}/settings/{id} {
       allow read: if can(g, ['admin', 'member', 'viewer']);
       allow create, update: if can(g, ['admin', 'member', 'viewer']) && request.auth.uid == id && stamped()
-        && request.resource.data.keys().hasOnly(['profile', 'showCounts', 'defaultList', 'updatedAt', 'serverAt', '_edits'])
+        && request.resource.data.keys().hasOnly(['profile', 'showCounts', 'updatedAt', 'serverAt', '_edits'])
         && (!('_edits' in request.resource.data) || request.resource.data._edits is map)
         && (!('profile' in request.resource.data) || request.resource.data.profile == null || request.resource.data.profile is string)
         && (!('showCounts' in request.resource.data) || request.resource.data.showCounts == null || request.resource.data.showCounts is bool)
-        && (!('defaultList' in request.resource.data) || request.resource.data.defaultList == null
-          || (request.resource.data.defaultList is string && request.resource.data.defaultList.size() <= 64))
         && request.resource.data.updatedAt is number;
       allow delete: if false;
     }

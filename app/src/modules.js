@@ -3,7 +3,7 @@
 // asks its slot here; an empty slot costs the page nothing.
 // add: imports
 
-/** @type {{ listFilter?: import('./screens/tasks.js').ListFilter, itemFiles?: import('./screens/tasks.js').ItemFilesSlot,
+/** @type {{ listFilter?: import('./screens/views.js').ListFilter, itemFiles?: import('./screens/views.js').ItemFilesSlot,
  *   settingsPages?: Record<string, import('./shell.js').SettingsSlot> }} */
 export const modules = {
   // add: slots

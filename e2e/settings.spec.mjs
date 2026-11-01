@@ -1,29 +1,33 @@
 // @core/settings on the sample Settings sheet: a device value stays on this device, an account value reaches the
 // account's other devices, the settings file drops what it should not carry, and the open sheet passes axe.
-import { test, expect, signIn, signInAgain, synced, openSettings, openToday } from './fixtures.mjs';
+import { test, expect, signIn, signInAgain, synced, openSettings, openToday, openTab } from './fixtures.mjs';
 import AxeBuilder from './axe.mjs';
 
 const open = (page, title = 'Tasks') => openSettings(page, title);
 const big = page => page.getByRole('switch', { name: /Larger rows/ });
-const count = page => page.getByRole('switch', { name: /Show how many are open/ });
-const chip = page => page.locator('#today-page .list-chip[data-list="all"]');
+const count = page => page.getByRole('switch', { name: /Show task counts/ });
+// the Inbox row's count on Browse (drawn once Browse has opened; it follows the option from then on)
+const shown = page => page.locator('#browse .td-browse-row', { hasText: 'Inbox' }).locator('.td-browse-count');
+const browse = async page => { await page.evaluate(() => window.starter.add('counted')); await openTab(page, 'browse'); };
 const note = page => page.locator('.ui-settings-status');
 
 test('a device value stays on this device; an account value reaches the other one', async ({ phone }) => {
   const a = await phone();
   const { email } = await signIn(a, 'member');
   await synced(a);
+  await browse(a);
   await open(a);
   await big(a).check();
   await count(a).check();
   await openToday(a);
   await expect(a.locator('.ui-screens')).toHaveClass(/big/);
-  await expect(chip(a)).toHaveText(/ \d+$/);
+  await expect(shown(a)).toHaveCount(1);
   await synced(a);
 
   const b = await phone();
   await signInAgain(b, email);
-  await expect(chip(b)).toHaveText(/ \d+$/);                 // the account's option arrived
+  await browse(b);
+  await expect(shown(b)).toHaveCount(1);                       // the account's option arrived
   await expect(b.locator('.ui-screens')).not.toHaveClass(/big/);        // this device's did not
   await open(b);
   await expect(big(b)).not.toBeChecked();
@@ -31,7 +35,7 @@ test('a device value stays on this device; an account value reaches the other on
 
   // and a change on b comes back to a without a reload
   await count(b).uncheck();
-  await expect(chip(a)).not.toHaveText(/ \d+$/, { timeout: 15_000 });
+  await expect(shown(a)).toHaveCount(0, { timeout: 15_000 });
   await expect(a.locator('.ui-screens')).toHaveClass(/big/);
 });
 
@@ -97,13 +101,14 @@ test('a direct switch from one account to another follows the new account\'s set
   await expect.poll(() => a.locator('#uid').textContent()).not.toBe('');
   await expect(a.locator('#list-view')).toBeVisible();
   await expect.poll(() => a.evaluate(() => window.starter.ready)).toBe(true);
-  await expect(chip(a)).not.toHaveText(/ \d+$/);
+  await browse(a);
+  await expect(shown(a)).toHaveCount(0);
   // B's change on its other phone reaches a without a reload
   await open(b);
   await count(b).check();
   await openToday(b);
   await synced(b);
-  await expect(chip(a)).toHaveText(/ \d+$/, { timeout: 15_000 });
+  await expect(shown(a)).toHaveCount(1, { timeout: 15_000 });
 });
 
 test('Settings > About offers "Install this app" as a button, (a tap shows how, nothing prompts unasked)', async ({ phone }) => {
