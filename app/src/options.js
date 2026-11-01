@@ -21,6 +21,12 @@ export const OPTIONS = {
   // what a row does when swiped right or left (this device): 'complete', 'schedule', 'delete' or 'none'
   swipeRight: { scope: 'device', default: 'complete', clean: v => (SWIPES.includes(String(v)) ? v : 'complete') },
   swipeLeft: { scope: 'device', default: 'schedule', clean: v => (SWIPES.includes(String(v)) ? v : 'schedule') },
+  // the first day of the week in Upcoming's strip and the calendars (this device): 1 Monday, 0 Sunday
+  weekStart: { scope: 'device', default: 1, clean: v => (v === 0 ? 0 : 1) },
+  // each list's Display choices (this device): a view's id to its grouping, sorting, filter and completed switch
+  display: { scope: 'device', default: {}, clean: v => (v && typeof v === 'object' && !Array.isArray(v) ? v : {}) },
+  // the last searches on the Search tab (this device), newest first
+  recentSearches: { scope: 'device', default: [], clean: v => (Array.isArray(v) ? v.filter(x => typeof x === 'string').slice(0, 10) : []) },
   // add: options
 };
 
@@ -33,10 +39,11 @@ const FEATURES = [
 /** The Settings pages (src/shell.js: @core/ui settingsScreen with its menu): a row is a switch for a yes/no option; icon,
  * sub and group are the page's row in the menu. */
 export const SETTING_SECTIONS = [
-  { title: 'General', icon: ICONS.settings, sub: 'Smart dates and swipes', group: 'Tasks', rows: [
+  { title: 'General', icon: ICONS.settings, sub: 'Smart dates, swipes and the week', group: 'Tasks', rows: [
     { key: 'smartDates', label: 'Smart date recognition', sub: 'Read dates, times and repeats as you type a task' },
     { key: 'swipeRight', label: 'Swipe right', sub: 'This device', choices: SWIPE_CHOICES },
     { key: 'swipeLeft', label: 'Swipe left', sub: 'This device', choices: SWIPE_CHOICES },
+    { key: 'weekStart', label: 'Start of the week', sub: 'This device', choices: /** @type {[unknown, string][]} */ ([[1, 'Monday'], [0, 'Sunday']]) },
   ] },
   { title: 'Tasks', icon: ICONS.listChecks, sub: 'Counts and row size', group: 'Tasks', rows: [
     { key: 'showCounts', label: 'Show task counts in Browse', sub: 'Every device; sign in to change it' },

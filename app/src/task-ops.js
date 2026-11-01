@@ -156,20 +156,28 @@ export function taskOps({ save, id, data, now = Date.now, drop = () => {} }) {
     /** @param {{ name: string, color?: string, favorite?: boolean }} l */
     addLabel: l => {
       const name = String(l.name ?? '').trim().slice(0, 60);
-      if (!name || /[#@%/]/.test(name)) return Promise.resolve('A label needs a name without # @ % or /');
-      return put(LABELS, { id: id(), name, color: cleanColor(l.color), order: orderAtEnd(data().labels), favorite: !!l.favorite, createdAt: now() }, null);
+      if (!name || /[#@%/]/.test(name)) return Promise.resolve({ refused: 'A label needs a name without # @ % or /', id: '' });
+      const lid = id();
+      return put(LABELS, { id: lid, name, color: cleanColor(l.color), order: orderAtEnd(data().labels), favorite: !!l.favorite, createdAt: now() }, null)
+        .then(refused => ({ refused, id: lid }));
     },
     /** @param {Label} l @param {Partial<Label>} patch */
     editLabel: (l, patch) => put(LABELS, { ...l, ...patch, color: cleanColor(patch.color ?? l.color) }, l),
     /** @param {Label} l */
     removeLabel: l => remove(LABELS, [l]),
     /** @param {{ name: string, query: string, color?: string, favorite?: boolean }} f */
-    addFilter: f => put(FILTERS, { id: id(), name: String(f.name).trim().slice(0, 120), query: String(f.query).trim().slice(0, 1000),
-      color: cleanColor(f.color), order: orderAtEnd(data().filters), favorite: !!f.favorite, createdAt: now() }, null),
+    addFilter: f => {
+      const fid = id();
+      return put(FILTERS, { id: fid, name: String(f.name).trim().slice(0, 120), query: String(f.query).trim().slice(0, 1000),
+        color: cleanColor(f.color), order: orderAtEnd(data().filters), favorite: !!f.favorite, createdAt: now() }, null).then(refused => ({ refused, id: fid }));
+    },
     /** @param {Filter} f @param {Partial<Filter>} patch */
     editFilter: (f, patch) => put(FILTERS, { ...f, ...patch, color: cleanColor(patch.color ?? f.color) }, f),
     /** @param {Filter} f */
     removeFilter: f => remove(FILTERS, [f]),
+    /** new order numbers for labels or filters (a drag in Filters & Labels) @param {'labels' | 'filters'} kind
+     * @param {{ item: Label | Filter, order: number }[]} list */
+    orderNamed: (kind, list) => first(list.map(({ item, order }) => put(kind === 'labels' ? LABELS : FILTERS, { ...item, order }, item))),
     /** a whole task under its own id, as a new save (a restore brings one back) @param {Task} task */
     put: task => put(COLL, { ...task }, null),
   };

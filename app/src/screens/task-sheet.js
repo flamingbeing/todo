@@ -6,7 +6,7 @@
 import { icon, confirmModal } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { REFUSED } from '../items.js';
-import { priorityOf, placeText, projectOf } from '../tasks.js';
+import { priorityOf, placeText, projectOf, labelsOf } from '../tasks.js';
 import { dueLine, dayKey } from '../dates.js';
 import { colorHex } from '../colors.js';
 import { flatten, descendants, canNest } from '../tree.js';
@@ -15,6 +15,7 @@ import { rowList } from '../ui/row.js';
 import { openMenu } from '../ui/menu.js';
 import { el, pickPlace } from './pick.js';
 import { pickDate } from './scheduler.js';
+import { pickLabels, ticksOf, onIds } from './labels.js';
 
 /** @typedef {import('../items.js').Task} Task */
 /** @typedef {import('./views.js').Ctx} Ctx */
@@ -120,14 +121,15 @@ function draw(ctx) {
   // the rows: project, date, priority, labels
   const rows = el('div', 'td-card td-attrs');
   const place = attrRow(ICONS.hash, 'Project', []), date = attrRow(ICONS.calendar, 'Date', []), prio = attrRow(ICONS.flag, 'Priority', []);
-  const labels = el('div', 'td-attr td-attr-static');
-  for (const b of [place, date, prio]) b.disabled = !writable;
+  const labels = attrRow(ICONS.tag, 'Labels', []);
+  for (const b of [place, date, prio, labels]) b.disabled = !writable;
   const move = () => { const now = current(ctx); if (now) pickPlace(ctx.data(), { projectId: projectOf(now), sectionId: now.sectionId }, async to => {
     const at = current(ctx);
     if (at && await ctx.app.moveTask(at, { ...to, parentId: null })) ctx.toast(REFUSED);
   }); };
   place.addEventListener('click', move);
-  date.addEventListener('click', () => pickDate(current(ctx)?.due, due => save({ due }), { data: ctx.data() }));
+  date.addEventListener('click', () => pickDate(current(ctx)?.due, due => save({ due }), { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1) }));
+  labels.addEventListener('click', () => { const now = current(ctx); if (now) pickLabels(ctx, ticksOf(now, ctx.data().labels), ticks => save({ labels: onIds(ticks) })); });
   prio.addEventListener('click', () => openMenu(prio, [1, 2, 3, 4].map(p => ({ label: `Priority ${p}`, icon: ICONS.flag, color: PRIORITY_COLOR[p],
     checked: priorityOf(/** @type {Task} */ (current(ctx))) === p, run: () => save({ priority: p }) })), { label: 'Priority' }));
   rows.append(place, date, prio, labels);
@@ -171,12 +173,14 @@ function draw(ctx) {
     flag.style.color = PRIORITY_COLOR[p];
     prio.replaceChildren(flag, el('span', 'td-attr-text', `Priority ${p}`));
     prio.setAttribute('aria-label', `Priority ${p}`);
-    const chips = (now.labels ?? []).map(name => {
-      const chip = el('span', 'td-chip', name);
-      chip.style.color = colorHex(data.labels.find(l => l.name === name)?.color);
+    const mine = labelsOf(now, data.labels);
+    const chips = mine.map(l => {
+      const chip = el('span', 'td-chip', l.name);
+      chip.style.color = colorHex(l.color);
       return chip;
     });
     labels.replaceChildren(icon(ICONS.tag, { class: 'td-attr-icon' }), ...(chips.length ? chips : [el('span', 'td-attr-text td-attr-empty', 'Labels')]));
+    labels.setAttribute('aria-label', mine.length ? `Labels: ${mine.map(l => l.name).join(', ')}` : 'Labels');
 
     // its subtasks, open and done (a done one shows ticked)
     const kids = byOrder(data.tasks.filter(k => k.parentId === now.id));
@@ -193,6 +197,8 @@ function draw(ctx) {
         } }, 'Sub-tasks');
       parts.push(list);
     }
+    /** @type {HTMLInputElement | null} */
+    let keep = null;
     const depthOk = canNest(/** @type {Task} */ ({ ...now, id: '_new', parentId: null }), now, data.tasks);
     if (c.canWrite() && depthOk) {
       const form = /** @type {HTMLFormElement} */ (el('form', 'td-add-sub'));
@@ -209,9 +215,14 @@ function draw(ctx) {
         if (await c.app.addTask({ title: v, projectId: projectOf(at), sectionId: at.sectionId ?? null, parentId: at.id })) c.toast(REFUSED);
         requestAnimationFrame(() => /** @type {HTMLInputElement | null} */ (d().querySelector('.td-add-sub input'))?.focus());
       });
+      // a refresh (a change arriving) keeps what is being typed
+      const was = /** @type {HTMLInputElement | null} */ (subs.querySelector('.td-add-sub input'));
+      if (was?.value) add.value = was.value;
+      if (was && document.activeElement === was) keep = add;
       parts.push(form);
     }
     subs.replaceChildren(...parts);
+    keep?.focus();
   };
   refresh = fill;
   fill(ctx);

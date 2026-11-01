@@ -74,7 +74,8 @@ export function swipeRows(host, o) {
     filter: e => {
       if (!o.can() || row) return false;
       const r = /** @type {HTMLElement | null} */ (/** @type {Element} */ (e.target).closest('.td-row'));
-      if (!r || !host.contains(r) || r.classList.contains('is-done') || r.classList.contains('is-lifted')) return false;
+      // (a board's cards: a sideways move scrolls its columns; a done row has nothing to swipe)
+      if (!r || !host.contains(r) || r.classList.contains('is-done') || r.classList.contains('is-complete') || r.classList.contains('is-lifted') || r.closest('.td-board')) return false;
       const w = ways();
       if (w.right === 'none' && w.left === 'none') return false;
       row = r;

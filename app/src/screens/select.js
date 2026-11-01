@@ -14,6 +14,7 @@ import { dayKey } from '../dates.js';
 import { openMenu } from '../ui/menu.js';
 import { el, pickPlace } from './pick.js';
 import { pickDate } from './scheduler.js';
+import { labelTasks } from './labels.js';
 
 /** @typedef {import('./views.js').Ctx} Ctx */
 /** @typedef {import('../items.js').Task} Task */
@@ -51,7 +52,29 @@ export function scheduleTasks(ctx, tasks, after) {
   pickDate(tasks.length === 1 ? tasks[0].due : null, async due => {
     for (const t of tasks) if (await ctx.app.editTask(t, { due: due ? { ...due } : null })) { ctx.toast(REFUSED); break; }
     after?.();
-  }, { data: ctx.data() });
+  }, { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1) });
+}
+
+/** Today's Reschedule: a new day for every overdue task at once (a repeating one keeps its rule, a timed one its time;
+ * "No date" leaves the repeating ones be); one Undo for them all @param {Ctx} ctx @param {Task[]} tasks */
+export function rescheduleTasks(ctx, tasks) {
+  if (!tasks.length) return;
+  pickDate(null, async due => {
+    /** @type {[Task, import('../dates.js').Due | null][]} */
+    const was = [];
+    for (const t of tasks) {
+      if (!due && t.due?.rrule) continue;
+      const next = due ? { ...t.due, date: due.date, ...(due.time ? { time: due.time } : {}), ...(t.due?.rrule || !due.rrule ? {} : { rrule: due.rrule }) } : null;
+      if (await ctx.app.editTask(t, { due: next })) { ctx.toast(REFUSED); break; }
+      was.push([t, t.due ?? null]);
+    }
+    if (was.length) ctx.undo.show(`${plural(was.length, 'task')} rescheduled`, async () => {
+      for (const [t, before] of was) {
+        const now = ctx.data().tasks.find(x => x.id === t.id) ?? t;
+        if (await ctx.app.editTask(now, { due: before })) { ctx.toast(REFUSED); return; }
+      }
+    });
+  }, { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1) });
 }
 
 /** A priority for tasks, from a menu at anchor @param {Ctx} ctx @param {HTMLElement} anchor @param {Task[]} tasks @param {() => void} [after] */
@@ -215,6 +238,7 @@ export function startSelect(ctx, host, ids = []) {
         for (const t of list) if (await ctx.app.duplicateTask(t)) { ctx.toast(REFUSED); break; }
         stop();
       } },
+      { label: 'Labels', icon: ICONS.tag, run: () => labelTasks(ctx, list, stop) },
       { label: `Complete ${n}`, icon: ICONS.circleCheck, run: () => { stop(); void completeTasks(ctx, list); } },
       null,
       { label: `Delete ${n}`, icon: ICONS.trash2, danger: true, run: async () => { if (await deleteTasks(ctx, list)) stop(); } },

@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { projectView, todayView, upcomingView, completedView, projectTree, projectCounts, todayCount, upcomingCount, placeText,
-  projectCascade, sectionCascade, cleanFields, cleanDue, isTask, dayOrder } from '../src/tasks.js';
+  projectCascade, sectionCascade, cleanFields, cleanDue, isTask, dayOrder, labelsOf, cleanDisplay, plainDisplay, narrowTasks, sorter, groupTasks } from '../src/tasks.js';
 import { taskOps, refusal } from '../src/task-ops.js';
 
 const T = '2026-11-01';
@@ -191,10 +191,14 @@ test('sections: add, rename, fold, delete with their tasks', async () => {
 
 test('labels refuse # @ % and /; filters keep their query', async () => {
   const s = store();
-  assert.match(await s.ops.addLabel({ name: '@home' }), /without/);
-  assert.equal(await s.ops.addLabel({ name: 'errand', color: 'green' }), '');
-  await s.ops.addFilter({ name: 'Urgent', query: ' p1 ' });
-  assert.deepEqual([s.data.labels[0].color, s.data.filters[0].query], ['green', 'p1']);
+  assert.match((await s.ops.addLabel({ name: '@home' })).refused, /without/);
+  const made = await s.ops.addLabel({ name: 'errand', color: 'green' });
+  assert.equal(made.refused, '');
+  assert.equal(s.data.labels[0].id, made.id);
+  const f = await s.ops.addFilter({ name: 'Urgent', query: ' p1 ' });
+  assert.deepEqual([s.data.labels[0].color, s.data.filters[0].query, s.data.filters[0].id], ['green', 'p1', f.id]);
+  await s.ops.orderNamed('labels', [{ item: s.data.labels[0], order: 5 }]);
+  assert.equal(s.data.labels[0].order, 5);
   await s.ops.removeLabel(s.data.labels[0]);
   assert.equal(s.data.labels.length, 0);
 });
@@ -202,4 +206,68 @@ test('labels refuse # @ % and /; filters keep their query', async () => {
 test('a refused save resolves to its reason', async () => {
   assert.equal(await refusal(Promise.reject(new Error('no'))), 'no');
   assert.equal(await refusal(Promise.resolve()), '');
+});
+
+test('a task\'s labels: by id, or by name for older tasks; a deleted one is skipped', () => {
+  const labels = [{ id: 'l1', name: 'errand' }, { id: 'l2', name: 'Phone' }];
+  assert.deepEqual(labelsOf(t('x', { labels: ['l2', 'errand', 'gone', 'l1'] }), labels).map(l => l.id), ['l2', 'l1']);
+  assert.deepEqual(labelsOf(t('y', { labels: ['phone'] }), labels).map(l => l.id), ['l2']);
+  assert.deepEqual(labelsOf(t('z'), labels), []);
+});
+
+test('Display: known choices only; Today groups by date, the rest by none', () => {
+  assert.deepEqual(cleanDisplay({}, 'today'), { group: 'date', sort: 'manual', dir: 'asc', completed: false, priority: 0, label: '', date: '' });
+  assert.equal(cleanDisplay(null, 'inbox').group, 'none');
+  assert.deepEqual(cleanDisplay({ group: 'x', sort: 'name', dir: 'desc', completed: true, priority: '2', date: 'week' }, 'p'),
+    { group: 'none', sort: 'name', dir: 'desc', completed: true, priority: 2, label: '', date: 'week' });
+  assert.ok(plainDisplay(cleanDisplay({}, 'today'), 'today'));
+  assert.ok(!plainDisplay(cleanDisplay({ sort: 'name' }, 'today'), 'today'));
+});
+
+const D = (o = {}) => ({ ...cleanDisplay({}, 'p'), ...o });
+const labels = [{ id: 'l1', name: 'b-label', order: 2 }, { id: 'l2', name: 'a-label', order: 1 }];
+const projects = [{ id: 'p1', name: 'Work', order: 2 }, { id: 'p2', name: 'Home', order: 1 }];
+const pool = () => [
+  t('Banana', { createdAt: 3, priority: 2, due: { date: '2026-10-30' }, projectId: 'p1', labels: ['l1'] }),
+  t('apple', { createdAt: 1, priority: 4, due: { date: T, time: '09:00' }, projectId: 'p2', labels: ['l1', 'l2'] }),
+  t('cherry', { createdAt: 2, priority: 1 }),
+  t('date', { createdAt: 4, priority: 2, due: { date: T }, done: true }),
+];
+const titles = list => list.map(x => x.title);
+
+test('sorting by each key, both ways (no date last either way)', () => {
+  const sorted = (sort, dir) => titles(pool().sort(sorter(sort, dir)));
+  assert.deepEqual(sorted('manual', 'asc'), ['Banana', 'apple', 'cherry', 'date']);
+  assert.deepEqual(sorted('manual', 'desc'), ['Banana', 'apple', 'cherry', 'date'], 'manual has no direction');
+  assert.deepEqual(sorted('name', 'asc'), ['apple', 'Banana', 'cherry', 'date']);
+  assert.deepEqual(sorted('name', 'desc'), ['date', 'cherry', 'Banana', 'apple']);
+  assert.deepEqual(sorted('date', 'asc'), ['Banana', 'apple', 'date', 'cherry'], 'on a day, a time before no time');
+  assert.deepEqual(sorted('date', 'desc'), ['date', 'apple', 'Banana', 'cherry']);
+  assert.deepEqual(sorted('priority', 'asc'), ['cherry', 'Banana', 'date', 'apple'], 'P1 first, ties by their own order');
+  assert.deepEqual(sorted('priority', 'desc'), ['apple', 'Banana', 'date', 'cherry']);
+  assert.deepEqual(sorted('added', 'asc'), ['apple', 'cherry', 'Banana', 'date']);
+  assert.deepEqual(sorted('added', 'desc'), ['date', 'Banana', 'cherry', 'apple']);
+});
+
+test('grouping by date, priority, label, project and none; done ones at each group\'s end', () => {
+  const g = (o, list = pool()) => groupTasks(list, D(o), { projects, labels, today: T }).map(x => [x.title, titles(x.tasks)]);
+  assert.deepEqual(g({ group: 'none' }), [['', ['Banana', 'apple', 'cherry', 'date']]]);
+  assert.deepEqual(g({ group: 'date' }), [['Overdue', ['Banana']], ['1 Nov · Today · Sunday', ['apple', 'date']], ['No date', ['cherry']]]);
+  assert.deepEqual(g({ group: 'priority' }), [['Priority 1', ['cherry']], ['Priority 2', ['Banana', 'date']], ['No priority', ['apple']]]);
+  assert.deepEqual(g({ group: 'label' }), [['a-label', ['apple']], ['b-label', ['Banana', 'apple']], ['No label', ['cherry', 'date']]]);
+  assert.deepEqual(g({ group: 'project' }), [['Inbox', ['cherry', 'date']], ['Home', ['apple']], ['Work', ['Banana']]]);
+  assert.deepEqual(g({ group: 'priority', sort: 'name', dir: 'desc' }), [['Priority 1', ['cherry']], ['Priority 2', ['Banana', 'date']], ['No priority', ['apple']]],
+    'a done task stays last whatever the sort');
+});
+
+test('the Display filter, and the completed switch\'s done tasks', () => {
+  const n = (o, list = pool()) => titles(narrowTasks(list, D(o), labels, T));
+  assert.deepEqual(n({ priority: 2 }), ['Banana', 'date']);
+  assert.deepEqual(n({ label: 'l2' }), ['apple']);
+  assert.deepEqual(n({ date: 'today' }), ['Banana', 'apple', 'date']);
+  assert.deepEqual(n({ date: 'overdue' }), ['Banana']);
+  assert.deepEqual(n({ date: 'nodate' }), ['cherry']);
+  assert.deepEqual(n({ date: 'week' }), ['Banana', 'apple', 'date']);
+  const open = pool().filter(x => !x.done);
+  assert.deepEqual(groupTasks(open, D(), { projects, labels, today: T })[0].tasks.length, 3, 'completed off: the list gives open tasks only');
 });

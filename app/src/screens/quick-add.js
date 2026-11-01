@@ -18,6 +18,7 @@ import { dateLibs } from '../recur.js';
 import { openMenu } from '../ui/menu.js';
 import { el, pickPlace } from './pick.js';
 import { pickDate } from './scheduler.js';
+import { pickLabels, onIds } from './labels.js';
 
 /** @typedef {import('./views.js').Ctx} Ctx */
 /** @typedef {import('./views.js').AddContext} AddContext */
@@ -152,25 +153,30 @@ export function openQuickAdd(ctx, start, hold = null) {
     labelChip.replaceChildren(icon(ICONS.tag), el('span', '', v.labels.length ? v.labels.join(', ') : 'Labels'));
     labelChip.setAttribute('aria-label', v.labels.length ? `Labels: ${v.labels.join(', ')}` : 'Labels');
     setX(labelC, v.labels.length > 0, () => { unmark(['label']); delete manual.labels; });
+    labelC.box.hidden = !v.labels.length;
   };
   dateChip.addEventListener('click', () => pickDate(value().due, due => {
     unmark(['date', 'recur']); manual.due = due; reparse(); title.focus();
-  }, { data: ctx.data() }));
+  }, { data: ctx.data(), weekStart: Number(settings.get('weekStart') ?? 1) }));
   prioChip.addEventListener('click', () => openMenu(prioChip, [1, 2, 3, 4].map(p => ({
     label: `Priority ${p}`, icon: ICONS.flag, color: PRIORITY_COLOR[p], checked: value().priority === p,
     run: () => { unmark(['priority']); manual.priority = p; reparse(); title.focus(); } })), { label: 'Priority' }));
-  labelChip.addEventListener('click', () => {
-    const now = value().labels, names = byOrder(ctx.data().labels).map(l => l.name);
-    for (const n of now) if (!names.includes(n)) names.push(n);
-    if (!names.length) { ctx.toast('Type @ and a name to add a label'); title.focus(); return; }
-    openMenu(labelChip, names.map(n => ({ label: n, icon: ICONS.tag, checked: now.includes(n), run: () => {
-      const on = value().labels;
+  // the labels: the picker (from the chip, or the "…" chip's menu); typed @names count too
+  const openLabels = () => {
+    const known = ctx.data().labels, ticks = new Map();
+    for (const n of value().labels) { const l = known.find(x => x.name.toLowerCase() === n.toLowerCase()); if (l) ticks.set(l.id, 'on'); }
+    pickLabels(ctx, ticks, (now, made) => {
+      const all = [...ctx.data().labels, ...made];
       unmark(['label']);
-      manual.labels = on.includes(n) ? on.filter(x => x !== n) : [...on, n];
+      manual.labels = onIds(now).map(id => all.find(l => l.id === id)?.name ?? '').filter(Boolean);
       reparse(); title.focus();
-    } })), { label: 'Labels' });
-  });
-  chips.append(dateC.box, prioC.box, labelC.box);
+    });
+  };
+  labelChip.addEventListener('click', openLabels);
+  const moreChip = button('td-chip td-chip-more', 'More options');
+  moreChip.append(icon(ICONS.ellipsis));
+  moreChip.addEventListener('click', () => openMenu(moreChip, [{ label: 'Labels', icon: ICONS.tag, run: openLabels }], { label: 'More options' }));
+  chips.append(dateC.box, prioC.box, labelC.box, moreChip);
 
   // names as they are typed after #, /, @ or %
   const list = el('div', 'td-suggest');
@@ -238,12 +244,20 @@ export function openQuickAdd(ctx, start, hold = null) {
     base.order = undefined;
     return o !== undefined && v.projectId === base.projectId && v.sectionId === base.sectionId && v.parentId === base.parentId ? o : undefined;
   };
+  /** labels made here before the list has them (by name) @type {Map<string, string>} */
+  const made = new Map();
   /** adds one task from a name (with its words) and the description @param {Parsed} p @param {ReturnType<typeof value>} v @param {string} about */
   const addOne = async (p, v, about) => {
-    const known = new Set(ctx.data().labels.map(l => l.name.toLowerCase()));
-    for (const n of v.labels) if (!known.has(n.toLowerCase())) { known.add(n.toLowerCase()); void ctx.app.addLabel({ name: n }); }
+    // a task keeps its labels' ids: a name not known yet is made a label first
+    const ids = [];
+    for (const n of v.labels) {
+      const known = ctx.data().labels.find(l => l.name.toLowerCase() === n.toLowerCase())?.id ?? made.get(n.toLowerCase());
+      if (known) { ids.push(known); continue; }
+      const r = await ctx.app.addLabel({ name: n });
+      if (!r.refused) { made.set(n.toLowerCase(), r.id); ids.push(r.id); }
+    }
     return ctx.app.addTask({ title: p.title, description: about || undefined, projectId: v.projectId, sectionId: v.sectionId, parentId: v.parentId,
-      priority: v.priority, labels: v.labels.length ? v.labels : undefined, due: v.due ?? undefined, order: atDrop(v) });
+      priority: v.priority, labels: ids.length ? [...new Set(ids)] : undefined, due: v.due ?? undefined, order: atDrop(v) });
   };
   const clearAll = () => {
     title.value = ''; desc.value = ''; desc.style.height = ''; ignore = []; was = '';

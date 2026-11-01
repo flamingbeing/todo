@@ -7,7 +7,7 @@ import { ICONS } from '../icons.js';
 import { dueLine } from '../dates.js';
 import { countText } from '../tree.js';
 import { colorHex } from '../colors.js';
-import { priorityOf, projectOf } from '../tasks.js';
+import { priorityOf, projectOf, labelsOf } from '../tasks.js';
 import { INBOX } from '../items.js';
 
 /** @typedef {import('../items.js').Task} Task */
@@ -45,11 +45,10 @@ function meta(line, c) {
     n.setAttribute('aria-label', `${line.doneKids} of ${line.kids} subtasks done`);
     parts.push(n);
   }
-  for (const name of t.labels ?? []) {
+  for (const known of labelsOf(t, c.data.labels)) {
     const l = el('span', 'td-label');
-    const known = c.data.labels.find(x => x.name === name);
-    l.style.color = colorHex(known?.color);
-    l.append(icon(ICONS.tag, { class: 'td-meta-icon' }), name);
+    l.style.setProperty('--c', colorHex(known.color));
+    l.append(icon(ICONS.tag, { class: 'td-meta-icon' }), known.name);
     parts.push(l);
   }
   if (c.place) {
@@ -77,6 +76,7 @@ export function taskRow(line, c) {
   li.dataset.priority = String(p);
   if (line.depth) li.style.setProperty('--depth', String(line.depth));
   if (c.changed?.has(t.id)) li.classList.add('changed');
+  if (t.done) li.classList.add('is-complete');
 
   const box = /** @type {HTMLButtonElement} */ (el('button', 'td-check'));
   box.type = 'button';
@@ -86,6 +86,7 @@ export function taskRow(line, c) {
   box.disabled = !c.canWrite;
   box.append(icon(ICONS.check, { class: 'td-check-mark' }));
   box.addEventListener('click', () => {
+    if (t.done) { c.onComplete(t, li); return; }
     if (li.classList.contains('is-done')) return;
     li.classList.add('is-done');
     box.setAttribute('aria-checked', 'true');

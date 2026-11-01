@@ -54,8 +54,12 @@ test('a repeat, a label and a project by name; # suggests the projects', async (
   await expect(page.locator('#add-sheet .td-chip-repeat')).toBeVisible();
   await expect(page.locator('#add-sheet .td-add-place')).toContainText(pname);
   await page.press(name, 'Enter');
-  await expect.poll(async () => { const d = await task(t); return d && [d.due?.rrule, d.labels, typeof d.projectId === 'string' && d.projectId !== 'inbox']; }, { timeout: 15_000 })
-    .toEqual(['FREQ=WEEKLY;BYDAY=MO', ['meet'], true]);
+  // (a task keeps its label's id; the label "meet" is made if it isn't there yet)
+  await expect.poll(async () => {
+    const d = await task(t);
+    const names = d ? await Promise.all((d.labels ?? []).map(async id => (await db.get(`spaces/_/labels/${id}`))?.name)) : [];
+    return d && [d.due?.rrule, names, typeof d.projectId === 'string' && d.projectId !== 'inbox'];
+  }, { timeout: 15_000 }).toEqual(['FREQ=WEEKLY;BYDAY=MO', ['meet'], true]);
 });
 
 test('a chip\'s x leaves the words as plain text; the draft is kept; two pasted lines become two tasks', async ({ phone }) => {

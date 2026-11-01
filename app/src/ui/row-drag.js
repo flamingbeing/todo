@@ -5,7 +5,9 @@
 // dropped on another day of Upcoming it moves to that day. Let go without moving, the row's menu opens (select.js).
 // The + button dragged onto the list shows the same line, a grey x where it was (dropped there, nothing happens)
 // and on a project page an "Add section" line below the last section: let go, quick add opens for that place, or
-// a new section is named there. Only transforms and opacity move; the arbiter's 'drag' owns the touch while lifted.
+// a new section is named there. On a board (screens/board.js) a card tilts as it lifts and lands in the column under
+// the finger, at the top level; near the board's side it scrolls to the next column. Only transforms and opacity
+// move; the arbiter's 'drag' owns the touch while lifted.
 import { claim, release, haptic, glide, icon } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { REFUSED } from '../items.js';
@@ -38,6 +40,7 @@ function gapsOf(host, skip, loose = false) {
   /** @type {Gap[]} */
   const gaps = [];
   const groups = /** @type {HTMLElement[]} */ ([...host.querySelectorAll(':scope > ul.td-rows, :scope > section.td-group')]);
+  const board = host.classList.contains('td-board');
   // a project page with no tasks outside its sections: a place above the first one
   const first = groups[0];
   if (loose && first && !first.matches('ul')) {
@@ -47,13 +50,14 @@ function gapsOf(host, skip, loose = false) {
   for (const g of groups) {
     const sectionId = g.matches('section.td-section') ? String(g.dataset.id) : null, day = g.dataset.day ?? null;
     const rows = /** @type {HTMLElement[]} */ ([...g.querySelectorAll('.td-row')]).filter(r => !skip.has(String(r.dataset.id)));
-    const box = (g.matches('ul') ? g : g.querySelector('ul.td-rows') ?? g.querySelector('.td-group-head') ?? g).getBoundingClientRect();
+    const box = (board ? g : g.matches('ul') ? g : g.querySelector('ul.td-rows') ?? g.querySelector('.td-group-head') ?? g).getBoundingClientRect();
     const ids = rows.map(r => String(r.dataset.id)), depths = rows.map(depthOf);
     const rects = rows.map(r => r.getBoundingClientRect());
     if (!rows.length) {
       // (a section folded away takes nothing; an empty one, under its name)
       if (g.matches('section.td-section') && !g.querySelector('.td-add-row')) continue;
-      gaps.push({ group: g, sectionId, day, ids, depths, at: 0, y: box.bottom, left: box.left, width: box.width });
+      const y = board ? (g.querySelector('.td-col-head') ?? g).getBoundingClientRect().bottom + 4 : box.bottom;
+      gaps.push({ group: g, sectionId, day, ids, depths, at: 0, y, left: box.left, width: box.width });
       continue;
     }
     for (let at = 0; at <= rows.length; at++) {
@@ -63,8 +67,15 @@ function gapsOf(host, skip, loose = false) {
   }
   return gaps;
 }
-/** the gap nearest y @param {Gap[]} gaps @param {number} y */
-const nearest = (gaps, y) => gaps.reduce((best, g) => (!best || Math.abs(g.y - y) < Math.abs(best.y - y) ? g : best), /** @type {Gap | null} */ (null));
+/** the gap nearest y (and, given x, in the column under it, or else the nearest column) @param {Gap[]} gaps @param {number} y @param {number} [x] */
+const nearest = (gaps, y, x) => {
+  if (x !== undefined) {
+    const off = (/** @type {Gap} */ g) => (x < g.left ? g.left - x : x > g.left + g.width ? x - g.left - g.width : 0);
+    const best = Math.min(...gaps.map(off));
+    gaps = gaps.filter(g => off(g) === best);
+  }
+  return gaps.reduce((best, g) => (!best || Math.abs(g.y - y) < Math.abs(best.y - y) ? g : best), /** @type {Gap | null} */ (null));
+};
 
 /** the drop line: a clip the width of the list, and the line with its dot that moves in it */
 function dropLine() {
@@ -103,7 +114,7 @@ export function dragRows(host, ctx, o) {
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let timer;
   /** @type {{ id: number, x0: number, y0: number, row: HTMLElement, lifted: boolean, moved: boolean, kids: HTMLElement[], line?: ReturnType<typeof dropLine>,
-   *   gaps?: Gap[], gap?: Gap | null, depth: number, dx: number, base: number } | null} */
+   *   gaps?: Gap[], gap?: Gap | null, depth: number, dx: number, base: number, sx?: number } | null} */
   let p = null;
   const cancelHold = () => { clearTimeout(timer); timer = undefined; };
 
@@ -111,7 +122,7 @@ export function dragRows(host, ctx, o) {
     if (p || !e.isPrimary || e.button > 0 || !o.can() || !o.kind()) return;
     const t = /** @type {Element} */ (e.target);
     const row = /** @type {HTMLElement | null} */ (t.closest('.td-row'));
-    if (!row || !host.contains(row) || t.closest('.td-check, .td-fold') || row.classList.contains('is-done')) return;
+    if (!row || !host.contains(row) || t.closest('.td-check, .td-fold') || row.classList.contains('is-done') || row.classList.contains('is-complete')) return;
     p = { id: e.pointerId, x0: e.clientX, y0: e.clientY, row, lifted: false, moved: false, kids: [], depth: depthOf(row), dx: 0, base: depthOf(row) };
     // (the list is not drawn again while a finger may be lifting a row: views.js waits for this to go)
     host.dataset.holding = '';
@@ -131,24 +142,36 @@ export function dragRows(host, ctx, o) {
   };
   const row = () => /** @type {HTMLElement} */ (p?.row);
 
+  /** the week strip's day under the finger @type {HTMLElement | null} */
+  let lit = null;
   const move = (/** @type {PointerEvent} */ e) => {
     if (!p || e.pointerId !== p.id) return;
     const dx = e.clientX - p.x0, dy = e.clientY - p.y0;
     if (!p.lifted) { if (Math.hypot(dx, dy) > SLOP) { cancelHold(); p = null; delete host.dataset.holding; } return; }
     if (!p.moved && Math.hypot(dx, dy) <= SLOP) return;
+    const board = host.classList.contains('td-board');
     if (!p.moved) {
       p.moved = true;
       p.line = dropLine();
-      p.gaps = gapsOf(host, new Set([String(row().dataset.id), ...p.kids.map(k => String(k.dataset.id))]), o.kind() === 'tree');
+      p.sx = host.scrollLeft;
+      if (board) host.style.scrollSnapType = 'none';
     }
-    row().style.transform = `translate(${dx}px, ${dy}px) scale(1.03)`;
+    const skip = new Set([String(row().dataset.id), ...p.kids.map(k => String(k.dataset.id))]);
+    if (board || !p.gaps) p.gaps = gapsOf(host, skip, o.kind() === 'tree' && !board);
+    const sx = board ? host.scrollLeft - (p.sx ?? 0) : 0;
+    row().style.transform = `translate(${dx + sx}px, ${dy}px) scale(1.03)${board ? ' rotate(2deg)' : ''}`;
     for (const k of p.kids) k.style.transform = `translate(${dx}px, ${dy}px)`;
+    if (board) edgeScroll(e.clientX);
     const r = row().getBoundingClientRect();
-    const g = nearest(/** @type {Gap[]} */ (p.gaps), r.top + r.height / 2);
-    const depth = o.kind() === 'tree' && g ? treeDepth(g, p.base + Math.round(dx / INDENT)) : 0;
+    const g = nearest(/** @type {Gap[]} */ (p.gaps), r.top + r.height / 2, board ? e.clientX : undefined);
+    const depth = o.kind() === 'tree' && g && !board ? treeDepth(g, p.base + Math.round(dx / INDENT)) : 0;
     if (g !== p.gap || depth !== p.depth) haptic('tick');
     p.gap = g; p.depth = depth; p.dx = dx;
     p.line?.show(g, depth);
+    if (o.kind() === 'days') {
+      const cell = /** @type {HTMLElement | undefined} */ (document.elementsFromPoint(e.clientX, e.clientY).find(n => n instanceof HTMLElement && n.dataset.dropDay)) ?? null;
+      if (cell !== lit) { lit?.classList.remove('is-drop'); lit = cell; lit?.classList.add('is-drop'); if (cell) haptic('tick'); }
+    }
   };
   /** the depth a gap allows near the one wanted @param {Gap} g @param {number} want */
   const treeDepth = (g, want) => {
@@ -156,6 +179,19 @@ export function dragRows(host, ctx, o) {
     try { return placeInTree(lines, g.at, want, height(), MAX_DEPTH).depth; } catch { return 0; }
   };
   const height = () => { const q = p; return q ? Math.max(0, ...q.kids.map(k => depthOf(k) - q.base)) : 0; };
+  /** near a board's side, it scrolls a step that way each frame while the finger stays there @param {number} x */
+  let edge = 0, edgeX = 0;
+  const edgeScroll = (/** @type {number} */ x) => {
+    edgeX = x;
+    if (edge) return;
+    const step = () => {
+      const b = host.getBoundingClientRect(), by = edgeX < b.left + 40 ? -8 : edgeX > b.right - 40 ? 8 : 0;
+      if (!p?.moved || !by) { edge = 0; return; }
+      host.scrollLeft += by;
+      edge = requestAnimationFrame(step);
+    };
+    edge = requestAnimationFrame(step);
+  };
 
   const up = async (/** @type {PointerEvent} */ e) => {
     if (!p || e.pointerId !== p.id) return;
@@ -169,6 +205,8 @@ export function dragRows(host, ctx, o) {
     host.addEventListener('click', eat, { capture: true, once: true });
     setTimeout(() => host.removeEventListener('click', eat, true), 400);
     release('drag');
+    cancelAnimationFrame(edge); edge = 0;
+    host.style.scrollSnapType = '';
     const r = was.row;
     was.line?.remove();
     const task = ctx.data().tasks.find(t => t.id === r.dataset.id);
@@ -183,7 +221,15 @@ export function dragRows(host, ctx, o) {
     // (where it was: nothing to save)
     r.style.transform = ''; r.classList.remove('is-lifted');
     for (const k of was.kids) { k.style.transform = ''; k.style.opacity = ''; }
-    if (!g) return;
+    // let go on a day of the week strip (Upcoming): that day; a list in Display's own order keeps its order
+    const cell = /** @type {HTMLElement | undefined} */ (document.elementsFromPoint(e.clientX, e.clientY).find(n => n instanceof HTMLElement && n.dataset.dropDay));
+    lit?.classList.remove('is-drop'); lit = null;
+    if (cell) {
+      const date = String(cell.dataset.dropDay);
+      if (task.due?.date !== date && await ctx.app.editTask(task, { due: { ...(task.due ?? {}), date } })) ctx.toast(REFUSED);
+      return;
+    }
+    if (!g || host.hasAttribute('data-sorted')) return;
     const refused = o.kind() === 'tree' ? await dropInTree(ctx, task, g, was.depth, Math.max(0, ...was.kids.map(k => depthOf(k) - was.base)), o.projectId())
       : await dropInDay(ctx, task, g);
     if (refused) ctx.toast(REFUSED);

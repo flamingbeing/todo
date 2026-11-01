@@ -1,12 +1,16 @@
 // Browse (#browse): the person's pill and the Settings gear at the top, then cards of rows: the Inbox, Today, Upcoming
-// and Completed; the favourite projects; and "My Projects" with its sub-projects under each and a + for a new one.
+// Completed and Filters & Labels; the favourite projects, labels and filters; and "My Projects" with its sub-projects under each and a + for a new one.
 // Counts show when the showCounts option is on. The fold of "My Projects" is kept on this device. "Manage projects"
 // (under them) opens a list to put them in order: a project's grip dragged (or moved with the arrow keys) moves it
 // among the projects beside it at its level, its sub-projects with it.
 import { icon, gripDrag } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { INBOX } from '../items.js';
-import { projectTree, projectCounts, todayCount, upcomingCount } from '../tasks.js';
+import { projectTree, projectCounts, todayCount, upcomingCount, isTask, labelsOf } from '../tasks.js';
+import { MORE } from '../icons-more.js';
+import { countQuery } from '../query.js';
+import { queryContext } from './named-sheet.js';
+import { openFiltersLabels } from './filters.js';
 import { colorHex } from '../colors.js';
 import { dayKey } from '../dates.js';
 import { byOrder, placeAt } from '../order.js';
@@ -73,6 +77,7 @@ export function drawBrowse(ctx, host) {
     row({ label: 'Inbox', ic: ICONS.inbox, count: n(counts.get(INBOX) ?? 0), run: () => tab('inbox') }),
     row({ label: 'Today', ic: ICONS.calendar, count: n(todayCount(data.tasks, today)), run: () => tab('today') }),
     row({ label: 'Upcoming', ic: ICONS.calendarDays, count: n(upcomingCount(data.tasks, today)), run: () => tab('upcoming') }),
+    row({ label: 'Filters & Labels', ic: ICONS.layoutGrid, run: openFiltersLabels }),
     row({ label: 'Completed', ic: ICONS.circleCheck, run: () => screens()?.push('#completed-page') }),
   ]);
 
@@ -81,10 +86,16 @@ export function drawBrowse(ctx, host) {
 
   const parts = [top, places];
   const favs = byOrder(data.projects.filter(p => p.favorite && p.id !== INBOX && p.name));
-  if (favs.length) {
+  const favLabels = byOrder(data.labels.filter(l => l && l.favorite && l.name)), favFilters = byOrder(data.filters.filter(f => f && f.favorite && f.name));
+  if (favs.length || favLabels.length || favFilters.length) {
     const h = el('h2', 'td-browse-head');
     h.append(el('span', '', 'Favorites'));
-    parts.push(h, card('Favorites', favs.map(p => projectRow(p, 0))));
+    const open = data.tasks.filter(t => isTask(t) && !t.done), qc = queryContext(ctx);
+    parts.push(h, card('Favorites', [
+      ...favs.map(p => projectRow(p, 0)),
+      ...favLabels.map(l => row({ label: l.name, ic: ICONS.tag, color: colorHex(l.color), count: n(open.filter(t => labelsOf(t, data.labels).includes(l)).length), run: () => ctx.openPlace('labels', l.id) })),
+      ...favFilters.map(f => { const c = countQuery(f.query, data.tasks, qc); return row({ label: f.name, ic: MORE.droplet, color: colorHex(f.color), count: n(c.error ? 0 : c.count), run: () => ctx.openPlace('filters', f.id) }); }),
+    ]));
   }
 
   // My Projects: a fold, and a + for a new one

@@ -1,10 +1,12 @@
 // The views and what moves a task between them: due days, no day, completing (with Undo) and Completed; the quick add,
-// the task sheet's priority and subtasks; a new project with a section. Each view passes axe.
+// the task sheet's priority and subtasks; a new project with a section; Reschedule, which moves every overdue task (so
+// this file's tests run one after another: an overdue task of one would be moved by another). Each view passes axe.
 import AxeBuilder from './axe.mjs';
 import { test, expect, clickOpens, signIn, synced, serverHas, uniq, today, openToday, openTab, db } from './fixtures.mjs';
 
 const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return today(d); };
 const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
+test.describe.configure({ mode: 'default' });
 const row = (page, host, title) => page.locator(`${host} .td-row`).filter({ hasText: title });
 
 test('a task shows on Today, Upcoming (under its day) or the Inbox by its date, and in Completed once done', async ({ phone }) => {
@@ -52,6 +54,33 @@ test('completing shows Undo, which puts the task back', async ({ phone }) => {
   await expect(page.locator('#today')).not.toContainText(t);
   await page.locator('.toast').last().getByRole('button', { name: 'Undo' }).click();
   await expect(page.locator('#today')).toContainText(t);
+});
+
+test('Reschedule on Overdue moves every overdue task to the day picked; Undo puts them back', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const [a, b] = [uniq('over-a'), uniq('over-b')];
+  await put(a, { title: a, due: { date: day(-1) } });
+  await put(b, { title: b, due: { date: day(-3), time: '09:00' } });
+  await synced(page);
+  await expect(page.locator('#today')).toContainText(a);
+  await expect(page.locator('#today')).toContainText(b);
+  const button = page.locator('#today .td-resched');
+  await expect(button).toHaveText('Reschedule');
+  expect(await AxeBuilder(page)).toEqual([]);
+  await button.click();
+  await expect(page.locator('#schedule-sheet')).toBeVisible();
+  await page.locator('#schedule-sheet .td-sched-row').filter({ hasText: 'Tomorrow' }).click();
+  await expect(page.locator('#schedule-sheet')).toBeHidden();
+  const dueOf = async id => (await db.get(`spaces/_/tasks/${id}`))?.due;
+  await expect.poll(() => dueOf(a), { timeout: 15_000 }).toEqual({ date: day(1) });
+  await expect.poll(() => dueOf(b), { timeout: 15_000 }).toEqual({ date: day(1), time: '09:00' });
+  await expect(page.locator('#today')).not.toContainText(a);
+  await expect(page.locator('#today .td-resched')).toHaveCount(0);
+  await page.locator('.toast').last().getByRole('button', { name: 'Undo' }).click();
+  await expect.poll(() => dueOf(a), { timeout: 15_000 }).toEqual({ date: day(-1) });
+  await expect.poll(() => dueOf(b), { timeout: 15_000 }).toEqual({ date: day(-3), time: '09:00' });
+  await expect(page.locator('#today')).toContainText(a);
 });
 
 test('a day\'s Add task on Upcoming dates the new task; the sheet sets its priority and adds a subtask', async ({ phone }) => {

@@ -1,10 +1,13 @@
 // The lists: Today (the first screen), Inbox, Upcoming, Search and a project's page, drawn from every record as last
 // heard (tasks.js says what goes where; ui/row.js draws a row). Only the page on screen is drawn at once; the others
 // when they come up (or are asked to draw ahead for a swipe). The task sheet, quick add, Browse, the project sheet and
-// Completed load the first time they are needed (lazyModules), then in idle moments after the first screen.
+// Completed load the first time they are needed (lazyModules), then in idle moments after the first screen; so do
+// Filters & Labels, Search's results, a project's board, the Display sheet and Upcoming's week strip.
+// Display's choices (grouping, order, what shows) are kept per list on this device (the option "display").
 import { conflictSheet, refusedList, toaster, undoToast, loadState, confirmModal, lazyModules, glide, plural, holdKeyboard, captured } from '@core/ui';
 import { COLL, REFUSED, INBOX, itemText } from '../items.js';
-import { projectView, todayView, upcomingView, isTask, placeText, projectCascade, projectOf, priorityOf } from '../tasks.js';
+import { projectView, todayView, upcomingView, isTask, placeText, projectCascade, projectOf, priorityOf, cleanDisplay, plainDisplay, sorter, narrowTasks, groupTasks, dayOrder } from '../tasks.js';
+import { flatten } from '../tree.js';
 import { dayKey, dayTitle, dueLine } from '../dates.js';
 import { colorHex } from '../colors.js';
 import { $, sectionScreen } from '../dom.js';
@@ -45,9 +48,15 @@ import { modules } from '../modules.js';
  * @property {(o?: { project?: import('../items.js').Project, parentId?: string }) => void} openProjectSheet
  * @property {(t: Task, row?: HTMLElement | null) => void} complete
  * @property {(p: import('../items.js').Project) => Promise<boolean>} removeProject  asks first; true once asked and said yes
- * @property {() => import('../ui/row.js').RowContext} rows
+ * @property {(o?: Partial<import('../ui/row.js').RowContext>) => import('../ui/row.js').RowContext} rows
  * @property {() => import('../items.js').User | undefined} user
  * @property {ItemFiles | undefined} files
+ * @property {(kind: 'labels' | 'filters', id: string) => void} openPlace  a label's or a filter's page
+ * @property {() => string} top  the screen on top
+ * @property {(view: string) => import('../tasks.js').Display} display  a list's Display choices
+ * @property {() => void} redraw
+ * @property {{ menu: (s: import('../items.js').Section, b: HTMLElement) => void, field: (value: string, s: import('../items.js').Section | null, pid: string) => HTMLElement,
+ *   naming: () => { projectId: string, sectionId: string } | null, add: (pid: string) => void }} sections  a project's sections, named in place
  */
 /** @typedef {{ projectId?: string, sectionId?: string | null, parentId?: string | null, due?: import('../dates.js').Due | null, order?: number }} AddContext */
 
@@ -65,6 +74,8 @@ export function views(app) {
   let upcomingDays = UPCOMING_STEP;
   /** the project the project page shows */
   let projectId = INBOX;
+  /** the label or filter the place page shows @type {{ kind: 'labels' | 'filters', id: string }} */
+  let place = { kind: 'labels', id: '' };
   /** pages drawn since the data last changed */
   const fresh = new Set();
   const toasts = toaster($('toasts'), { bottom: 'calc(max(var(--ui-tabbar-room, 0px), env(safe-area-inset-bottom, 0px)) + 12px)' });
@@ -85,7 +96,18 @@ export function views(app) {
     projectSheet: () => import('./project-sheet.js'),
     completed: () => import('./completed.js'),
     gestures: () => import('../ui/row-gestures.js'),
+    filters: () => import('./filters.js'),
+    named: () => import('./named-sheet.js'),
+    search: () => import('./search.js'),
+    board: () => import('./board.js'),
+    display: () => import('./display.js'),
+    strip: () => import('../ui/week-strip.js'),
+    select: () => import('./select.js'),
   });
+  /** a list's Display choices on this device @param {string} view */
+  const disp = view => cleanDisplay(/** @type {any} */ (app.settings.get('display'))?.[view], view);
+  app.settings.watch('display', () => redraw());
+  app.settings.watch('weekStart', () => redraw());
 
   /** @type {Ctx} */
   const ctx = {
@@ -100,11 +122,14 @@ export function views(app) {
     },
     complete: (t, row) => complete(t, row),
     removeProject: p => removeProject(p),
-    rows: () => rowCtx({}),
+    rows: o => rowCtx(o ?? {}),
+    openPlace: (kind, id) => { place = { kind, id }; fresh.delete('place-page'); paint('place-page'); if (top !== 'place-page') screens()?.push('#place-page'); },
+    top: () => top, display: disp, redraw: () => redraw(),
+    sections: { menu: (s, b) => sectionMenu(s, b), field: (v, s, pid) => nameField(v, s, pid), naming: () => naming, add: pid => newSection(pid) },
   };
 
   /** @param {Partial<import('../ui/row.js').RowContext>} o @returns {import('../ui/row.js').RowContext} */
-  const rowCtx = o => ({ today: dayKey(), data, canWrite, changed, onOpen: ctx.openTask, onComplete: (t, row) => complete(t, row),
+  const rowCtx = o => ({ today: dayKey(), data, canWrite, changed, onOpen: ctx.openTask, onComplete: (t, row) => (t.done ? void app.untick([t]).then(r => r && toast(REFUSED)) : complete(t, row)),
     onFold: t => { void app.editTask(t, { collapsed: !t.collapsed }).then(r => r && toast(REFUSED)); }, ...o });
 
   /** done: the box fills, the row fades out, then the save and the undo toast @param {Task} t @param {HTMLElement | null} [row] */
@@ -136,7 +161,10 @@ export function views(app) {
   let tabPage = 'today-page';
   /** @type {string} */
   let top = 'today-page';
-  host.addEventListener('ui-tab', e => { tabPage = /** @type {CustomEvent} */ (e).detail.page.id; top = tabPage; onScreen(); });
+  host.addEventListener('ui-tab', e => {
+    tabPage = /** @type {CustomEvent} */ (e).detail.page.id; top = tabPage; onScreen();
+    if (top === 'search-page') /** @type {HTMLInputElement} */ ($('search-text')).focus({ preventScroll: true });
+  });
   host.addEventListener('ui-screen', e => { top = /** @type {CustomEvent} */ (e).detail.top.id; onScreen(); });
   for (const id of ['inbox-page', 'upcoming-page', 'search-page', 'browse-page', 'today-page']) $(id).addEventListener('draw-ahead', () => paint(id));
 
@@ -149,19 +177,28 @@ export function views(app) {
   const lists = ['inbox-page', 'today-page', 'upcoming-page', 'project-page'];
   const onScreen = () => {
     fab.hidden = !canWrite || !lists.includes(top);
-    more.hidden = !canWrite || !(top === 'inbox-page' || top === 'project-page');
+    more.hidden = !canWrite || ![...lists, 'place-page'].includes(top);
     paint(top);
   };
 
-  // ---- the page's "…": Edit project, Add section, Delete project (the Inbox: Add section only)
+  // ---- the page's "…": Display, then (a project) Edit project, Add section, Delete project (the Inbox: Add section),
+  // (a label or filter) Edit and Delete; Select tasks on every list
+  /** the list on top, as Display keeps it */
+  const viewOf = () => top === 'place-page' ? `${place.kind}:${place.id}` : top === 'project-page' && projectId !== INBOX ? `project:${projectId}` : top.slice(0, -5);
   const pageMenu = () => {
-    const pid = top === 'project-page' ? projectId : INBOX, p = data.projects.find(x => x.id === pid);
+    const pid = top === 'project-page' ? projectId : INBOX, p = data.projects.find(x => x.id === pid), tree = top === 'inbox-page' || top === 'project-page';
+    const named = top === 'place-page' ? /** @type {any[]} */ (data[place.kind]).find(x => x.id === place.id) : null, word = place.kind === 'labels' ? 'label' : 'filter';
+    const view = viewOf();
     openMenu(more, [
-      ...(pid !== INBOX && p ? [{ label: 'Edit project', icon: ICONS.pencil, run: () => ctx.openProjectSheet({ project: p }) }] : []),
-      { label: 'Add section', icon: ICONS.circlePlus, run: () => newSection(pid) },
+      { label: 'Display', icon: ICONS.slidersHorizontal, run: () => { void lazy.withMod('display', m => m.openDisplay(ctx, view, tree && pid !== INBOX ? p ?? null : null)); } },
+      null,
+      ...(tree && pid !== INBOX && p ? [{ label: 'Edit project', icon: ICONS.pencil, run: () => ctx.openProjectSheet({ project: p }) }] : []),
+      ...(tree ? [{ label: 'Add section', icon: ICONS.circlePlus, run: () => newSection(pid) }] : []),
+      ...(named ? [{ label: `Edit ${word}`, icon: ICONS.pencil, run: () => { void lazy.withMod('named', m => m.openNamedSheet(ctx, place.kind, named)); } }] : []),
       { label: 'Select tasks', icon: ICONS.squareCheck, run: () => { void lazy.withMod('gestures', m => m.select(ctx, top.slice(0, -5))); } },
-      ...(pid !== INBOX && p ? [null, { label: 'Delete project', icon: ICONS.trash2, danger: true, run: () => { void removeProject(p); } }] : []),
-    ], { label: 'Project' });
+      ...(tree && pid !== INBOX && p ? [null, { label: 'Delete project', icon: ICONS.trash2, danger: true, run: () => { void removeProject(p); } }] : []),
+      ...(named ? [null, { label: `Delete ${word}`, icon: ICONS.trash2, danger: true, run: () => { void lazy.withMod('named', async m => { if (await m.removeNamed(ctx, place.kind, named)) screens()?.pop(); }); } }] : []),
+    ], { label: 'List' });
   };
   /** @param {import('../items.js').Project} p */
   const removeProject = async p => {
@@ -217,7 +254,19 @@ export function views(app) {
 
   /** a project's page (the Inbox too) into host @param {HTMLElement} into @param {string} pid @param {HTMLElement} empty */
   const projectList = (into, pid, empty) => {
-    const v = projectView(filtered(), data.sections, pid), c = rowCtx({});
+    const p = data.projects.find(x => x.id === pid), d = disp(pid === INBOX ? 'inbox' : `project:${pid}`), today = dayKey();
+    const board = pid !== INBOX && p?.view === 'board';
+    into.classList.toggle('td-board', board);
+    into.toggleAttribute('data-swipe-own', board);
+    into.toggleAttribute('data-sorted', d.group !== 'none' || d.sort !== 'manual');
+    if (board) { void lazy.withMod('board', m => m.drawBoard(ctx, pid, into, empty, d)); return; }
+    if (d.group !== 'none') {
+      const n = groups(into, filtered().filter(t => projectOf(t) === pid), d, rowCtx({ place: d.group === 'project' }));
+      empty.replaceChildren(...(!n && canWrite ? [emptyNote('Nothing here yet', 'Tap + to add a task')] : []));
+      return;
+    }
+    const v = projectView(filtered(), data.sections, pid, plainDisplay(d, 'inbox') ? undefined
+      : { cmp: sorter(d.sort, d.dir), keep: t => (!t.done || d.completed) && !!narrowTasks([t], d, data.labels, today).length }), c = rowCtx({});
     const parts = [];
     if (v.loose.length) parts.push(rowList(v.loose, c, 'Tasks'));
     for (const { section: s, lines } of v.sections) {
@@ -246,15 +295,48 @@ export function views(app) {
     empty.replaceChildren(...(none && !v.sections.length && canWrite ? [emptyNote('Nothing here yet', 'Tap + to add a task')] : []));
   };
 
+  /** a flat list in Display's groups into host -> how many tasks it shows @param {HTMLElement} into @param {Task[]} tasks
+   * @param {import('../tasks.js').Display} d @param {import('../ui/row.js').RowContext} c */
+  const groups = (into, tasks, d, c) => {
+    const all = data.tasks.filter(isTask);
+    const gs = groupTasks(narrowTasks(tasks.filter(t => isTask(t) && (!t.done || d.completed)), d, data.labels, c.today), d, { projects: data.projects, labels: data.labels, today: c.today });
+    into.replaceChildren(...gs.map(g => {
+      const sec = document.createElement('section'); sec.className = 'td-group';
+      const day = d.group === 'date' && g.key[0] === '1' ? g.key.slice(1) : undefined;
+      if (day) sec.dataset.day = day;
+      if (g.title) sec.append(groupHead(g.title));
+      if (g.key === '0' && d.group === 'date') resched(sec, g.tasks);
+      sec.append(rowList(flatten(g.tasks, all, { open: () => false }), { ...c, own: day }, g.title || 'Tasks'));
+      return sec;
+    }));
+    return gs.reduce((n, g) => n + g.tasks.length, 0);
+  };
+  /** Overdue's Reschedule: every task in it to one day @param {HTMLElement} sec @param {Task[]} tasks */
+  const resched = (sec, tasks) => {
+    if (!canWrite) return;
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'td-text-btn td-resched'; b.textContent = 'Reschedule';
+    b.addEventListener('click', () => { void lazy.withMod('select', m => m.rescheduleTasks(ctx, tasks)); });
+    sec.querySelector('.td-group-head')?.append(b);
+  };
+
   /** the tasks the search recipe's filter leaves (all of them without it) */
   const filtered = () => /** @type {Task[]} */ (filter?.pick(data.tasks) ?? data.tasks);
 
   const paintToday = () => {
-    const today = drawnDay = dayKey(), v = todayView(filtered(), today);
+    const today = drawnDay = dayKey(), d = disp('today');
+    $('today').toggleAttribute('data-sorted', d.group !== 'date' || d.sort !== 'manual');
+    if (!plainDisplay(d, 'today')) {
+      const n = groups($('today'), filtered().filter(t => { const k = t.due?.date; return !!k && (t.done ? k === today : k <= today); }), d, rowCtx({ place: true }));
+      $('today-empty').replaceChildren(...(!n && canWrite ? [emptyNote('All clear for today', 'Tap + to add a task for today')] : []));
+      return;
+    }
+    const v = todayView(filtered(), today);
     const parts = [];
     if (v.overdue.length) {
       const g = document.createElement('section'); g.className = 'td-group';
       g.append(groupHead('Overdue'), rowList(v.overdue, rowCtx({ place: true }), 'Overdue'));
+      resched(g, v.overdue.map(l => l.task));
       parts.push(g);
     }
     if (v.today.length || v.overdue.length) {
@@ -271,10 +353,13 @@ export function views(app) {
   let shownToday = [];
 
   const paintUpcoming = () => {
-    const today = dayKey(), v = upcomingView(filtered(), today, upcomingDays), parts = [];
+    const today = dayKey(), d = disp('upcoming');
+    const v = upcomingView(narrowTasks(filtered(), d, data.labels, today), today, upcomingDays, sorter(d.sort, d.dir, dayOrder)), parts = [];
+    $('upcoming').toggleAttribute('data-sorted', d.sort !== 'manual');
     if (v.overdue.length) {
       const g = document.createElement('section'); g.className = 'td-group';
       g.append(groupHead('Overdue'), rowList(v.overdue, rowCtx({ place: true }), 'Overdue'));
+      resched(g, v.overdue.map(l => l.task));
       parts.push(g);
     }
     for (const day of v.days) {
@@ -286,6 +371,8 @@ export function views(app) {
       parts.push(g);
     }
     $('upcoming').replaceChildren(...parts);
+    void lazy.withMod('strip', m => m.drawStrip(ctx, $('upcoming-strip'), { list: $('upcoming'), days: () => upcomingDays,
+      more: (/** @type {number} */ n) => { upcomingDays = Math.max(upcomingDays, n); paintUpcoming(); } }));
     // near the end of the days drawn: draw more
     const last = /** @type {HTMLElement | undefined} */ (parts.at(-3) ?? parts.at(-1));
     if (last && 'IntersectionObserver' in window) {
@@ -296,13 +383,7 @@ export function views(app) {
     }
   };
 
-  const paintSearch = () => {
-    const words = /** @type {HTMLInputElement} */ ($('search-text')).value.toLowerCase().split(/\s+/).filter(Boolean);
-    if (!words.length) { $('search').replaceChildren(); return; }
-    const hits = data.tasks.filter(t => isTask(t) && !t.done && words.every(w => `${t.title} ${t.description ?? ''}`.toLowerCase().includes(w)));
-    const lines = hits.map(task => ({ task, depth: 0, kids: 0, doneKids: 0 }));
-    $('search').replaceChildren(lines.length ? rowList(lines, rowCtx({ place: true }), 'Results') : emptyNote('No matches', 'Try other words'));
-  };
+  const paintSearch = () => { void lazy.withMod('search', m => m.drawSearch(ctx, /** @type {HTMLInputElement} */ ($('search-text')), $('search'))); };
   $('search-text').addEventListener('input', () => { fresh.delete('search-page'); paint('search-page'); });
 
   const paintProject = () => {
@@ -324,6 +405,8 @@ export function views(app) {
     else if (id === 'search-page') paintSearch();
     else if (id === 'project-page') paintProject();
     else if (id === 'browse-page') void lazy.withMod('browse', m => m.drawBrowse(ctx, $('browse')));
+    else if (id === 'filters-page') void lazy.withMod('filters', m => m.drawFiltersLabels(ctx, $('filters')));
+    else if (id === 'place-page') void lazy.withMod('filters', m => m.drawPlace(ctx, place, $('place'), $('place-empty'), disp(`${place.kind}:${place.id}`)));
     else if (id === 'completed-page') void lazy.withMod('completed', m => m.drawCompleted(ctx, $('completed'), $('completed-empty')));
     else fresh.delete(id);
   };
@@ -368,7 +451,7 @@ export function views(app) {
         warmed = true;
         lazy.need('add').then(() => lazy.need('sheet')).catch(() => {});
         // the rows' swipes, holds and drags, and the + button's drag (each list host is wired once)
-        lazy.need('gestures').then(m => m.wire(ctx, { hosts: { today: 'days', upcoming: 'days', inbox: 'tree', project: 'tree', search: null },
+        lazy.need('gestures').then(m => m.wire(ctx, { hosts: { today: 'days', upcoming: 'days', inbox: 'tree', project: 'tree', search: null, place: null },
           top: () => (lists.includes(top) ? top.slice(0, -5) : ''), projectId: () => projectId, add: ctx.openQuickAdd, newSection })).catch(() => {});
         lazy.warmUp();
       }

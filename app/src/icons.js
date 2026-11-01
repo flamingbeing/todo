@@ -9,6 +9,8 @@ export const ICONS = {
   calendarDays: [['path', { d: 'M8 2v4' }], ['path', { d: 'M16 2v4' }], ['rect', { width: '18', height: '18', x: '3', y: '4', rx: '2' }], ['path', { d: 'M3 10h18' }], ['path', { d: 'M8 14h.01' }], ['path', { d: 'M12 14h.01' }], ['path', { d: 'M16 14h.01' }], ['path', { d: 'M8 18h.01' }], ['path', { d: 'M12 18h.01' }], ['path', { d: 'M16 18h.01' }]],
   search: [['circle', { cx: '11', cy: '11', r: '8' }], ['path', { d: 'm21 21-4.3-4.3' }]],
   squareMenu: [['rect', { width: '18', height: '18', x: '3', y: '3', rx: '2' }], ['path', { d: 'M7 8h10' }], ['path', { d: 'M7 12h10' }], ['path', { d: 'M7 16h10' }]],
+  slidersHorizontal: [['path', { d: 'M21 4h-7' }], ['path', { d: 'M10 4H3' }], ['path', { d: 'M21 12h-9' }], ['path', { d: 'M8 12H3' }],
+    ['path', { d: 'M21 20h-5' }], ['path', { d: 'M12 20H3' }], ['path', { d: 'M14 2v4' }], ['path', { d: 'M8 10v4' }], ['path', { d: 'M16 18v4' }]],
   plus: [['path', { d: 'M5 12h14' }], ['path', { d: 'M12 5v14' }]],
   ellipsis: [['circle', { cx: '12', cy: '12', r: '1' }], ['circle', { cx: '19', cy: '12', r: '1' }], ['circle', { cx: '5', cy: '12', r: '1' }]],
   hash: [['line', { 'x1': '4', 'x2': '20', 'y1': '9', 'y2': '9' }], ['line', { 'x1': '4', 'x2': '20', 'y1': '15', 'y2': '15' }], ['line', { 'x1': '10', 'x2': '8', 'y1': '3', 'y2': '21' }], ['line', { 'x1': '16', 'x2': '14', 'y1': '3', 'y2': '21' }]],
