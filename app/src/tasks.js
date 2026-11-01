@@ -209,7 +209,8 @@ export function labelsOf(t, labels) {
 
 // ---- Display: a list's grouping, sorting, filter and completed switch (per view, this device; screens/display.js)
 // layout: '' (a project's own view, else list), list, board or calendar; cal: week, month or agenda (Today: its day;
-// Upcoming: no agenda); color: the calendar's fill (Inbox and projects: not by project); allDay: the all-day row open
+// Upcoming: no agenda); color: the calendar's fill (Inbox and projects: not by project); allDay: the all-day row open in full
+// (shut: two a day and "+N")
 /** @typedef {{ group: string, sort: string, dir: 'asc' | 'desc', completed: boolean, priority: number, label: string, date: string,
  *   layout: string, cal: string, color: string, allDay: boolean, future: boolean }} Display */
 export const GROUPS = ['none', 'date', 'priority', 'label', 'project'];
@@ -230,7 +231,7 @@ export function cleanDisplay(v, view) {
     layout: ['list', 'calendar', ...(view.startsWith('project:') ? ['board'] : [])].includes(str('layout')) ? str('layout') : '',
     cal: ['month', ...(view === 'upcoming' ? [] : ['agenda'])].includes(str('cal')) ? str('cal') : 'week',
     color: ['label', ...(view === 'inbox' || view.startsWith('project:') ? [] : ['project'])].includes(str('color')) ? str('color') : 'priority',
-    allDay: o.allDay !== false,
+    allDay: o.allDay === true,
     future: o.future === true,
   };
 }

@@ -72,3 +72,32 @@ test('grouping by priority, by name descending, done tasks shown: kept per list,
   await expect(other.locator('#project .td-title')).toHaveText([`B ${u}`, `A ${u}`, `C ${u}`]);
   await expect(other.locator('#project .td-group-title')).toHaveCount(0);
 });
+
+test('Today and the Inbox offer List and Calendar (no Board); Calendar is kept for that list on this device', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  await synced(page);
+  for (const tab of ['today', 'inbox']) {
+    await openTab(page, tab);
+    const sheet = await display(page);
+    const layouts = sheet.getByRole('radiogroup', { name: 'Layout' }).getByRole('radio');
+    await expect(layouts).toHaveText(['List', 'Calendar']);
+    await expect(sheet.getByRole('radio', { name: 'List' })).toHaveAttribute('aria-checked', 'true');
+    await expect(sheet.getByRole('radio', { name: 'Board' })).toHaveCount(0);
+    expect(await AxeBuilder(page)).toEqual([]);
+    await sheet.getByRole('radio', { name: 'Calendar' }).click();
+    await expect(sheet.getByRole('radio', { name: 'Calendar' })).toHaveAttribute('aria-checked', 'true');
+    // Today is its day (no Agenda, Week or Month); the Inbox has all three
+    await expect(sheet.getByRole('radiogroup', { name: 'Calendar' }).getByRole('radio')).toHaveText(tab === 'today' ? [] : ['Agenda', 'Week', 'Month']);
+    await expect(sheet.locator('.td-display-done')).toBeVisible();
+    await sheet.getByRole('button', { name: 'Done' }).click();
+    await expect(page.locator(`#${tab}-page .td-cv`)).toBeVisible();
+  }
+  await page.reload();
+  await expect(page.locator('#list-view')).toBeVisible();
+  await synced(page);
+  await openTab(page, 'inbox');
+  await expect(page.locator('#inbox-page .td-cv')).toBeVisible();
+  await openTab(page, 'today');
+  await expect(page.locator('#today-page .td-cv-head')).toHaveCount(1);
+});

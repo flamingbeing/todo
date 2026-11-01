@@ -222,10 +222,10 @@ test('a task\'s labels: by id, or by name for older tasks; a deleted one is skip
 });
 
 test('Display: known choices only; Today groups by date, the rest by none', () => {
-  assert.deepEqual(cleanDisplay({}, 'today'), { group: 'date', sort: 'manual', dir: 'asc', completed: false, priority: 0, label: '', date: '', layout: '', cal: 'week', color: 'priority', allDay: true, future: false });
+  assert.deepEqual(cleanDisplay({}, 'today'), { group: 'date', sort: 'manual', dir: 'asc', completed: false, priority: 0, label: '', date: '', layout: '', cal: 'week', color: 'priority', allDay: false, future: false });
   assert.equal(cleanDisplay(null, 'inbox').group, 'none');
   assert.deepEqual(cleanDisplay({ group: 'x', sort: 'name', dir: 'desc', completed: true, priority: '2', date: 'week' }, 'p'),
-    { group: 'none', sort: 'name', dir: 'desc', completed: true, priority: 2, label: '', date: 'week', layout: '', cal: 'week', color: 'priority', allDay: true, future: false });
+    { group: 'none', sort: 'name', dir: 'desc', completed: true, priority: 2, label: '', date: 'week', layout: '', cal: 'week', color: 'priority', allDay: false, future: false });
   assert.ok(plainDisplay(cleanDisplay({}, 'today'), 'today'));
   assert.ok(!plainDisplay(cleanDisplay({ sort: 'name' }, 'today'), 'today'));
 });
@@ -244,7 +244,7 @@ test('Display: the layout, the calendar\'s kind and colouring, the all-day row a
   assert.equal(cleanDisplay({ color: 'project' }, 'filters:f1').color, 'project');
   assert.equal(cleanDisplay({ color: 'project' }, 'inbox').color, 'priority', 'Inbox: not by project');
   assert.equal(cleanDisplay({ color: 'project' }, 'project:p1').color, 'priority');
-  assert.equal(cleanDisplay({ allDay: 'no' }, 'today').allDay, true);
+  assert.equal(cleanDisplay({ allDay: 'no' }, 'today').allDay, false);
   assert.equal(cleanDisplay({ future: 1 }, 'today').future, false);
 });
 
