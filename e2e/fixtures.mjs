@@ -268,7 +268,8 @@ export const clickOpens = async (button, dialog) => { await button.dispatchEvent
 // (and the quick add and task sheet loaded, which the page fetches straight after its first draw: a test may go offline next)
 export const synced = async page => {
   await expect.poll(() => page.evaluate(() => window.starter.status), { timeout: 15_000 }).toBe('synced');
-  await page.waitForFunction(() => performance.getEntriesByType('resource').filter(e => /quick-add|task-sheet/.test(e.name)).length >= 2, null, { timeout: 15_000 });
+  // (the page says so itself: a bundled page's files have other names)
+  await page.waitForFunction(() => window.starter.warm === true, null, { timeout: 15_000 });
 };
 // cloud{
 export const serverHas = text => expect.poll(async () => (await db.list('spaces/_/tasks')).some(d => d.title === text), { timeout: 15_000 }).toBe(true);
@@ -289,6 +290,13 @@ export async function itemIdOf(text) {
 // A finger on an element (pointer events, as a touch screen sends them): down at its middle (or at `at`, from its
 // top left), held `hold` ms, moved by each [dx, dy] in turn (a frame apart, the last one ending `wait` ms before the
 // lift), then lifted. The rows' gestures load after the first screen: wait for them first (gesturesReady).
+/** the list has slid in and not been drawn again for 400 ms (a row drawn anew under the finger never hears it) */
+export const still = (page, sel) => page.evaluate(sel => new Promise(done => {
+  const host = /** @type {HTMLElement} */ (document.querySelector(sel));
+  let t = setTimeout(() => { o.disconnect(); done(null); }, 400);
+  const o = new MutationObserver(() => { clearTimeout(t); t = setTimeout(() => { o.disconnect(); done(null); }, 400); });
+  o.observe(host, { childList: true, subtree: true });
+}).then(() => Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().endTime !== Infinity).map(a => a.finished.catch(() => {})))), sel);
 export async function finger(page, selector, steps = [], { hold = 0, at = null, wait = 16 } = {}) {
   // (again if the list was drawn anew meanwhile, as it is after a swipe ends)
   await expect(() => page.locator(selector).first().scrollIntoViewIfNeeded({ timeout: 2_000 })).toPass({ timeout: 10_000 });

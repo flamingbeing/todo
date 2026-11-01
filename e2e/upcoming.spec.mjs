@@ -2,7 +2,7 @@
 // day scrolls the list to it, and the + adds for that day; Today goes back; a task dragged onto a day of the strip
 // moves to that day. Passes axe.
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, today, db, openTab, finger, gesturesReady, steps } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, today, db, openTab, finger, gesturesReady, steps, still } from './fixtures.mjs';
 
 const plus = (key, n) => { const d = new Date(`${key}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const weekOf = key => plus(key, -((new Date(`${key}T12:00:00Z`).getUTCDay() + 6) % 7));   // (weeks start on Monday)
@@ -49,7 +49,9 @@ test('dots, a swipe to next week, a tap scrolls to the day (the + adds there), T
   await expect.poll(async () => (await db.list('spaces/_/tasks')).find(d => d.title === added)?.due?.date, { timeout: 15_000 }).toBe(there);
 
   // a task held and dragged onto a day of the strip moves to it
-  await page.locator(`#upcoming .td-row[data-id="${far}"]`).scrollIntoViewIfNeeded();
+  // (the list is drawn anew as the added task and other tests' tasks arrive: let it settle, and again if it was redrawn)
+  await still(page, '#upcoming');
+  await expect(() => page.locator(`#upcoming .td-row[data-id="${far}"]`).scrollIntoViewIfNeeded({ timeout: 2_000 })).toPass({ timeout: 10_000 });
   const row = await page.locator(`#upcoming .td-row[data-id="${far}"]`).boundingBox();
   const cell = await strip.locator(`.td-wday[data-day="${drop}"]`).boundingBox();
   const dx = Math.round(cell.x + cell.width / 2 - (row.x + row.width / 2)), dy = Math.round(cell.y + cell.height / 2 - (row.y + row.height / 2));

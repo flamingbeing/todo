@@ -1,7 +1,7 @@
 // Held and dragged, a row moves: up or down among the others (the line shows where), and pulled right under the row
 // above it becomes its subtask; on Today the day's own order is kept. The + button dragged between two rows opens
 // quick add for a task there; let go on its grey x and nothing opens.
-import { test, expect, signIn, synced, uniq, today, db, finger, gesturesReady, openTab, steps } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, today, db, finger, gesturesReady, openTab, steps, still } from './fixtures.mjs';
 
 const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { projectId: 'inbox', priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
 const get = id => db.get(`spaces/_/tasks/${id}`);
@@ -20,13 +20,6 @@ const three = async (page, p) => {
   await still(page, '#project');
   return ids;
 };
-/** the list has slid in and not been drawn again for 400 ms (a row drawn anew under the finger never hears it) */
-const still = (page, sel) => page.evaluate(sel => new Promise(done => {
-  const host = /** @type {HTMLElement} */ (document.querySelector(sel));
-  let t = setTimeout(() => { o.disconnect(); done(null); }, 400);
-  const o = new MutationObserver(() => { clearTimeout(t); t = setTimeout(() => { o.disconnect(); done(null); }, 400); });
-  o.observe(host, { childList: true, subtree: true });
-}).then(() => Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().endTime !== Infinity).map(a => a.finished.catch(() => {})))), sel);
 const box = async (page, sel) => /** @type {{ x: number, y: number, width: number, height: number }} */ (await page.locator(sel).boundingBox());
 
 test('a held row moves above another; pulled right it becomes a subtask', async ({ phone }) => {
@@ -60,11 +53,19 @@ test('on Today a held row keeps its new place in the day', async ({ phone }) => 
   await synced(page);
   await gesturesReady(page);
   await expect(page.locator(rowIn('today', b))).toBeVisible();
-  await still(page, '#today');
-  const ra = await box(page, rowIn('today', a)), rb = await box(page, rowIn('today', b));
-  await finger(page, rowIn('today', b), steps(0, Math.round(ra.y - rb.y - rb.height / 2), 8), { hold: 650, wait: 80 });
+  // (other tests' tasks for today arriving draw the list anew: measure again until both rows are there)
+  let dy = 0;
+  await expect(async () => {
+    await still(page, '#today');
+    const [ra, rb] = [await page.locator(rowIn('today', a)).boundingBox(), await page.locator(rowIn('today', b)).boundingBox()];
+    expect(ra && rb).toBeTruthy();
+    dy = Math.round(/** @type {any} */ (ra).y - /** @type {any} */ (rb).y - /** @type {any} */ (rb).height / 2);
+  }).toPass({ timeout: 15_000 });
+  await finger(page, rowIn('today', b), steps(0, dy, 8), { hold: 650, wait: 80 });
   await expect.poll(async () => { const [x, z] = [await get(a), await get(b)]; return (z?.dayOrder ?? 0) < (x?.dayOrder ?? 0); }, { timeout: 15_000 }).toBe(true);
-  await expect(page.locator('#today .td-row').first()).toHaveAttribute('data-id', b);
+  // (b above a: Today is shared with the other tests running, whose tasks for today may sit anywhere around them)
+  const order = () => page.locator('#today .td-row').evaluateAll(rows => rows.map(r => r.getAttribute('data-id')));
+  await expect.poll(async () => { const ids = await order(); return ids.indexOf(b) >= 0 && ids.indexOf(b) < ids.indexOf(a); }, { timeout: 10_000 }).toBe(true);
 });
 
 test('the + button dragged between two rows adds a task there; on its x nothing opens', async ({ phone }) => {
