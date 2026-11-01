@@ -1,4 +1,4 @@
-// A row held and let go opens its menu; Select task starts select mode: taps tick rows (grey), the top bar counts
+// A row held and let go opens its menu; Select task starts select mode: taps tick rows (grey, a filled circle), the top bar counts
 // them, and the bottom bar sets their priority; the "…" menu's Select tasks, Select all, then Complete N with Undo
 // and Delete N (asked first) with Undo. The menu and both bars pass axe.
 import AxeBuilder from './axe.mjs';
@@ -28,6 +28,10 @@ test('hold opens the row\'s menu; Select task, a tap, and Priority for both', as
   await page.locator(`${rowIn('today', b)} .td-row-main`).click();
   await expect(page.locator('.td-select-count')).toHaveText('2 selected');
   await expect(page.locator(rowIn('today', b))).toHaveClass(/is-selected/);
+  // the boxes are selection circles: the ticked one filled with a check, the others an empty grey ring
+  const fill = sel => page.locator(`${sel} > .td-check`).evaluate(e => [getComputedStyle(e).backgroundColor, getComputedStyle(e.firstElementChild).opacity]);
+  await expect.poll(async () => (await fill(rowIn('today', b)))[1]).toBe('1');
+  await expect.poll(async () => (await fill(rowIn('today', b)))[0]).not.toBe('rgba(0, 0, 0, 0)');
   await expect(page.locator(rowIn('today', b))).toHaveCSS('background-color', 'rgb(240, 240, 240)');
   await expect(page.locator('#task-sheet')).toBeHidden();
   expect(await AxeBuilder(page)).toEqual([]);
