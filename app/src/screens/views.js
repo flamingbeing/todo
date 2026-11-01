@@ -15,6 +15,11 @@ import { rowList, addRow, groupHead, emptyNote } from '../ui/row.js';
 import { screens } from '../shell.js';
 import { modules } from '../modules.js';
 
+// a task's link (#task=<id>, the sheet's "Copy link"): read before the tabs take the address over, opened once it is there
+// (the address loses it at once, so the tabs start as on any load and a later Back does not open it again)
+let linked = /^#task=([\w-]{1,64})$/.exec(location.hash)?.[1] ?? '';
+if (linked) history.replaceState(history.state, '', location.pathname + location.search);
+
 /** @typedef {import('../items.js').Task} Task */
 /** @typedef {import('../items.js').Item} Item */
 /** @typedef {import('../items.js').Data} Data */
@@ -390,12 +395,18 @@ export function views(app) {
   setInterval(newDay, 60_000);
 
   let warmed = false;
+  // (once signed in and the task is there: the copy kept from before sign-in may draw it while the sign-in shows)
+  const openLinked = () => {
+    const want = linked && user && data.tasks.find(t => t.id === linked);
+    if (want) { linked = ''; ctx.openTask(want); }
+  };
   const screen = sectionScreen('list-view', s => {
     const could = canWrite;
     canWrite = s.role === 'admin' || s.role === 'member';
     user = s.user;
     if (canWrite !== could) redraw();
     onScreen();
+    openLinked();
   });
   return {
     ...screen,
@@ -408,6 +419,7 @@ export function views(app) {
       // (not while a finger holds, drags or swipes a row: drawn again, the row would leave it; once it is let go)
       const now = () => { held = captured() === 'drag' || !!document.querySelector('[data-holding], .td-row.is-swiping'); if (held) setTimeout(now, 150); else redraw(); };
       if (!held) now();
+      openLinked();
       // the quick add and the task sheet straight after the first draw (the main ways in, and may be used offline), then the rest
       if (!warmed) {
         warmed = true;

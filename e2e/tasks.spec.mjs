@@ -190,3 +190,24 @@ test('the task sheet shows the words\' marks (bold, code, struck, a link to a ne
   await expect(title).toBeHidden();
   await expect(page.locator('#task-sheet .td-task-title')).toHaveValue(`Read **${t}** guide`);
 });
+
+test('the sheet\'s Copy link gives #task=<id>, which opens that task\'s sheet when the app loads with it', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const t = uniq('link');
+  await put(t, { title: t, due: { date: day(0) } });
+  await synced(page);
+  await page.evaluate(() => { window.copied = ''; navigator.clipboard.writeText = async s => { window.copied = s; }; });
+  await clickOpens(row(page, '#today', t).locator('.td-row-main'), page.locator('#task-sheet'));
+  await page.locator('#task-sheet .td-sheet-more').click();
+  await page.getByRole('menuitem', { name: 'Copy link' }).click();
+  await expect.poll(() => page.evaluate(() => window.copied)).toMatch(new RegExp(`#task=${t}$`));
+  const url = await page.evaluate(() => window.copied);
+  // (a fresh load, as a link opened in a new tab: a goto that changes only the hash would not load the page again)
+  await page.goto('about:blank');
+  await page.goto(url.replace(/^https?:\/\/[^/]+/, ''), { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#list-view')).toBeVisible();
+  await expect(page.locator('#task-sheet')).toBeVisible();
+  await expect(page.locator('#task-sheet .td-task-title')).toHaveValue(t);
+  expect(await page.evaluate(() => location.hash)).not.toContain('task=');
+});
