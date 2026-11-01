@@ -37,6 +37,8 @@
   Agenda is Upcoming's day list for any list. The top row has the month (a picker), counts for "No date" and "Overdue"
   (each a sheet to tick tasks and schedule them), the arrows and Today; sideways swipes page. Future repeats show
   faded when asked for. The calendar's maths is in `app/src/cal.js` (unit tested); the screen loads only when used.
+- Dragging (2026-11-01): lists, boards, the + and calendar blocks scroll by themselves near an edge; a row dragged to
+  another group takes its date, priority, label or project (Undo); Today has a postpone place; boards group by Display.
 - Known gaps: on Today and Upcoming a drag moves a row within the flat day list only (no subtasks there); a tab
   tapped while a Settings page is open first closes that page.
 - Review fixes (2026-11-01): dark mode fills (+, Done, send) at full colour; top bar without the cloud while saved,
@@ -56,7 +58,9 @@
   overlap lane breaks mid-word; the kit asks in the owner's private notes (gesture rank, edge auto-scroll).
 - The import has been proven against route-mocked answers only (not the live service); a Deadline
   action in select mode.
-- Dragging: auto-scroll near a list's edge (the calendar does; a board scrolls sideways already); reorder in a sorted or grouped list.
+- Dragging: Today grouped by none still orders by `order`, not `dayOrder`; the calendar's held block turning the period
+  (24 px from the side, 500/700 ms) has no e2e test; a sorted list says why it has no drag (a toast with Manual order)
+  rather than allowing one. Edge auto-scroll is an app stopgap (`app/src/ui/edge-scroll.js`), asked of the kit.
 - Board cards: swipe actions.
 - Back on a tab other than Inbox goes to Inbox (the kit's first-tab rule) though the app opens on Today.
 
