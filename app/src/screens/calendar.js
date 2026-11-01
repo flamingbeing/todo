@@ -13,7 +13,7 @@ import { MORE } from '../icons-more.js';
 import { INBOX, REFUSED } from '../items.js';
 import { isTask, dayOrder, priorityOf, projectOf, labelsOf, placeText } from '../tasks.js';
 import { narrowTasks, sorter } from '../arrange.js';
-import { dayKey, timeKey, addDays, dueOf, minutesClock } from '../dates.js';
+import { dayKey, timeKey, addDays, dueOf, minutesClock, minutesSpan } from '../dates.js';
 import { colorHex } from '../colors.js';
 import { edgeScroll, edgeSpeed, shownSpan } from '../ui/edge-scroll.js';
 import { HOUR, columnCount, weekColumns, minutesOf, timeOf, yOf, minOf, snap, blockHeight, openAt, lanes, monthCells, dropPatch,
@@ -354,7 +354,7 @@ function block(ctx, t, start, fill) {
   if ((t.duration ?? 0) >= 45) {
     // (drawn from CSS: the label says the time in words, and seen text not in it would not match what is read)
     const tm = el('span', 'td-cv-block-time');
-    tm.dataset.time = `${minutesClock(start)}–${minutesClock(Math.min(1439, start + /** @type {number} */ (t.duration)))}`;
+    tm.dataset.time = minutesSpan(start, Math.min(1439, start + /** @type {number} */ (t.duration)));
     main.append(tm);
   }
   main.addEventListener('click', () => ctx.openTask(t));

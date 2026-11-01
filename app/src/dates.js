@@ -38,6 +38,12 @@ export const timeText = hhmm => {
 };
 /** minutes after midnight in the person's own clock style (the calendar's blocks, now line, drop line) @param {number} min */
 export const minutesClock = min => timeText(`${pad(Math.floor(min / 60) % 24)}:${pad(min % 60)}`);
+/** a span in that style, said once where both ends share it: "12:30 – 1:30 PM", "12:30–13:30" @param {number} a @param {number} b */
+export const minutesSpan = (a, b) => {
+  clock ??= new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+  const at = (/** @type {number} */ m) => new Date(2000, 0, 1, Math.floor(m / 60) % 24, m % 60);
+  return clock.formatRange ? clock.formatRange(at(a), at(b)) : `${minutesClock(a)}–${minutesClock(b)}`;
+};
 
 /** @param {unknown} due @returns {Due | null} a usable due map, or null */
 export const dueOf = due => (due && typeof due === 'object' && isDay(/** @type {Due} */ (due).date) ? /** @type {Due} */ (due) : null);

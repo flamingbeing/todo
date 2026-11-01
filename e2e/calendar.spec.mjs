@@ -71,7 +71,7 @@ test('week: blocks, all-day chips, the now line; a slot tap adds, the ring compl
   await expect(block).toHaveAttribute('data-priority', '1');
   // times in the device's own clock style, as the rows and the hour gutter (the tests run en-US: 12-hour)
   await expect(block.locator('.td-cv-open')).toHaveAttribute('aria-label', new RegExp(`^${rent}, .*10:00\\sAM to 10:45\\sAM, priority 1$`));
-  await expect(block.locator('.td-cv-block-time')).toHaveAttribute('data-time', /^10:00\sAM–10:45\sAM$/);
+  await expect(block.locator('.td-cv-block-time')).toHaveAttribute('data-time', /^10:00\s–\s10:45\sAM$/);
   // a task with no duration is half an hour
   // (other tests' tasks arriving draw the calendar anew: measure once it has settled)
   await expect(cal.locator(`.td-cv-block[data-cal-id="${ring}"]`)).toBeVisible();

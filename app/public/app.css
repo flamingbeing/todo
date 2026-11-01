@@ -734,6 +734,16 @@ body {
 .td-cv-block.is-tall .td-cv-block-title { overflow-wrap: anywhere; text-overflow: clip; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .td-cv-block-time { overflow: hidden; font-size: 12px; line-height: 15px; color: light-dark(#4d4d4d, #c8c8c8); text-overflow: ellipsis; white-space: nowrap; }
 .td-cv-block-time::after { content: attr(data-time); }
+/* the time line runs on under the ring (a 12-hour span needs the room in a 3-day column) */
+.td-cv-block-time { margin-inline-start: -15px; }
+/* a block in a narrow lane (tasks at the same time side by side): no word split mid-word (an ellipsis instead), no time
+   line, and a block with room for two lines puts its ring above the title so the title has the lane's whole width */
+.td-cv-block { container-type: inline-size; }
+@container (max-width: 60px) {
+  .td-cv-block-time { display: none; }
+  .td-cv-block.td-cv-block .td-cv-block-title { overflow-wrap: normal; word-break: normal; text-overflow: ellipsis; }
+  .td-cv-block:not(.is-short) .td-cv-open { padding: 16px 0 0; }
+}
 .td-cv-block.is-done, .td-cv-chip.is-done { opacity: .55; }
 .td-cv-block.is-done .td-cv-block-title, .td-cv-chip.is-done { text-decoration: line-through; }
 .td-cv-ghost { opacity: .5; background: none !important; border: 1px dashed var(--td-text-3); pointer-events: none; left: 1px; width: calc(100% - 3px); }

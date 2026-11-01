@@ -1,7 +1,7 @@
 // dates.js: day maths, the tone and words of a due date, group headers. node --test app/test/dates.unit.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dayKey, timeKey, addDays, daysBetween, isDay, isTime, weekdayName, shortDate, dateTone, dayWords, deadlineLine, dueLine, dayTitle, timeText, minutesClock, minutesText, weekOf, monthGrid, monthTitle } from '../src/dates.js';
+import { dayKey, timeKey, addDays, daysBetween, isDay, isTime, weekdayName, shortDate, dateTone, dayWords, deadlineLine, dueLine, dayTitle, timeText, minutesClock, minutesSpan, minutesText, weekOf, monthGrid, monthTitle } from '../src/dates.js';
 
 const T = '2026-11-01';   // a Sunday
 
@@ -57,6 +57,7 @@ test('a row’s date line: the time joins the words; the group’s own day is no
   // the calendar's minutes in the same clock as the rows (12-hour in en-US, not the stored 24-hour HH:MM)
   assert.equal(minutesClock(13 * 60 + 30), timeText('13:30'));
   assert.equal(minutesClock(0), timeText('00:00'));
+  assert.match(minutesSpan(10 * 60, 10 * 60 + 45), /10:00\D+10:45|10:00.*10:45/, 'a block\'s span');
   assert.match(new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(2000, 0, 1, 13, 30)), /^1:30\sPM$/, 'en-US: the format the calendar spec checks');
   assert.equal(dueLine({ date: 'soon' }, T), null);
 });
