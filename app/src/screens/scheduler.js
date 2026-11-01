@@ -11,7 +11,7 @@ import { INBOX } from '../items.js';
 import { dayKey, addDays, weekdayOf, timeText, dueOf, isDay } from '../dates.js';
 import { colorHex } from '../colors.js';
 import { parse } from '../parse.js';
-import { dateLibs, describe, presets, firstDay, buildRule, ruleChoices } from '../recur.js';
+import { dateLibs, describe, DAY_NAMES, presets, firstDay, buildRule, ruleChoices } from '../recur.js';
 import { openMenu } from '../ui/menu.js';
 import { el } from './pick.js';
 
@@ -132,10 +132,12 @@ export function pickDate(due, done, o = {}) {
       b.dataset.day = key;
       if (key < today) b.classList.add('is-past');
       if (key === today) b.classList.add('is-today');
-      if (+key.slice(8) === 1) b.append(el('span', 'td-cal-month', MONTHS[+key.slice(5, 7) - 1]));
+      if (+key.slice(8) === 1) b.append(el('span', 'td-cal-month', MONTHS[+key.slice(5, 7) - 1]), ' ');
       b.append(el('span', 'td-cal-num', String(+key.slice(8))));
       if (n) b.append(el('span', 'td-cal-dot'));
-      b.setAttribute('aria-label', `${dayLong(key)}${n ? `, ${n} task${n === 1 ? '' : 's'}` : ''}`);
+      // (the name starts as the cell reads: "Dec 1" on a month's first day)
+      const said = +key.slice(8) === 1 ? `${MONTHS[+key.slice(5, 7) - 1]} 1, ${DAYS[weekdayOf(key)]}` : dayLong(key);
+      b.setAttribute('aria-label', `${said}${n ? `, ${n} task${n === 1 ? '' : 's'}` : ''}`);
       b.addEventListener('click', () => { if (key >= today) { typed = null; words.value = ''; hint.textContent = ''; pick(key, true); } });
       cells.set(key, b);
       row.append(b);
@@ -245,6 +247,7 @@ export function pickDate(due, done, o = {}) {
       ul.setAttribute('aria-label', label);
       const draw = () => ul.replaceChildren(...items.map(([text, onNow], i) => {
         const li = el('li', ''), b = /** @type {HTMLButtonElement} */ (el('button', 'td-choice'));
+        li.setAttribute('role', 'none');   // (a radio group's rows, not a list's)
         b.type = 'button'; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(onNow));
         b.append(el('span', 'td-choice-label', text));
         if (onNow) b.append(icon(ICONS.check, { class: 'td-choice-check' }));
@@ -274,7 +277,7 @@ export function pickDate(due, done, o = {}) {
     const days = new Set(c.days);
     for (let k = 0; k < 7; k++) {
       const wdN = (weekStart + k) % 7, b = textButton(DAYS[wdN].slice(0, 1), 'td-weekday');
-      b.setAttribute('aria-label', DAYS[wdN]);
+      b.setAttribute('aria-label', DAY_NAMES[wdN]);
       b.setAttribute('aria-pressed', String(days.has(wdN)));
       b.addEventListener('click', () => { if (days.has(wdN)) days.delete(wdN); else days.add(wdN); b.setAttribute('aria-pressed', String(days.has(wdN))); });
       week.append(b);
