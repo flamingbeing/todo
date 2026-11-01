@@ -6,8 +6,7 @@
 // Display's choices (grouping, order, what shows) are kept per list on this device (the option "display").
 import { conflictSheet, refusedList, toaster, undoToast, loadState, lazyModules, glide, holdKeyboard, captured } from '@core/ui';
 import { COLL, REFUSED, INBOX, itemText } from '../items.js';
-import { projectView, todayView, isTask, placeText, projectOf, priorityOf, cleanDisplay, plainDisplay, sorter, narrowTasks, groupTasks } from '../tasks.js';
-import { flatten } from '../tree.js';
+import { projectView, todayView, isTask, placeText, projectOf, priorityOf, cleanDisplay, plainDisplay } from '../tasks.js';
 import { dayKey, dayTitle, dueLine } from '../dates.js';
 import { colorHex } from '../colors.js';
 import { $, sectionScreen } from '../dom.js';
@@ -249,14 +248,12 @@ export function views(app) {
     into.toggleAttribute('data-swipe-own', board);
     into.toggleAttribute('data-sorted', d.sort !== 'manual');
     if (board) { void lazy.withMod('board', m => m.drawBoard(ctx, pid, into, empty, d)); return; }
-    if (d.group !== 'none') {
-      const n = groups(into, filtered().filter(t => projectOf(t) === pid), d, rowCtx({ place: d.group === 'project' }), { projectId: pid });
-      empty.replaceChildren(...(!n && canWrite ? [emptyNote('Nothing here yet', 'Tap + to add a task')] : []));
-      return;
-    }
+    if (d.group !== 'none') { groups(into, empty, filtered().filter(t => projectOf(t) === pid), d, rowCtx({ place: d.group === 'project' }), { projectId: pid }, ['Nothing here yet', 'Tap + to add a task']); return; }
     delete into.dataset.grouped;
-    const v = projectView(filtered(), data.sections, pid, plainDisplay(d, 'inbox') ? undefined
-      : { cmp: sorter(d.sort, d.dir), keep: t => (!t.done || d.completed) && !!narrowTasks([t], d, data.labels, today).length }), c = rowCtx({});
+    // (a sort or a filter: its maths comes with board.js, the page is drawn again once it has)
+    const plain = plainDisplay(d, 'inbox'), m = lazy.loaded('board');
+    if (!plain && !m) { void lazy.need('board').then(() => projectList(into, pid, empty)); return; }
+    const v = projectView(filtered(), data.sections, pid, plain ? undefined : m?.arranged(d, data.labels, today)), c = rowCtx({});
     const parts = [];
     if (v.loose.length) parts.push(rowList(v.loose, c, 'Tasks'));
     for (const { section: s, lines } of v.sections) {
@@ -285,25 +282,12 @@ export function views(app) {
     empty.replaceChildren(...(none && !v.sections.length && canWrite ? [emptyNote('Nothing here yet', 'Tap + to add a task')] : []));
   };
 
-  /** a flat list in Display's groups into host -> how many tasks it shows @param {HTMLElement} into @param {Task[]} tasks
-   * @param {import('../tasks.js').Display} d @param {import('../ui/row.js').RowContext} c @param {AddContext} base  what a group's "+" starts from */
-  const groups = (into, tasks, d, c, base) => {
-    const all = data.tasks.filter(isTask);
-    const gs = groupTasks(narrowTasks(tasks.filter(t => isTask(t) && (!t.done || d.completed)), d, data.labels, c.today), d, { projects: data.projects, labels: data.labels, today: c.today });
-    // (data-grouped and data-gkey: the groups a row is dragged between, ui/row-drag.js)
+  /** a flat list in Display's groups (board.js draws them); none: the empty note's words when no task shows
+   * @param {HTMLElement} into @param {HTMLElement} empty @param {Task[]} tasks @param {import('../tasks.js').Display} d
+   * @param {import('../ui/row.js').RowContext} c @param {AddContext} base @param {[string, string]} none */
+  const groups = (into, empty, tasks, d, c, base, none) => {
     into.dataset.grouped = d.group;
-    into.replaceChildren(...gs.map(g => {
-      const sec = document.createElement('section'); sec.className = 'td-group';
-      const day = d.group === 'date' && g.key[0] === '1' ? g.key.slice(1) : undefined;
-      if (day) sec.dataset.day = day;
-      sec.dataset.gkey = g.key;
-      // the "+" by a group's name: quick add with the group's value (not Overdue)
-      if (g.title) sec.append(groupHead(g.title, { label: g.title, onAdd: canWrite && g.key !== '0' ? () => { void lazy.withMod('board', m => ctx.openQuickAdd(m.addFor(d.group, g.key, data, base) ?? base)); } : undefined }));
-      if (g.key === '0' && d.group === 'date') resched(sec, g.tasks);
-      sec.append(rowList(flatten(g.tasks, all, { open: () => false }), { ...c, own: day }, g.title || 'Tasks'));
-      return sec;
-    }));
-    return gs.reduce((n, g) => n + g.tasks.length, 0);
+    void lazy.withMod('board', m => { empty.replaceChildren(...(!m.drawGroups(ctx, { into, tasks, d, c, base, resched }) && canWrite ? [emptyNote(...none)] : [])); });
   };
   /** Overdue's Reschedule: every task in it to one day @param {HTMLElement} sec @param {Task[]} tasks */
   const resched = (sec, tasks) => {
@@ -324,11 +308,7 @@ export function views(app) {
     host.toggleAttribute('data-sorted', d.sort !== 'manual');
     if (d.layout === 'board') { groupBoard(host, $('today-empty'), ts, d, d.group, base, 'Today'); return; }
     host.classList.remove('td-board'); host.removeAttribute('data-swipe-own');
-    if (!plainDisplay(d, 'today')) {
-      const n = groups(host, ts, d, rowCtx({ place: true }), base);
-      $('today-empty').replaceChildren(...(!n && canWrite ? [emptyNote('All clear for today', 'Tap + to add a task for today')] : []));
-      return;
-    }
+    if (!plainDisplay(d, 'today')) { groups(host, $('today-empty'), ts, d, rowCtx({ place: true }), base, ['All clear for today', 'Tap + to add a task for today']); return; }
     delete host.dataset.grouped;
     const v = todayView(filtered(), today);
     const parts = [];

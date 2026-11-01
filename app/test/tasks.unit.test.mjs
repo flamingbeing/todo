@@ -1,9 +1,10 @@
-// tasks.js and task-ops.js: what each list shows, the counts and cascades, and what a save stores.
+// tasks.js, arrange.js and task-ops.js: what each list shows, the counts and cascades, and what a save stores.
 // node --test app/test/tasks.unit.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { projectView, todayView, upcomingView, completedView, projectTree, projectCounts, todayCount, upcomingCount, placeText,
-  projectCascade, sectionCascade, cleanFields, cleanDue, isTask, dayOrder, labelsOf, cleanDisplay, plainDisplay, narrowTasks, sorter, groupTasks } from '../src/tasks.js';
+import { projectView, todayView, placeText, projectCascade, sectionCascade, cleanFields, cleanDue, isTask, dayOrder, labelsOf, cleanDisplay,
+  plainDisplay } from '../src/tasks.js';
+import { upcomingView, completedView, projectTree, projectCounts, todayCount, upcomingCount, narrowTasks, sorter, groupTasks } from '../src/arrange.js';
 import { rescheduled } from '../src/recur.js';
 import { taskOps, refusal, tasksGone } from '../src/task-ops.js';
 

@@ -4,7 +4,8 @@
 import { icon } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { INBOX, REFUSED } from '../items.js';
-import { projectTree, projectCascade } from '../tasks.js';
+import { projectCascade } from '../tasks.js';
+import { projectTree } from '../arrange.js';
 import { COLORS, DEFAULT_COLOR, colorHex, colorName } from '../colors.js';
 import { el, sheetHead, pickOne } from './pick.js';
 

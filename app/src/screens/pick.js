@@ -3,7 +3,7 @@
 import { icon } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { INBOX } from '../items.js';
-import { projectTree } from '../tasks.js';
+import { projectTree } from '../arrange.js';
 import { colorHex } from '../colors.js';
 import { byOrder } from '../order.js';
 

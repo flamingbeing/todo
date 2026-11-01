@@ -7,7 +7,8 @@
 // (row-drag.js reads data-drop-day). The week starts on the day the setting says.
 import { icon, drag, glide, haptic } from '@core/ui';
 import { ICONS } from '../icons.js';
-import { isTask, upcomingView, narrowTasks, sorter, dayOrder } from '../tasks.js';
+import { isTask, dayOrder } from '../tasks.js';
+import { upcomingView, narrowTasks, sorter } from '../arrange.js';
 import { dayKey, addDays, daysBetween, weekOf, monthGrid, monthTitle, weekdayName, dueOf, dayTitle } from '../dates.js';
 import { rowList, addRow, groupHead } from './row.js';
 import { el, sheetHead } from '../screens/pick.js';

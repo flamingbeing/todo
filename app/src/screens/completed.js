@@ -3,7 +3,8 @@
 import { icon } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { REFUSED } from '../items.js';
-import { completedView, placeText } from '../tasks.js';
+import { placeText } from '../tasks.js';
+import { completedView } from '../arrange.js';
 import { dayKey, dayTitle, timeText } from '../dates.js';
 import { groupHead, emptyNote } from '../ui/row.js';
 import { el } from './pick.js';

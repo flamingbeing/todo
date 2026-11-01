@@ -6,7 +6,8 @@
 import { icon, gripDrag, haptic } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { MORE } from '../icons-more.js';
-import { isTask, labelsOf, narrowTasks, groupTasks } from '../tasks.js';
+import { isTask, labelsOf } from '../tasks.js';
+import { narrowTasks, groupTasks } from '../arrange.js';
 import { colorHex } from '../colors.js';
 import { byOrder, placeAt } from '../order.js';
 import { flatten } from '../tree.js';

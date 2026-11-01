@@ -19,6 +19,7 @@ const SHELL = [
   'icons/icon.svg',
   'manifest.webmanifest',
   'src/app.js',
+  'src/arrange.js',
   'src/boot.js',
   'src/cal.js',
   'src/cloud.js',

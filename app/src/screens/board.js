@@ -8,10 +8,11 @@
 // Today's columns are its days (Overdue, Today), Upcoming's its days, a list in no group one column.
 import { icon } from '@core/ui';
 import { ICONS } from '../icons.js';
-import { projectView, sorter, narrowTasks, groupTasks, projectOf, isTask } from '../tasks.js';
+import { projectView, projectOf, isTask } from '../tasks.js';
+import { sorter, narrowTasks, groupTasks } from '../arrange.js';
 import { flatten } from '../tree.js';
 import { dayKey } from '../dates.js';
-import { rowList, addRow, emptyNote } from '../ui/row.js';
+import { rowList, addRow, emptyNote, groupHead } from '../ui/row.js';
 import { addFor } from '../group-drop.js';
 import { el } from './pick.js';
 export { addFor };
@@ -19,6 +20,34 @@ export { addFor };
 /** @typedef {import('./views.js').Ctx} Ctx */
 
 const watched = new WeakSet();
+
+/** Display's sort and filter for a project's list (views.js and the board) @param {import('../tasks.js').Display} d
+ * @param {import('../items.js').Label[]} labels @param {string} today */
+export const arranged = (d, labels, today) => ({ cmp: sorter(d.sort, d.dir),
+  keep: (/** @type {import('../items.js').Task} */ t) => (!t.done || d.completed) && !!narrowTasks([t], d, labels, today).length });
+
+/**
+ * A flat list in Display's groups (views.js), a section per group with its name and "+" (quick add with the group's
+ * value; not Overdue, which has Reschedule) -> how many tasks it shows. data-gkey: the groups a row is dragged between
+ * (ui/row-drag.js). @param {Ctx} ctx
+ * @param {{ into: HTMLElement, tasks: import('../items.js').Task[], d: import('../tasks.js').Display, c: import('../ui/row.js').RowContext,
+ *   base: import('./views.js').AddContext, resched: (sec: HTMLElement, tasks: import('../items.js').Task[]) => void }} o
+ */
+export function drawGroups(ctx, { into, tasks, d, c, base, resched }) {
+  const data = ctx.data(), all = data.tasks.filter(isTask);
+  const gs = groupTasks(narrowTasks(tasks.filter(t => isTask(t) && (!t.done || d.completed)), d, data.labels, c.today), d, { projects: data.projects, labels: data.labels, today: c.today });
+  into.replaceChildren(...gs.map(g => {
+    const sec = el('section', 'td-group');
+    const day = d.group === 'date' && g.key[0] === '1' ? g.key.slice(1) : undefined;
+    if (day) sec.dataset.day = day;
+    sec.dataset.gkey = g.key;
+    if (g.title) sec.append(groupHead(g.title, { label: g.title, onAdd: ctx.canWrite() && g.key !== '0' ? () => ctx.openQuickAdd(addFor(d.group, g.key, data, base) ?? base) : undefined }));
+    if (g.key === '0' && d.group === 'date') resched(sec, g.tasks);
+    sec.append(rowList(flatten(g.tasks, all, { open: () => false }), { ...c, own: day }, g.title || 'Tasks'));
+    return sec;
+  }));
+  return gs.reduce((n, g) => n + g.tasks.length, 0);
+}
 
 /**
  * @param {Ctx} ctx @param {string} pid @param {HTMLElement} host @param {HTMLElement} below  for the dots
@@ -33,8 +62,7 @@ export function drawBoard(ctx, pid, host, below, d) {
   }
   delete host.dataset.grouped;
   const data = ctx.data(), canWrite = ctx.canWrite(), today = dayKey();
-  const v = projectView(data.tasks, data.sections, pid, { cmp: d.sort === 'manual' ? undefined : sorter(d.sort, d.dir),
-    keep: t => (!t.done || d.completed) && !!narrowTasks([t], d, data.labels, today).length });
+  const v = projectView(data.tasks, data.sections, pid, { ...arranged(d, data.labels, today), ...(d.sort === 'manual' ? { cmp: undefined } : {}) });
   const c = ctx.rows({});
   const naming = ctx.sections.naming();
   /** @type {HTMLElement[]} */
