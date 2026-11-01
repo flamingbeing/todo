@@ -1,15 +1,17 @@
 // Browse (#browse): the person's pill and the Settings gear at the top, then cards of rows: the Inbox, Today, Upcoming
 // and Completed; the favourite projects; and "My Projects" with its sub-projects under each and a + for a new one.
-// Counts show when the showCounts option is on. The fold of "My Projects" is kept on this device.
-import { icon } from '@core/ui';
+// Counts show when the showCounts option is on. The fold of "My Projects" is kept on this device. "Manage projects"
+// (under them) opens a list to put them in order: a project's grip dragged (or moved with the arrow keys) moves it
+// among the projects beside it at its level, its sub-projects with it.
+import { icon, gripDrag } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { INBOX } from '../items.js';
 import { projectTree, projectCounts, todayCount, upcomingCount } from '../tasks.js';
 import { colorHex } from '../colors.js';
 import { dayKey } from '../dates.js';
-import { byOrder } from '../order.js';
+import { byOrder, placeAt } from '../order.js';
 import { screens } from '../shell.js';
-import { el } from './pick.js';
+import { el, sheetHead } from './pick.js';
 
 /** @typedef {import('./views.js').Ctx} Ctx */
 const FOLD_KEY = 'browse:projects-folded';
@@ -105,8 +107,66 @@ export function drawBrowse(ctx, host) {
   parts.push(head);
   if (!folded) {
     const tree = projectTree(data.projects);
-    if (tree.length) parts.push(card('My Projects', tree.map(({ project, depth }) => projectRow(project, depth))));
+    if (tree.length) {
+      const rows = tree.map(({ project, depth }) => projectRow(project, depth));
+      if (ctx.canWrite()) rows.push(row({ label: 'Manage projects', ic: ICONS.gripVertical, run: () => manageProjects(ctx) }));
+      parts.push(card('My Projects', rows));
+    }
     else parts.push(el('p', 'td-browse-none', ctx.canWrite() ? 'No projects yet. Tap + to add one.' : 'No projects yet.'));
   }
   host.replaceChildren(...parts);
+}
+
+/** the Manage projects sheet (#pick-sheet): every project in Browse's order, a grip on each @param {Ctx} ctx */
+export function manageProjects(ctx) {
+  const d = /** @type {HTMLDialogElement} */ (document.getElementById('pick-sheet'));
+  const body = /** @type {HTMLElement} */ (d.querySelector('[data-fill]'));
+  const draw = (/** @type {string} */ focus = '') => {
+    const tree = projectTree(ctx.data().projects.map(p => ({ ...p, collapsed: false })));
+    const ids = new Set(tree.map(x => x.project.id));
+    const up1 = (/** @type {import('../items.js').Project} */ p) => (p.parentId && ids.has(p.parentId) ? p.parentId : '');
+    const list = el('ul', 'td-card td-manage');
+    list.setAttribute('aria-label', 'Projects in order');
+    list.dataset.noGesture = '';   // (a grip's pull is the list's, not the sheet's)
+    /** puts the project at row `from` where row `to` is (the flat list), among those at its level; its grip keeps the
+     * focus when the keys moved it @param {number} from @param {number} to @param {boolean} [keys] */
+    const drop = (from, to, keys = false) => {
+      const flat = tree.map(x => x.project), [moved] = flat.splice(from, 1);
+      flat.splice(to, 0, moved);
+      const level = flat.filter(p => up1(p) === up1(moved)), at = level.indexOf(moved);
+      if (byOrder(level).every((p, k) => p === level[k])) return;   // (still in its place among them)
+      // just the moved one gets a new number (all of them only when the gap there is too small)
+      const { order, renumber } = placeAt(level.filter(p => p !== moved), at);
+      void ctx.app.orderProjects([...renumber, { item: moved, order }]).then(() => draw(keys ? moved.id : ''));
+    };
+    list.append(...tree.map(({ project, depth }, i) => {
+      const li = el('li', 'td-manage-row');
+      if (depth) li.style.setProperty('--depth', String(depth));
+      const grip = /** @type {HTMLButtonElement} */ (el('button', 'td-icon-btn td-manage-grip'));
+      grip.type = 'button';
+      grip.dataset.id = project.id;
+      grip.setAttribute('aria-label', `Move ${project.name}`);
+      grip.setAttribute('aria-keyshortcuts', 'ArrowUp ArrowDown');
+      grip.append(icon(ICONS.gripVertical));
+      grip.addEventListener('pointerdown', e => gripDrag(e, list, drop));
+      // the keys: past the next project at its level, up or down
+      grip.addEventListener('keydown', e => {
+        if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+        e.preventDefault();
+        // (deeper rows on the way are the next one's sub-projects; a shallower one is the end of this level)
+        let k = i;
+        do k += e.key === 'ArrowUp' ? -1 : 1; while (k >= 0 && k < tree.length && tree[k].depth > depth);
+        if (k < 0 || k >= tree.length || up1(tree[k].project) !== up1(project)) return;
+        drop(i, k, true);
+      });
+      const dot = el('span', 'td-manage-dot');
+      dot.style.background = colorHex(project.color);
+      li.append(grip, dot, el('span', 'td-manage-name', project.name));
+      return li;
+    }));
+    body.replaceChildren(sheetHead('Manage projects', d), list);
+    if (focus) /** @type {HTMLElement | null} */ (list.querySelector(`[data-id="${CSS.escape(focus)}"]`))?.focus();
+  };
+  draw();
+  if (!d.open) d.showModal();
 }
