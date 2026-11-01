@@ -1,7 +1,7 @@
 // How a list is arranged beyond its plain order, from the records alone (unit-tested, never loaded at startup): Display's
 // filter, sort and groups; Upcoming's days; the done tasks by day; Browse's project tree and counts.
 import { INBOX } from './items.js';
-import { dueOf, isTime, addDays, dayTitle } from './dates.js';
+import { dueOf, isTime, addDays, dayTitle, isDay } from './dates.js';
 import { byOrder } from './order.js';
 import { isTask, projectOf, priorityOf, labelsOf, dayOrder, dayLines } from './tasks.js';
 
@@ -87,10 +87,12 @@ export function narrowTasks(tasks, d, labels, today) {
  * @param {string} sort @param {'asc' | 'desc'} dir @param {(a: Task, b: Task) => number} [manual] */
 export function sorter(sort, dir, manual = (a, b) => num(a.order) - num(b.order)) {
   const when = (/** @type {Task} */ t) => { const d = dueOf(t.due); return d ? `${d.date}T${isTime(d.time) ? d.time : '~'}` : ''; };
+  const by_ = (/** @type {Task} */ t) => (typeof t.deadline === 'string' ? t.deadline : '');
   /** @type {Record<string, (a: Task, b: Task) => number>} */
   const by = {
     name: (a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }),
     date: (a, b) => (when(a) < when(b) ? -1 : when(a) > when(b) ? 1 : 0),
+    deadline: (a, b) => (by_(a) < by_(b) ? -1 : by_(a) > by_(b) ? 1 : 0),
     priority: (a, b) => priorityOf(a) - priorityOf(b),
     added: (a, b) => num(a.createdAt) - num(b.createdAt),
   };
@@ -99,12 +101,13 @@ export function sorter(sort, dir, manual = (a, b) => num(a.order) - num(b.order)
   const sign = dir === 'desc' ? -1 : 1;
   return (/** @type {Task} */ a, /** @type {Task} */ b) => {
     if (sort === 'date' && !when(a) !== !when(b)) return when(a) ? -1 : 1;
+    if (sort === 'deadline' && !by_(a) !== !by_(b)) return by_(a) ? -1 : 1;
     return sign * f(a, b) || manual(a, b);
   };
 }
 
 /**
- * A flat list in groups (Display's grouping): by date (Overdue, each day, No date), priority, label (a task with two
+ * A flat list in groups (Display's grouping): by date (Overdue, each day, No date), deadline (the same, No deadline), priority, label (a task with two
  * shows under both; No label last) or project; none is one group. Done tasks (when given) go to each group's end.
  * @param {Task[]} tasks @param {Display} d
  * @param {{ projects: Project[], labels: Label[], today: string, manual?: (a: Task, b: Task) => number }} c
@@ -121,6 +124,13 @@ export function groupTasks(tasks, d, c) {
       if (!due) into('~', 'No date', t);
       else if (due < c.today && !t.done) into('0', 'Overdue', t);
       else into(`1${due}`, dayTitle(due, c.today), t);
+    }
+  } else if (d.group === 'deadline') {
+    for (const t of list) {
+      const by = typeof t.deadline === 'string' && isDay(t.deadline) ? t.deadline : '';
+      if (!by) into('~', 'No deadline', t);
+      else if (by < c.today && !t.done) into('0', 'Overdue', t);
+      else into(`1${by}`, dayTitle(by, c.today), t);
     }
   } else if (d.group === 'priority') for (const t of list) into(String(priorityOf(t)), priorityOf(t) === 4 ? 'No priority' : `Priority ${priorityOf(t)}`, t);
   else if (d.group === 'label') {

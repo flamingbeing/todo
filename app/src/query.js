@@ -4,7 +4,8 @@
 // after the other. A backslash makes the next character plain text (so "#Work\&Life" is one project name); * in a
 // name matches any run of letters ("@home*", "#*Work").
 // Terms: today, tomorrow, yesterday, overdue (od), no date, no time, "N days" or "next N days" (today to N days on),
-// "-N days" (the N days before today), date: / date before: / date after: (due: the same) with a day, a weekday
+// "-N days" (the N days before today), date: / date before: / date after: (due: the same; deadline: for the deadline,
+// and no deadline) with a day, a weekday
 // name, recurring, p1 to p4, no priority, @label or %label, no labels, #Project, ##Project (its sub-projects too),
 // /Section, /* (any section), search: words, subtask.
 // A query that can't be read gives a message with where it went wrong (1 is the first character).
@@ -177,6 +178,7 @@ function termTest(raw, at, c) {
   const text = raw.trim(), s = fold(plainText(text)).replace(/\s+/g, ' ');
   const due = (/** @type {Task} */ t) => (t.due && typeof t.due === 'object' && isDay(t.due.date) ? t.due : null);
   const on = (/** @type {(d: string) => boolean} */ f) => (/** @type {Task} */ t) => { const d = due(t); return !!d && f(d.date); };
+  const by = (/** @type {Task} */ t) => (typeof t.deadline === 'string' && isDay(t.deadline) ? t.deadline : null);
   const { today } = c;
   switch (s) {
     case 'today': return on(d => d === today);
@@ -184,6 +186,7 @@ function termTest(raw, at, c) {
     case 'yesterday': return on(d => d === addDays(today, -1));
     case 'overdue': case 'od': return on(d => d < today);
     case 'no date': return t => !due(t);
+    case 'no deadline': return t => !by(t);
     case 'no time': return t => { const d = due(t); return !!d && !d.time; };
     case 'recurring': return t => !!due(t)?.rrule;
     case 'subtask': case 'subtasks': return t => !!t.parentId;
@@ -197,11 +200,13 @@ function termTest(raw, at, c) {
   if (m) { const end = addDays(today, Number(m[1])); return on(d => d >= today && d <= end); }
   m = s.match(/^-(\d{1,3}) days?$/);
   if (m) { const from = addDays(today, -Number(m[1])); return on(d => d >= from && d < today); }
-  m = s.match(/^(?:date|due) ?(before|after)?: ?(.+)$/);
+  m = s.match(/^(date|due|deadline) ?(before|after)?: ?(.+)$/);
   if (m) {
-    const day = readDay(m[2], c);
-    if (!day) fail(`“${m[2]}” isn't a date this can read`, at);
-    return m[1] === 'before' ? on(d => d < day) : m[1] === 'after' ? on(d => d > day) : on(d => d === day);
+    const day = readDay(m[3], c);
+    if (!day) fail(`“${m[3]}” isn't a date this can read`, at);
+    const test = m[2] === 'before' ? (/** @type {string} */ d) => d < /** @type {string} */ (day) : m[2] === 'after' ? (/** @type {string} */ d) => d > /** @type {string} */ (day) : (/** @type {string} */ d) => d === day;
+    if (m[1] === 'deadline') return t => { const d = by(t); return !!d && test(d); };
+    return on(test);
   }
   const wd = weekdayIndex(s);
   if (wd >= 0) { const day = addDays(today, (wd - weekdayOf(today) + 7) % 7); return on(d => d === day); }

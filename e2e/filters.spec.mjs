@@ -1,6 +1,6 @@
 // Saved filters: Filters & Labels > + opens the filter sheet; its query counts the tasks it finds as it is typed (or
 // says, in red, what is wrong and where); Add saves it and opens its page, one list per comma part headed by that
-// part; a favourite shows in Browse. The sheet and the page pass axe.
+// part; a favourite shows in Browse. The sheet and the page pass axe. Deadline words find tasks by their deadline.
 import AxeBuilder from './axe.mjs';
 import { test, expect, signIn, synced, uniq, today, db, openTab } from './fixtures.mjs';
 
@@ -76,4 +76,29 @@ test('a comma makes a list per part; a favourite shows in Browse', async ({ phon
   await openTab(page, 'browse');
   await page.locator('#browse').getByRole('button', { name: new RegExp(`^${name}`) }).click();
   await expect(page.locator('#place-title')).toHaveText(name);
+});
+
+test('deadline words: "deadline before:", "!no deadline" and a project find the tasks by their deadline', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const proj = word('Due'), pid = uniq('p');
+  await db.put(`spaces/_/projects/${pid}`, { name: proj, color: 'red', parentId: null, view: 'list', order: Date.now(), ...now() });
+  const soon = uniq('soon'), later = uniq('later'), none = uniq('none');
+  const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return today(d); };
+  await task(soon, { projectId: pid, deadline: day(1) });
+  await task(later, { projectId: pid, deadline: day(30) });
+  await task(none, { projectId: pid });
+  await synced(page);
+  const sheet = await newFilter(page, word('Deadlines'), `#${proj} & deadline before: ${day(7)}`);
+  const count = sheet.locator('.td-query-count');
+  await expect(count).toHaveText('1 task');
+  await sheet.getByRole('textbox', { name: 'Query' }).fill(`#${proj} & !no deadline`);
+  await expect(count).toHaveText('2 tasks');
+  await sheet.getByRole('textbox', { name: 'Query' }).fill(`#${proj} & no deadline`);
+  await expect(count).toHaveText('1 task');
+  await sheet.getByRole('textbox', { name: 'Query' }).fill(`#${proj} & deadline after: tomorrow`);
+  await expect(count).toHaveText('1 task');
+  await sheet.getByRole('button', { name: 'Add' }).click();
+  await expect(page.locator(`#place .td-row[data-id="${later}"]`)).toBeVisible();
+  await expect(page.locator('#place .td-row')).toHaveCount(1);
 });

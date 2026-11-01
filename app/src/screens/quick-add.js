@@ -116,7 +116,7 @@ export function openQuickAdd(ctx, start, hold = null) {
       due: manual.due !== undefined ? manual.due : parsed.due ?? (parsed.noDate ? null : base.due),
       priority: manual.priority ?? parsed.priority ?? base.priority ?? 4,
       labels: [...new Set([...(manual.labels ?? base.labels ?? []), ...parsed.labels])],
-      deadline: manual.deadline !== undefined ? manual.deadline : parsed.deadline,
+      deadline: manual.deadline !== undefined ? manual.deadline : parsed.deadline ?? start.deadline ?? null,
       // minutes: set by hand, else typed ("for 45 min"), else a calendar slot's while the task keeps that slot's time
       duration: manual.duration !== undefined ? manual.duration : parsed.duration ?? (start.duration && (manual.due ?? base.due)?.time ? start.duration : null),
     };

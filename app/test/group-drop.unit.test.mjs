@@ -129,3 +129,14 @@ test('edge speed: 0 at the zone\'s inner edge, the most at the edge, rising (iOS
   // a board's sides: 40 px zones
   assert.equal(edgeSpeed(20, 0, 390, 40), -MAX_SPEED / 4);
 });
+
+test('by deadline: a day sets it, No deadline clears it, Overdue takes no drop; its "+" starts with that deadline', () => {
+  const c = { labels: [], projects: [], today: '2026-11-01' }, t = { id: 'a', title: 'a', deadline: '2026-11-03' };
+  assert.deepEqual(groupMove(t, 'deadline', '12026-11-03', '12026-11-09', c), { fields: { deadline: '2026-11-09' }, key: 'order', title: groupName('deadline', '12026-11-09', c), was: { deadline: '2026-11-03' } });
+  assert.deepEqual(groupMove(t, 'deadline', '12026-11-03', '~', c)?.fields, { deadline: null });
+  assert.equal(groupMove(t, 'deadline', '~', '0', c), null);
+  assert.equal(groupName('deadline', '~', c), 'No deadline');
+  assert.deepEqual(addFor('deadline', '12026-11-09', { labels: [] }, { projectId: 'inbox' }), { projectId: 'inbox', deadline: '2026-11-09' });
+  assert.equal(addFor('deadline', '0', { labels: [] }, {}), null);
+  assert.equal(sortedNote('deadline'), 'This list is in deadline order');
+});

@@ -1,8 +1,8 @@
 // Display: a list's grouping, order and direction, and whether done tasks show, are kept for that list on this
 // device: they hold after a reload, another list keeps its own, and another device sees the list as it was. The
-// sheet passes axe.
+// sheet passes axe. Deadline groups and sorts too.
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, db, openTab } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, db, openTab, today } from './fixtures.mjs';
 
 const now = () => ({ createdAt: Date.now(), updatedAt: Date.now() });
 
@@ -99,4 +99,32 @@ test('Today and the Inbox offer List, Board and Calendar; Calendar is kept for t
   await expect(page.locator('#inbox-page .td-cv')).toBeVisible();
   await openTab(page, 'today');
   await expect(page.locator('#today-page .td-cv-head')).toHaveCount(1);
+});
+
+test('grouping and sorting by deadline: Overdue, each day, No deadline; nearest first', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const pid = uniq('dl'), name = uniq('Dead'), u = uniq('x');
+  const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return today(d); };
+  await db.put(`spaces/_/projects/${pid}`, { name, color: 'red', parentId: null, view: 'list', order: Date.now(), ...now() });
+  const task = (title, order, deadline) => db.put(`spaces/_/tasks/${uniq('t')}`, { title, projectId: pid, order, priority: 4, done: false, ...(deadline ? { deadline } : {}), ...now() });
+  await task(`A ${u}`, 1, day(5));
+  await task(`B ${u}`, 2);
+  await task(`C ${u}`, 3, day(-3));
+  await task(`D ${u}`, 4, day(5));
+  await task(`E ${u}`, 5, day(2));
+  await synced(page);
+  await openProject(page, name);
+  let sheet = await display(page);
+  await choose(page, sheet, 'Sorting', 'Deadline');
+  await sheet.getByRole('button', { name: 'Done' }).click();
+  await expect(page.locator('#project .td-title')).toHaveText([`C ${u}`, `E ${u}`, `A ${u}`, `D ${u}`, `B ${u}`]);
+  sheet = await display(page);
+  await choose(page, sheet, 'Grouping', 'Deadline');
+  expect(await AxeBuilder(page)).toEqual([]);
+  await sheet.getByRole('button', { name: 'Done' }).click();
+  await expect(page.locator('#project .td-group-title')).toHaveCount(4);
+  await expect(page.locator('#project .td-group-title').first()).toHaveText('Overdue');
+  await expect(page.locator('#project .td-group-title').last()).toHaveText('No deadline');
+  await expect(page.locator('#project .td-group').nth(2).locator('.td-title')).toHaveText([`A ${u}`, `D ${u}`]);
 });

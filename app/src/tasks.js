@@ -156,8 +156,8 @@ export function labelsOf(t, labels) {
 // (shut: two a day and "+N")
 /** @typedef {{ group: string, sort: string, dir: 'asc' | 'desc', completed: boolean, priority: number, label: string, date: string,
  *   layout: string, cal: string, color: string, allDay: boolean, future: boolean }} Display */
-export const GROUPS = ['none', 'date', 'priority', 'label', 'project'];
-export const SORTS = ['manual', 'name', 'date', 'priority', 'added'];
+export const GROUPS = ['none', 'date', 'deadline', 'priority', 'label', 'project'];
+export const SORTS = ['manual', 'name', 'date', 'deadline', 'priority', 'added'];
 export const DATE_FILTERS = ['', 'today', 'week', 'overdue', 'nodate'];
 /** a view's Display choices, known values only (Today groups by date, the rest by none)
  * @param {unknown} v @param {string} view @returns {Display} */

@@ -23,6 +23,7 @@ import { placeAt } from './order.js';
 /** a group's name in a toast @param {string} group @param {string} key @param {{ labels: Label[], projects: Project[], today: string }} c */
 export function groupName(group, key, c) {
   if (group === 'date') return key === '~' ? 'No date' : key === '0' ? 'Overdue' : dayWords(key.slice(1), c.today);
+  if (group === 'deadline') return key === '~' ? 'No deadline' : key === '0' ? 'Overdue' : dayWords(key.slice(1), c.today);
   if (group === 'priority') return key === '4' ? 'No priority' : `Priority ${key}`;
   if (group === 'label') return key === '~' ? 'No label' : c.labels.find(l => l.id === key)?.name ?? 'Label';
   if (group === 'project') return key === INBOX ? 'Inbox' : c.projects.find(p => p.id === key)?.name ?? 'Project';
@@ -44,6 +45,10 @@ export function groupMove(task, group, from, to, c) {
     // a day keeps the time, the repeat and its words; No date drops them (Undo brings them back)
     if (to === '~') return { fields: { due: null }, key, title, was: { due: due ?? null } };
     return { fields: { due: cleanDue({ ...(due ?? {}), date: to.slice(1) }) }, key, title, was: { due: due ?? null } };
+  }
+  if (group === 'deadline') {
+    if (to === '0') return null;
+    return { fields: { deadline: to === '~' ? null : to.slice(1) }, key, title, was: { deadline: task.deadline ?? null } };
   }
   if (group === 'priority') return { fields: { priority: Number(to) }, key, title, was: { priority: priorityOf(task) } };
   if (group === 'label') {
@@ -81,6 +86,7 @@ export function slotIn(list, at, task, key) {
  * @param {string} group @param {string} key @param {{ labels: Label[] }} c @param {import('./screens/views.js').AddContext} base */
 export function addFor(group, key, c, base) {
   if (group === 'date') return key === '0' ? null : { ...base, due: key === '~' ? null : { date: key.slice(1) } };
+  if (group === 'deadline') return key === '0' ? null : { ...base, deadline: key === '~' ? null : key.slice(1) };
   if (group === 'priority') return { ...base, priority: Number(key) };
   if (group === 'label') { const l = c.labels.find(x => x.id === key); return { ...base, labels: l ? [l.name] : [] }; }
   if (group === 'project') return { ...base, projectId: key, sectionId: null, parentId: null };
@@ -91,6 +97,6 @@ export function addFor(group, key, c, base) {
  * @param {Task} task @param {string} today */
 export const postponed = (task, today) => cleanDue({ ...(dueOf(task.due) ?? {}), date: addDays(today, 1) });
 
-const SORT_NAMES = /** @type {Record<string, string>} */ ({ name: 'name', date: 'date', priority: 'priority', added: 'date added' });
+const SORT_NAMES = /** @type {Record<string, string>} */ ({ name: 'name', date: 'date', deadline: 'deadline', priority: 'priority', added: 'date added' });
 /** why a sorted list has no drag, in a toast @param {string} sort */
 export const sortedNote = sort => `This list is in ${SORT_NAMES[sort] ?? 'its own'} order`;

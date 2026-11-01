@@ -15,8 +15,8 @@ import { el, pickOne } from './pick.js';
 /** @typedef {import('./views.js').Ctx} Ctx */
 /** @typedef {import('../tasks.js').Display} Display */
 
-const GROUP_WORDS = /** @type {const} */ ([['none', 'None'], ['date', 'Date'], ['priority', 'Priority'], ['label', 'Label'], ['project', 'Project']]);
-const SORT_WORDS = /** @type {const} */ ([['manual', 'Manual'], ['name', 'Name'], ['date', 'Date'], ['priority', 'Priority'], ['added', 'Date added']]);
+const GROUP_WORDS = /** @type {const} */ ([['none', 'None'], ['date', 'Date'], ['deadline', 'Deadline'], ['priority', 'Priority'], ['label', 'Label'], ['project', 'Project']]);
+const SORT_WORDS = /** @type {const} */ ([['manual', 'Manual'], ['name', 'Name'], ['date', 'Date'], ['deadline', 'Deadline'], ['priority', 'Priority'], ['added', 'Date added']]);
 const DATE_WORDS = /** @type {const} */ ([['', 'All'], ['today', 'Today'], ['week', 'This week'], ['overdue', 'Overdue'], ['nodate', 'No date']]);
 const COLOR_WORDS = /** @type {const} */ ([['priority', 'Priority'], ['label', 'Label'], ['project', 'Project']]);
 const CAL_WORDS = /** @type {const} */ ([['agenda', 'Agenda'], ['week', 'Week'], ['month', 'Month']]);

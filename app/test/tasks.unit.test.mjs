@@ -303,6 +303,18 @@ test('grouping by date, priority, label, project and none; done ones at each gro
     'a done task stays last whatever the sort');
 });
 
+test('by deadline: sorted (none last either way) and grouped (Overdue, each day, No deadline)', () => {
+  const list = () => [
+    t('w', { deadline: '2026-11-05' }), t('x', {}), t('y', { deadline: '2026-10-28' }), t('z', { deadline: T }), t('v', { deadline: '2026-10-20', done: true }),
+  ];
+  assert.deepEqual(titles(list().sort(sorter('deadline', 'asc'))), ['v', 'y', 'z', 'w', 'x']);
+  assert.deepEqual(titles(list().sort(sorter('deadline', 'desc'))), ['w', 'z', 'y', 'v', 'x']);
+  const g = groupTasks(list(), D({ group: 'deadline' }), { projects, labels, today: T }).map(x => [x.title, titles(x.tasks)]);
+  assert.deepEqual(g, [['Overdue', ['y']], ['20 Oct · Tuesday', ['v']], ['1 Nov · Today · Sunday', ['z']], ['5 Nov · Thursday', ['w']], ['No deadline', ['x']]]);
+  assert.equal(cleanDisplay({ group: 'deadline', sort: 'deadline' }, 'p').group, 'deadline');
+  assert.equal(cleanDisplay({ group: 'deadline', sort: 'deadline' }, 'p').sort, 'deadline');
+});
+
 test('the Display filter, and the completed switch\'s done tasks', () => {
   const n = (o, list = pool()) => titles(narrowTasks(list, D(o), labels, T));
   assert.deepEqual(n({ priority: 2 }), ['Banana', 'date']);
