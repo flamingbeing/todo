@@ -1,5 +1,6 @@
 // Upcoming's head: the month and the week strip. A day with tasks has a dot; a swipe goes to the next week; a tap on a
-// day scrolls the list to it; Today goes back; a task dragged onto a day of the strip moves to that day. Passes axe.
+// day scrolls the list to it, and the + adds for that day; Today goes back; a task dragged onto a day of the strip
+// moves to that day. Passes axe.
 import AxeBuilder from './axe.mjs';
 import { test, expect, signIn, synced, uniq, today, db, openTab, finger, gesturesReady, steps } from './fixtures.mjs';
 
@@ -7,7 +8,7 @@ const plus = (key, n) => { const d = new Date(`${key}T12:00:00Z`); d.setUTCDate(
 const weekOf = key => plus(key, -((new Date(`${key}T12:00:00Z`).getUTCDay() + 6) % 7));   // (weeks start on Monday)
 const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { title: id, projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
 
-test('dots, a swipe to next week, a tap scrolls to the day, Today, a task dragged onto a day', async ({ phone }) => {
+test('dots, a swipe to next week, a tap scrolls to the day (the + adds there), Today, a task dragged onto a day', async ({ phone }) => {
   const page = await phone();
   await signIn(page, 'member');
   const now = today(), next = plus(weekOf(now), 7), there = plus(next, 1), drop = plus(next, 2);
@@ -35,6 +36,17 @@ test('dots, a swipe to next week, a tap scrolls to the day, Today, a task dragge
   await expect(strip.locator(`.td-wday[data-day="${there}"]`)).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator(`#upcoming .td-day[data-day="${there}"] .td-group-head`)).toBeInViewport();
   await expect(page.locator(`#upcoming .td-day[data-day="${now}"] .td-group-head`)).not.toBeInViewport();
+
+  // the + adds for the day in sight, not today
+  const added = uniq('plus');
+  await page.locator('#fab').click();
+  await expect(page.locator('#add-sheet')).toBeVisible();
+  await page.fill('#add-sheet .td-add-title', added);
+  await page.press('#add-sheet .td-add-title', 'Enter');
+  await expect(page.locator('#add-sheet .td-add-title')).toHaveValue('');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#add-sheet')).toBeHidden();
+  await expect.poll(async () => (await db.list('spaces/_/tasks')).find(d => d.title === added)?.due?.date, { timeout: 15_000 }).toBe(there);
 
   // a task held and dragged onto a day of the strip moves to it
   await page.locator(`#upcoming .td-row[data-id="${far}"]`).scrollIntoViewIfNeeded();

@@ -170,7 +170,13 @@ export function views(app) {
 
   /** what a new task starts with on the page shown @returns {AddContext} */
   const addContext = () => top === 'project-page' ? { projectId }
-    : top === 'today-page' || top === 'upcoming-page' ? { projectId: INBOX, due: { date: dayKey() } } : { projectId: INBOX };
+    : top === 'today-page' ? { projectId: INBOX, due: { date: dayKey() } }
+    : top === 'upcoming-page' ? { projectId: INBOX, due: { date: upcomingDay() } } : { projectId: INBOX };
+  /** Upcoming's day in sight: the week strip's pick, which follows the scroll (today when none, or a day gone by) */
+  const upcomingDay = () => {
+    const today = dayKey(), pick = /** @type {HTMLElement | null} */ ($('upcoming-strip').querySelector('[data-day][aria-pressed="true"]'))?.dataset.day;
+    return pick && pick > today ? pick : today;
+  };
   const fab = $('fab'), more = $('more-btn');
   fab.addEventListener('click', () => { if (canWrite) { const hold = holdKeyboard(); void lazy.withMod('add', m => m.openQuickAdd(ctx, addContext(), hold)); } });
   more.addEventListener('click', () => pageMenu());
