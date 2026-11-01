@@ -1,6 +1,6 @@
 // Arrange tabs (Settings, Tab bar; @core/ui tabArranger): a tab taken off the bar is listed at the top of the Settings
 // menu, one tap away, and stays off after a reload (the tabs option, this device).
-import { test, expect, APP, openSettings } from './fixtures.mjs';
+import { test, expect, APP, openSettings, settingsBack } from './fixtures.mjs';
 
 test('a tab taken off the bar is one tap away in Settings and stays off', async ({ phone }) => {
   const page = await phone();
@@ -14,7 +14,7 @@ test('a tab taken off the bar is one tap away in Settings and stays off', async 
   await expect(search).toHaveAttribute('data-off-bar', '');
   await expect(search).toBeHidden();
 
-  await page.locator('#settings-host .ui-settings-back:visible').click();
+  await settingsBack(page);
   const off = page.locator('#settings-host .ui-settings-top').getByRole('button', { name: 'Search' });
   await off.click();
   await expect(page.locator('#search-page')).toBeVisible();

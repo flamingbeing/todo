@@ -242,10 +242,18 @@ export const openSettings = async (page, title) => {
   }
   await expect(page.locator('#settings-host')).toBeVisible();
   if (!title) return;
-  const back = page.locator('#settings-host .ui-settings-back:visible');
-  if (await back.count()) await back.click();
+  await settingsBack(page);
   await page.locator('#settings-host .ui-settings-menu-groups .ui-settings-go').filter({ hasText: new RegExp(`^${title}`) }).click();
-  await expect(page.locator('#settings-host .ui-settings-back:visible')).toBeVisible();
+  await expect(page.locator('#settings-host .ui-settings-group:not([hidden])')).toBeVisible();
+};
+// From a Settings page back to its menu (nothing when the menu shows): the page's own Back, or (app-ui rc.80+, the page
+// as a screen of its own: shell.js onPage) the bar's
+export const settingsBack = async page => {
+  const own = page.locator('#settings-host .ui-settings-back:visible');
+  if (await own.count()) await own.click();
+  else if (await page.locator('#settings-page.is-sub').count()) await page.locator('.ui-bar .ui-bar-back').click();
+  else return;
+  await expect(page.locator('#settings-host .ui-settings-menu')).toBeVisible();
 };
 // (a tab tapped while a Settings page is open over Browse first closes that page: then a second tap goes)
 export const openTab = async (page, name) => {

@@ -193,6 +193,8 @@ button.td-group-title { display: flex; align-items: center; gap: 6px; width: 100
 
 /* ---------- grouped grounds: Browse, Settings ---------- */
 .ui-screen.td-grouped { background: var(--td-grouped); }
+/* a Settings page open as its own screen (shell.js onPage): no account block over it */
+#settings-page.is-sub > #account { display: none; }
 .td-card { box-sizing: border-box; margin: 0 16px; padding: 0; border-radius: 14px; background: var(--td-card); list-style: none; overflow: hidden; }
 #browse > :first-child { margin-top: 8px; }
 .td-pill { display: inline-flex; align-items: center; gap: 8px; min-width: 0; height: 44px; padding: 0 16px 0 6px; border-radius: 22px;

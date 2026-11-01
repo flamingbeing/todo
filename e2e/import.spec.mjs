@@ -3,7 +3,7 @@
 // nothing, and the token never lands in storage and leaves the field. The page passes axe.
 import fs from 'node:fs';
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, db, openSettings, openTab } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, db, openSettings, settingsBack, openTab } from './fixtures.mjs';
 
 const API = 'https://api.todoist.com/api/v1/sync';
 const TITLE = 'Import from Todoist';
@@ -158,7 +158,7 @@ test('a token that is not accepted says so, and leaving the page empties the fie
   expect(await AxeBuilder(page)).toEqual([]);
   // back to the Settings menu and in again: nothing typed is kept
   await field(page).fill('typed-and-left');
-  await page.locator('#settings-host .ui-settings-back:visible').click();
+  await settingsBack(page);
   await openSettings(page, TITLE);
   await expect(field(page)).toHaveValue('');
   await expect(host.locator('.td-import-status')).toHaveText('');

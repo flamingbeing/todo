@@ -79,6 +79,19 @@ function listIn(host, items) {
   host.append(list);
 }
 
+/**
+ * A Settings page shown as a screen of its own (the kit's menu.onPage, app-ui rc.80+): its title in the large title and
+ * the bar, no account block over it; the bar's Back closes it (the page is a history step). null: the menu again.
+ * @param {{ title: string } | null} page
+ */
+function onPage(page) {
+  const title = page ? page.title : 'Settings';
+  $('settings-title').textContent = title;
+  const small = document.querySelector('.ui-bar-title');
+  if (small && !$('settings-page').hidden) small.textContent = title;
+  $('settings-page').classList.toggle('is-sub', !!page);
+}
+
 /** @param {import('./items.js').ItemsApp | null} app  null: not set up, so no Settings page (Browse is not drawn either) */
 export function settingsPage(app) {
   if (!app) return;
@@ -113,7 +126,8 @@ export function settingsPage(app) {
 
   settingsScreen($('settings-host'), {
     settings,
-    menu: { steps: createTransients({ history, location, events: window }), top: offBar },
+    // (onPage is app-ui rc.80's; rc.79 ignores it and its types lack it: drop the cast at the bump)
+    menu: /** @type {import('app-ui/ui/settings-screen.js').SettingsMenu} */ ({ steps: createTransients({ history, location, events: window }), top: offBar, ...{ onPage } }),
     sections: byGroup([
       ...SETTING_SECTIONS,
       { title: 'Tab bar', icon: ICONS.menu, sub: 'Order, and which tabs show', group: 'Look', find: 'arrange tabs', mount: host => {
