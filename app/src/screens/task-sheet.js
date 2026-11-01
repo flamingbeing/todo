@@ -145,7 +145,7 @@ function draw(ctx) {
     if (n && !await confirmModal(`Delete “${now.title}” and its ${n === 1 ? 'subtask' : `${n} subtasks`}?`, { title: 'Delete task', danger: true, yes: 'Delete' })) return;
     const gone = [now, ...descendants(now.id, ctx.data().tasks)];
     d().close();
-    if (await ctx.app.remove(now, ctx.files?.of(now.id) ?? [])) { ctx.toast(REFUSED); return; }
+    if (await ctx.app.remove(now, id => ctx.files?.of(id) ?? [])) { ctx.toast(REFUSED); return; }
     ctx.undo.show('Task deleted', async () => { for (const g of gone) if (await ctx.app.put(g)) { ctx.toast(REFUSED); return; } });
   };
 

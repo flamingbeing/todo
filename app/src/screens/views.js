@@ -214,7 +214,7 @@ export function views(app) {
     const what = [n ? plural(n, 'task') : '', subs ? plural(subs, 'sub-project') : ''].filter(Boolean).join(' and ');
     if (!await confirmModal(`Delete “${p.name}”${what ? ` with its ${what}` : ''}?`, { title: 'Delete project', danger: true, yes: 'Delete' })) return false;
     if (top === 'project-page' && projectId === p.id) screens()?.pop();
-    if (await app.removeProject(p)) toast(REFUSED);
+    if (await app.removeProject(p, id => files?.of(id) ?? [])) toast(REFUSED);
     return true;
   };
 
@@ -255,7 +255,7 @@ export function views(app) {
     { label: 'Delete section', icon: ICONS.trash2, danger: true, run: async () => {
       const n = data.tasks.filter(t => t.sectionId === s.id && isTask(t) && !t.done).length;
       if (!await confirmModal(`Delete “${s.name}”${n ? ` and its ${plural(n, 'task')}` : ''}?`, { title: 'Delete section', danger: true, yes: 'Delete' })) return;
-      if (await app.removeSection(s)) toast(REFUSED);
+      if (await app.removeSection(s, id => files?.of(id) ?? [])) toast(REFUSED);
     } },
   ], { label: s.name });
 

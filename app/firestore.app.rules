@@ -119,10 +119,13 @@ service cloud.firestore {
     match /spaces/{g}/settings/{id} {
       allow read: if can(g, ['admin', 'member', 'viewer']);
       allow create, update: if can(g, ['admin', 'member', 'viewer']) && request.auth.uid == id && stamped()
-        && request.resource.data.keys().hasOnly(['profile', 'showCounts', 'updatedAt', 'serverAt', '_edits'])
+        // (defaultList: an older version's option, no longer written; allowed so a doc that still has it can be saved)
+        && request.resource.data.keys().hasOnly(['profile', 'showCounts', 'defaultList', 'updatedAt', 'serverAt', '_edits'])
         && (!('_edits' in request.resource.data) || request.resource.data._edits is map)
         && (!('profile' in request.resource.data) || request.resource.data.profile == null || request.resource.data.profile is string)
         && (!('showCounts' in request.resource.data) || request.resource.data.showCounts == null || request.resource.data.showCounts is bool)
+        && (!('defaultList' in request.resource.data) || request.resource.data.defaultList == null
+          || (request.resource.data.defaultList is string && request.resource.data.defaultList.size() <= 64))
         && request.resource.data.updatedAt is number;
       allow delete: if false;
     }

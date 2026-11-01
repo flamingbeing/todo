@@ -8,7 +8,7 @@
 import { confirmModal, plural, haptic, icon } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { REFUSED } from '../items.js';
-import { isTask, priorityOf, projectOf } from '../tasks.js';
+import { isTask, priorityOf, projectOf, rescheduled } from '../tasks.js';
 import { descendants } from '../tree.js';
 import { dayKey } from '../dates.js';
 import { openMenu } from '../ui/menu.js';
@@ -39,7 +39,7 @@ export async function deleteTasks(ctx, tasks) {
     if (!await confirmModal(`Delete ${what}${subs ? ` and ${subs === 1 ? 'a subtask' : `${subs} subtasks`}` : ''}?`,
       { title: top.length > 1 ? 'Delete tasks' : 'Delete task', danger: true, yes: 'Delete' })) return false;
   }
-  for (const t of top) if (await ctx.app.remove(t, ctx.files?.of(t.id) ?? [])) { ctx.toast(REFUSED); return false; }
+  for (const t of top) if (await ctx.app.remove(t, id => ctx.files?.of(id) ?? [])) { ctx.toast(REFUSED); return false; }
   ctx.undo.show(top.length > 1 ? `${plural(top.length, 'task')} deleted` : 'Task deleted', async () => {
     for (const g of gone) if (await ctx.app.put(g)) { ctx.toast(REFUSED); return; }
   });
@@ -55,16 +55,16 @@ export function scheduleTasks(ctx, tasks, after) {
   }, { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1) });
 }
 
-/** Today's Reschedule: a new day for every overdue task at once (a repeating one keeps its rule, a timed one its time;
- * "No date" leaves the repeating ones be); one Undo for them all @param {Ctx} ctx @param {Task[]} tasks */
+/** Today's Reschedule: a new day for every overdue task at once (tasks.js rescheduled: a timed one keeps its time unless
+ * one is picked, a repeating one its rule unless a repeat is picked; "No date" leaves the repeating ones be); one Undo for them all @param {Ctx} ctx @param {Task[]} tasks */
 export function rescheduleTasks(ctx, tasks) {
   if (!tasks.length) return;
   pickDate(null, async due => {
     /** @type {[Task, import('../dates.js').Due | null][]} */
     const was = [];
     for (const t of tasks) {
-      if (!due && t.due?.rrule) continue;
-      const next = due ? { ...t.due, date: due.date, ...(due.time ? { time: due.time } : {}), ...(t.due?.rrule || !due.rrule ? {} : { rrule: due.rrule }) } : null;
+      const next = rescheduled(t.due, due);
+      if (next === undefined) continue;
       if (await ctx.app.editTask(t, { due: next })) { ctx.toast(REFUSED); break; }
       was.push([t, t.due ?? null]);
     }
@@ -97,24 +97,28 @@ function moveTasks(ctx, tasks, after) {
   });
 }
 
-/** Completes tasks (a repeating one moves to its next date); one Undo for them all @param {Ctx} ctx @param {Task[]} tasks */
+/** Completes tasks (a repeating one moves to its next date); one Undo for them all. A repeating one whose next date
+ * can't be worked out (the rule library not loaded, offline) is left as it is, as a row's own tick does
+ * @param {Ctx} ctx @param {Task[]} tasks */
 async function completeTasks(ctx, tasks) {
   /** @type {Task[]} */
   const ticked = [];
   /** @type {[Task, import('../dates.js').Due][]} */
   const moved = [];
-  const repeats = tasks.some(t => t.due?.rrule);
-  const lib = repeats ? await Promise.all([import('../recur.js'), import('../recur.js').then(m => m.dateLibs())]).catch(() => null) : null;
   const today = dayKey();
-  for (const t of tasks) {
-    let next = null;
-    if (t.due?.rrule && lib) { try { next = lib[0].nextDay(t.due, { done: today, today }, lib[1].RRule); } catch { next = null; } }
-    const r = await ctx.app.complete(t, { next });
+  /** @type {Map<string, string | null>} */
+  const nexts = tasks.some(t => t.due?.rrule)
+    ? await import('../recur.js').then(m => m.nextDays(tasks, today, () => m.dateLibs().then(l => l.RRule))).catch(() => new Map()) : new Map();
+  const doable = tasks.filter(t => !t.due?.rrule || nexts.has(t.id));
+  if (doable.length < tasks.length) ctx.toast('Could not work out the next date');
+  if (!doable.length) return;
+  for (const t of doable) {
+    const r = await ctx.app.complete(t, { next: nexts.get(t.id) ?? null });
     if (r.refused) { ctx.toast(REFUSED); break; }
     ticked.push(...r.ticked);
     if (r.moved) moved.push([t, r.moved]);
   }
-  const n = tasks.length;
+  const n = doable.length;
   ctx.undo.show(n > 1 ? `${plural(n, 'task')} completed` : 'Task completed', async () => {
     if (ticked.length && await ctx.app.untick(ticked)) { ctx.toast(REFUSED); return; }
     for (const [t, due] of moved) {

@@ -36,22 +36,27 @@ export function projectView(tasks, sections, projectId, { cmp, keep } = /** @typ
   const tops = mine.filter(t => !t.parentId || !ids.has(t.parentId));
   if (cmp) tops.sort((a, b) => Number(!!a.done) - Number(!!b.done) || cmp(a, b)); else tops.splice(0, Infinity, ...byOrder(tops));
   const sectionOf = (/** @type {Task} */ t) => (t.sectionId && known.has(t.sectionId) ? t.sectionId : '');
-  const all = tasks.filter(isTask);
+  // (subtasks show by the same choice as the tasks: keep's, done ones too when it keeps them; the counts are of them all)
+  const all = tasks.filter(isTask), o = { open: (/** @type {Task} */ t) => ids.has(t.id) };
   return {
-    loose: flatten(tops.filter(t => !sectionOf(t)), all),
-    sections: own.map(section => ({ section, lines: flatten(tops.filter(t => sectionOf(t) === section.id), all) })),
+    loose: flatten(tops.filter(t => !sectionOf(t)), all, o),
+    sections: own.map(section => ({ section, lines: flatten(tops.filter(t => sectionOf(t) === section.id), all, o) })),
   };
 }
 
-/** a day's order: as dragged when both were placed on the day by hand (dayOrder), else timed tasks first by time, then
- * by priority, then by their own order @param {Task} a @param {Task} b */
+/** a day's order (by day first, undated last): the tasks placed on the day by hand (dayOrder, as dragged) first, in that order; then the others,
+ * timed ones first by time, then by priority, then by their own order. (Placed or not decides first, so the order is
+ * the same whichever pairs are compared: a sort needs that.) @param {Task} a @param {Task} b */
 export function dayOrder(a, b) {
   const da = dueOf(a.due), db = dueOf(b.due);
+  if (!da !== !db) return da ? -1 : 1;
   if (da && db && da.date !== db.date) return da.date < db.date ? -1 : 1;
-  if (typeof a.dayOrder === 'number' && typeof b.dayOrder === 'number' && a.dayOrder !== b.dayOrder) return a.dayOrder - b.dayOrder;
+  const pa = typeof a.dayOrder === 'number', pb = typeof b.dayOrder === 'number';
+  if (pa !== pb) return pa ? -1 : 1;
+  if (pa && pb && a.dayOrder !== b.dayOrder) return /** @type {number} */ (a.dayOrder) - /** @type {number} */ (b.dayOrder);
   const ta = isTime(da?.time) ? /** @type {string} */ (da?.time) : '~', tb = isTime(db?.time) ? /** @type {string} */ (db?.time) : '~';
   if (ta !== tb) return ta < tb ? -1 : 1;
-  return priorityOf(a) - priorityOf(b) || num(a.dayOrder ?? a.order) - num(b.dayOrder ?? b.order) || num(a.createdAt) - num(b.createdAt);
+  return priorityOf(a) - priorityOf(b) || num(a.order) - num(b.order) || num(a.createdAt) - num(b.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 }
 /** rows for a list by day: each task alone (its subtasks show only on their own dates), with its counts */
 const dayLines = (/** @type {Task[]} */ list, /** @type {Task[]} */ all, cmp = dayOrder) => flatten(list.sort(cmp), all, { open: () => false });
@@ -151,6 +156,19 @@ export function sectionCascade(id, tasks) {
   const out = new Map();
   for (const t of top) { out.set(t.id, t); for (const d of descendants(t.id, tasks)) out.set(d.id, d); }
   return [...out.values()];
+}
+
+/**
+ * Reschedule's new date for a task (several at once): the day picked; its time when it has one, else the task's own;
+ * a repeat picked replaces the task's (rule, words and "every!"), else a repeating task keeps its rule. "No date"
+ * (null) clears a plain task's date and leaves a repeating one be (undefined: no change).
+ * @param {import('./dates.js').Due | null | undefined} was @param {import('./dates.js').Due | null} picked
+ * @returns {import('./dates.js').Due | null | undefined}
+ */
+export function rescheduled(was, picked) {
+  if (!picked) return was?.rrule ? undefined : null;
+  const rule = picked.rrule ? { rrule: picked.rrule, string: picked.string ?? null, fromDone: picked.fromDone ?? null } : {};
+  return cleanDue({ ...was, ...rule, date: picked.date, ...(picked.time ? { time: picked.time } : {}) });
 }
 
 /** @param {unknown} v @returns {import('./dates.js').Due | null} */

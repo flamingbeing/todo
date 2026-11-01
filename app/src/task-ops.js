@@ -5,7 +5,7 @@
 import { COLL, PROJECTS, SECTIONS, LABELS, FILTERS, INBOX } from './items.js';
 import { cleanFields, cleanColor, cleanDue, projectCascade, sectionCascade, projectOf } from './tasks.js';
 import { descendants } from './tree.js';
-import { orderAtEnd } from './order.js';
+import { orderAtEnd, orderBetween } from './order.js';
 
 /** @typedef {import('./items.js').Task} Task */
 /** @typedef {import('./items.js').Project} Project */
@@ -13,6 +13,17 @@ import { orderAtEnd } from './order.js';
 /** @typedef {import('./items.js').Label} Label */
 /** @typedef {import('./items.js').Filter} Filter */
 /** @typedef {import('./items.js').Data} Data */
+
+/**
+ * The tasks a delete takes: a task with its subtasks, a section's tasks (with theirs), a project's with its
+ * sub-projects' (never the Inbox's). Their attached files go too (cloud.js).
+ * @param {'task' | 'section' | 'project'} kind @param {{ id: string }} x @param {Data} data @returns {Task[]}
+ */
+export function tasksGone(kind, x, data) {
+  if (kind === 'task') return [/** @type {Task} */ (x), ...descendants(x.id, data.tasks)];
+  if (kind === 'section') return sectionCascade(x.id, data.tasks);
+  return x.id === INBOX ? [] : projectCascade(x.id, data.projects, data.sections, data.tasks).tasks;
+}
 
 /** @param {Promise<unknown>} saving @returns {Promise<string>} */
 export const refusal = saving => saving.then(() => '', e => (e instanceof Error && e.message) || 'The server refused it');
@@ -62,7 +73,7 @@ export function taskOps({ save, id, data, now = Date.now, drop = () => {} }) {
     /** not done again (an undo): each as it is now @param {Task[]} tasks */
     untick: tasks => first(tasks.map(t => data().tasks.find(x => x.id === t.id) ?? t).map(t => put(COLL, { ...t, done: false, doneAt: null }, t))),
     /** a task and its subtasks @param {Task} task */
-    removeTask: task => remove(COLL, [task, ...descendants(task.id, data().tasks)]),
+    removeTask: task => remove(COLL, tasksGone('task', task, data())),
     /**
      * to another project, section or parent (at the end there); its subtasks follow it to the project and section
      * @param {Task} task @param {{ projectId?: string, sectionId?: string | null, parentId?: string | null }} to
@@ -106,7 +117,10 @@ export function taskOps({ save, id, data, now = Date.now, drop = () => {} }) {
         const { id: _i, createdAt: _c, updatedAt: _u, serverAt: _s, _edits: _e, doneAt: _d, extId: _x, ...rest } = t;
         return put(COLL, { ...rest, ...extra, id: map.get(t.id), done: false, doneAt: null, createdAt: now() }, null);
       };
-      return first([copy(task, { order: task.order + 0.5 }), ...under.map(t => copy(t, { parentId: map.get(String(t.parentId)) ?? t.parentId }))]);
+      // (between it and the next of its siblings, or after it when last: a copy never lands on another's place)
+      const after = siblings(projectOf(task), task.sectionId, task.parentId).map(t => t.order).filter(o => typeof o === 'number' && o > task.order);
+      const order = orderBetween(task.order, after.length ? Math.min(...after) : null);
+      return first([copy(task, { order }), ...under.map(t => copy(t, { parentId: map.get(String(t.parentId)) ?? t.parentId }))]);
     },
 
     /** @param {{ name: string, color?: string, parentId?: string | null, favorite?: boolean, view?: 'list' | 'board' }} p
@@ -148,7 +162,7 @@ export function taskOps({ save, id, data, now = Date.now, drop = () => {} }) {
     /** @param {Section} s @param {boolean} collapsed */
     foldSection: (s, collapsed) => put(SECTIONS, { ...s, collapsed }, s),
     /** a section and its tasks @param {Section} s */
-    removeSection: async s => first([remove(COLL, sectionCascade(s.id, data().tasks)), remove(SECTIONS, [s])]),
+    removeSection: async s => first([remove(COLL, tasksGone('section', s, data())), remove(SECTIONS, [s])]),
 
     /** @param {{ name: string, color?: string, favorite?: boolean }} l */
     addLabel: l => {

@@ -3,8 +3,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { projectView, todayView, upcomingView, completedView, projectTree, projectCounts, todayCount, upcomingCount, placeText,
-  projectCascade, sectionCascade, cleanFields, cleanDue, isTask, dayOrder, labelsOf, cleanDisplay, plainDisplay, narrowTasks, sorter, groupTasks } from '../src/tasks.js';
-import { taskOps, refusal } from '../src/task-ops.js';
+  projectCascade, sectionCascade, cleanFields, cleanDue, isTask, dayOrder, labelsOf, cleanDisplay, plainDisplay, narrowTasks, sorter, groupTasks, rescheduled } from '../src/tasks.js';
+import { taskOps, refusal, tasksGone } from '../src/task-ops.js';
 
 const T = '2026-11-01';
 let n = 0;
@@ -156,6 +156,14 @@ test('duplicate copies a task and its subtasks under new ids, open', async () =>
   assert.deepEqual([sub.title, sub.parentId, sub.done], ['c', copy.id, false]);
 });
 
+test('a duplicate goes between the task and the next one, never onto another task\'s place; after the last one', async () => {
+  const s = store({ tasks: [t('a', { order: 1 }), t('b', { order: 1.25 }), t('elsewhere', { order: 1.1, projectId: 'p' })] });
+  await s.ops.duplicateTask(s.data.tasks[0]);
+  assert.equal(s.data.tasks.at(-1).order, 1.125, 'before: 1.5, past b');
+  await s.ops.duplicateTask(s.data.tasks[1]);
+  assert.equal(s.data.tasks.at(-1).order, 2.25);
+});
+
 test('projects: add at the end with a known colour; delete takes sub-projects, sections and tasks; the Inbox stays', async () => {
   const s = store();
   const { id: w } = await s.ops.addProject({ name: ' Work ', color: 'pink' });
@@ -266,4 +274,62 @@ test('the Display filter, and the completed switch\'s done tasks', () => {
   assert.deepEqual(n({ date: 'week' }), ['Banana', 'apple', 'date']);
   const open = pool().filter(x => !x.done);
   assert.deepEqual(groupTasks(open, D(), { projects, labels, today: T })[0].tasks.length, 3, 'completed off: the list gives open tasks only');
+});
+
+test('a day\'s order is a total order: dragged tasks first in their order, then the others by time; any sort gives one answer', () => {
+  const day = { date: T };
+  // (before: x < y by dayOrder, y < z and z < x by time, a loop)
+  const x = t('x', { dayOrder: 1, due: { ...day, time: '12:00' } }), y = t('y', { dayOrder: 2, due: { ...day, time: '08:00' } }),
+    z = t('z', { due: { ...day, time: '10:00' } }), w = t('w', { due: day }), u = t('u'), v = t('v', { dayOrder: 3, due: { date: '2026-11-02' } });
+  const all = [x, y, z, w, u, v];
+  const want = ['x', 'y', 'z', 'w', 'v', 'u'];
+  for (let i = 0; i < 24; i++) {
+    const shuffled = [...all].sort(() => Math.random() - 0.5);
+    assert.deepEqual(shuffled.sort(dayOrder).map(k => k.id), want);
+  }
+  for (const a of all) for (const b of all) for (const c of all) {
+    if (dayOrder(a, b) < 0 && dayOrder(b, c) < 0) assert.ok(dayOrder(a, c) < 0, `${a.id} < ${b.id} < ${c.id}`);
+  }
+  assert.equal(dayOrder(x, x), 0);
+});
+
+test('a project page with Display\'s choice: its subtasks follow it too (done ones with Show completed, the filter\'s choice)', () => {
+  const tasks = [t('top', { projectId: 'p' }), t('done-sub', { projectId: 'p', parentId: 'top', done: true }), t('p1-sub', { projectId: 'p', parentId: 'top', priority: 1 }),
+    t('p4-sub', { projectId: 'p', parentId: 'top' })];
+  const completed = projectView(tasks, [], 'p', { keep: () => true });
+  assert.deepEqual(ids(completed.loose), ['top', 'done-sub', 'p1-sub', 'p4-sub']);
+  const p1 = projectView([...tasks, t('p1', { projectId: 'p', priority: 1 })], [], 'p', { keep: k => !k.done && k.priority === 1 });
+  assert.deepEqual(ids(p1.loose), ['p1-sub', 'p1'], 'a subtask the filter drops does not show; one it keeps shows on its own when its parent is not kept');
+  const plain = projectView(tasks, [], 'p');
+  assert.deepEqual(ids(plain.loose), ['top', 'p1-sub', 'p4-sub']);
+  assert.equal(plain.loose[0].kids, 3, 'the count is of every subtask');
+});
+
+test('Reschedule: the day picked; a repeat picked replaces the old one; the old time and rule stay when none is picked', () => {
+  const rep = { date: '2026-10-30', time: '09:00', rrule: 'FREQ=WEEKLY', string: 'every week' };
+  assert.deepEqual(rescheduled(rep, { date: T, rrule: 'FREQ=DAILY', string: 'every day' }), { date: T, time: '09:00', rrule: 'FREQ=DAILY', string: 'every day' });
+  assert.deepEqual(rescheduled(rep, { date: T, time: '18:30' }), { date: T, time: '18:30', rrule: 'FREQ=WEEKLY', string: 'every week' });
+  assert.deepEqual(rescheduled({ date: '2026-10-30', rrule: 'FREQ=DAILY', fromDone: true }, { date: T, rrule: 'FREQ=MONTHLY' }), { date: T, rrule: 'FREQ=MONTHLY' });
+  assert.deepEqual(rescheduled({ date: '2026-10-30' }, { date: T, rrule: 'FREQ=DAILY' }), { date: T, rrule: 'FREQ=DAILY' });
+  assert.equal(rescheduled(rep, null), undefined, 'No date leaves a repeating one be');
+  assert.equal(rescheduled({ date: '2026-10-30' }, null), null);
+});
+
+test('a delete\'s tasks (their files go with them): a task with every subtask, a section\'s, a project\'s with its sub-projects\'', async () => {
+  const data = { projects: [{ id: 'p', name: 'P', order: 1 }, { id: 'p2', name: 'Sub', parentId: 'p', order: 1 }], sections: [{ id: 's', name: 'S', projectId: 'p', order: 1 }],
+    tasks: [t('top', { projectId: 'p' }), t('sub', { projectId: 'p', parentId: 'top' }), t('subsub', { projectId: 'p', parentId: 'sub' }),
+      t('in-s', { projectId: 'p', sectionId: 's' }), t('in-s-sub', { projectId: 'p', sectionId: 's', parentId: 'in-s' }), t('deep', { projectId: 'p2' }), t('other')],
+    labels: [], filters: [] };
+  const sorted = list => list.map(x => x.id).sort();
+  assert.deepEqual(sorted(tasksGone('task', data.tasks[0], data)), ['sub', 'subsub', 'top']);
+  assert.deepEqual(sorted(tasksGone('section', data.sections[0], data)), ['in-s', 'in-s-sub']);
+  assert.deepEqual(sorted(tasksGone('project', data.projects[0], data)), ['deep', 'in-s', 'in-s-sub', 'sub', 'subsub', 'top']);
+  assert.deepEqual(tasksGone('project', { id: 'inbox' }, data), []);
+  // (the same tasks the deletes take)
+  for (const [kind, x, run] of [['task', data.tasks[0], (o, y) => o.removeTask(y)], ['section', data.sections[0], (o, y) => o.removeSection(y)], ['project', data.projects[0], (o, y) => o.removeProject(y)]]) {
+    const s = store(structuredClone(data));
+    const want = sorted(tasksGone(kind, x, s.data));
+    await run(s.ops, x);
+    assert.deepEqual(sorted(s.saves.filter(([c, r]) => c === 'tasks' && r._deleted).map(([, r]) => r)), want, kind);
+  }
 });

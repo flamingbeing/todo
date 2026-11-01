@@ -50,12 +50,16 @@ export const REFUSED = 'The server refused that. A copy is kept in the refused l
  * @property {import('app-ui/ui/types').SyncApi} sync  for the kit's conflict sheet and refused list
  * @property {import('app-ui/settings/types').SettingsApi} settings
  * @property {import('app-ui/ui/types').UpdateApi | null} update  with a service worker only
- * @property {(task: Task, attached?: unknown[]) => Promise<string>} remove  a task and its subtasks
+ * @property {(task: Task, filesOf?: (id: string) => unknown[]) => Promise<string>} remove  a task and its subtasks
+ *   (and each one's files: filesOf, the files slot's of)
+ * @property {(p: Project, filesOf?: (id: string) => unknown[]) => Promise<string>} removeProject  with its sub-projects,
+ *   sections and tasks (and their files)
+ * @property {(s: Section, filesOf?: (id: string) => unknown[]) => Promise<string>} removeSection  with its tasks (and their files)
  * @property {(taskId: string, cb: (task: Task | null) => void) => () => void} watchItem  cb(null) once it is gone -> stop()
  * @property {() => Task[]} items  the tasks as last heard (a backup takes them)
  * @property {() => Data} data  every record as last heard
  * @property {(task: Task) => Promise<string>} put  a whole task under its own id (a restore); '' or the reason
  * @property {BinApi} [bin]  the deleted items (the bin recipe; the cloud app only)
  * @property {() => boolean} serverCopyIn  whether the server's copy has arrived yet
- * @typedef {ItemsAppBase & Omit<Ops, 'removeTask' | 'put'>} ItemsApp
+ * @typedef {ItemsAppBase & Omit<Ops, 'removeTask' | 'removeProject' | 'removeSection' | 'put'>} ItemsApp
  */

@@ -33,7 +33,7 @@ import { setHint } from './hint.js';
 import { OPTIONS, SETTINGS_COLL } from './options.js';
 import { dataModules } from './data-modules.js';
 import { COLL, RECORDS, PROJECTS, SECTIONS, LABELS, FILTERS } from './items.js';
-import { taskOps } from './task-ops.js';
+import { taskOps, tasksGone } from './task-ops.js';
 
 export { usingEmulator } from './roles.js';
 export { lastSignedIn, keepList, keptList } from './hint.js';
@@ -223,8 +223,16 @@ export async function start({ canReload = null }) {
     } catch { return 'Offline: try again.'; }
   };
   const id = () => (crypto.randomUUID?.() || String(Date.now()) + Math.random().toString(36).slice(2)).replace(/-/g, '');
-  const { removeTask, put, ...ops } = taskOps({ save: (coll, record, base) => app.sync.save(coll, SPACE, record, base), id,
+  const { removeTask, removeProject, removeSection, put, ...ops } = taskOps({ save: (coll, record, base) => app.sync.save(coll, SPACE, record, base), id,
     data: () => latest, drop: (coll, ids) => { void app.sync.hub.drop(SPACE, coll, ids); } });
+  /** the delete's answer, once the files of every task it took are gone too
+   * @param {Item[]} gone @param {Promise<string>} deleting @param {((id: string) => unknown[]) | undefined} filesOf */
+  const withFiles = async (gone, deleting, filesOf) => {
+    const attached = filesOf ? gone.flatMap(t => filesOf(t.id)) : [];
+    const refused = await deleting;
+    await dataModules.files?.removeAll(app, attached);
+    return refused;
+  };
   return {
     // the modules' apis, for the UI kit's parts (update: with a service worker only, else null)
     auth: app.auth, sync: app.sync, settings: app.settings, update: app.update || null, files: app.files,
@@ -239,13 +247,14 @@ export async function start({ canReload = null }) {
     // the writes resolve to '' when the save is stored or queued, or to the reason when the server refused it at once
     // (task-ops.js); base: the copy the change started from
     ...ops,
-    // a delete takes the task's subtasks and attached files with it (the files recipe)
-    /** @param {Item} item @param {unknown[]} [attached] */
-    remove: async (item, attached = []) => {
-      const refused = await removeTask(item);
-      await dataModules.files?.removeAll(app, attached);
-      return refused;
-    },
+    // a delete takes the task's subtasks with it, and the files attached to each task it takes (the files recipe;
+    // filesOf: a task's files, the screens' files slot); so does a project's or a section's
+    /** @param {Item} item @param {(id: string) => unknown[]} [filesOf] */
+    remove: (item, filesOf) => withFiles(tasksGone('task', item, latest), removeTask(item), filesOf),
+    /** @param {import('./items.js').Project} p @param {(id: string) => unknown[]} [filesOf] */
+    removeProject: (p, filesOf) => withFiles(tasksGone('project', p, latest), removeProject(p), filesOf),
+    /** @param {import('./items.js').Section} s @param {(id: string) => unknown[]} [filesOf] */
+    removeSection: (s, filesOf) => withFiles(tasksGone('section', s, latest), removeSection(s), filesOf),
     // one item, live from the server: cb(item) when its copy changes, cb(null) once the server says it is gone -> stop()
     /** @param {string} itemId @param {(item: Item | null) => void} cb @returns {() => void} */
     watchItem: (itemId, cb) => app.sync.watchDoc(['spaces', SPACE, COLL, itemId], cb),

@@ -6,7 +6,7 @@
 // chip can clear it; a range the person cleared (ignore) stays text. With smart dates off only #, /, @, % and p count.
 // Pure: the chrono and rrule libraries are passed in by the caller, which loads them lazily.
 import { addDays, dayKey, timeKey, weekdayOf, isDay } from './dates.js';
-import { findRecur, timeOf, firstDay, TIME_RE } from './recur.js';
+import { findRecur, timeOf, firstDay, firstDayPlain, TIME_RE } from './recur.js';
 
 /** @typedef {'project' | 'section' | 'label' | 'priority' | 'date' | 'recur' | 'deadline'} TokenKind */
 /** @typedef {{ start: number, end: number, kind: TokenKind, value: unknown }} Token */
@@ -104,7 +104,8 @@ export function parse(text, ctx = {}) {
   const taken = new Uint8Array(text.length);
   for (const r of ctx.ignore ?? []) taken.fill(1, Math.max(0, r.start), Math.min(text.length, r.end));
   const free = (/** @type {number} */ a, /** @type {number} */ b) => { for (let i = a; i < b; i++) if (taken[i]) return false; return true; };
-  const masked = () => [...text].map((ch, i) => (taken[i] ? ' ' : ch)).join('');
+  // (by UTF-16 unit, as taken and every index here are: an emoji is two)
+  const masked = () => text.replace(/[\s\S]/g, (ch, i) => (taken[i] ? ' ' : ch));
   /** @param {number} start @param {number} end @param {TokenKind} kind @param {unknown} value */
   const take = (start, end, kind, value) => { tokens.push({ start, end, kind, value }); taken.fill(1, start, end); };
   const lower = text.toLowerCase();
@@ -228,7 +229,8 @@ export function parse(text, ctx = {}) {
     }
     if (recur) {
       const startDay = recur.start ?? day?.date ?? today;
-      const date = (ctx.RRule ? firstDay(recur.rrule, startDay, ctx.RRule) : null) ?? startDay;
+      // (before the rule library has loaded, the simple rules are worked out by hand)
+      const date = (ctx.RRule ? firstDay(recur.rrule, startDay, ctx.RRule) : firstDayPlain(recur.rrule, startDay)) ?? startDay;
       const time = recur.time ?? day?.time;
       due = { date, ...(time ? { time } : {}), rrule: recur.rrule, string: recur.string, ...(recur.fromDone ? { fromDone: true } : {}) };
     } else if (day) {

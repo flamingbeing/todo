@@ -138,7 +138,8 @@ test('repeats: the first date comes from the rule', () => {
   assert.deepEqual(due('Haircut every! 4 weeks'), { date: '2026-11-01', rrule: 'FREQ=WEEKLY;INTERVAL=4', string: 'every! 4 weeks', fromDone: true });
   assert.deepEqual(due('Bins every tue starting dec 1'), { date: '2026-12-01', rrule: 'FREQ=WEEKLY;BYDAY=TU', string: 'every tue starting dec 1' });
   assert.equal(p('Gym every monday #Home').title, 'Gym');
-  assert.deepEqual(due('Gym every monday', { RRule: null }), { date: '2026-11-01', rrule: 'FREQ=WEEKLY;BYDAY=MO', string: 'every monday' }, 'without the library: from today');
+  assert.deepEqual(due('Gym every monday', { RRule: null }), { date: '2026-11-02', rrule: 'FREQ=WEEKLY;BYDAY=MO', string: 'every monday' }, 'without the library: the same day');
+  assert.equal(due('Payday every last workday', { RRule: null })?.date, '2026-11-01', 'one too hard by hand: from today until the library loads');
   assert.equal(due('Meds every 4 hours'), null);
 });
 
@@ -205,4 +206,22 @@ test('{...} that is not a day stays text', () => {
   assert.equal(p('Fix {dec 5}', { smartDates: false }).deadline, null, 'smart dates off');
   assert.equal(p('Fix {dec 5}', { ignore: [{ start: 4, end: 11 }] }).deadline, null, 'a cleared range stays text');
   assert.equal(p('Fix {tmr} {dec 5}').deadline, '2026-11-02', 'the first one counts');
+});
+
+test('an emoji before the words (two UTF-16 units) moves nothing', () => {
+  const r = p('🎉 party p1 tomorrow 5pm every fri');
+  assert.equal(r.title, '🎉 party');
+  assert.equal(r.priority, 1);
+  assert.deepEqual(r.due, { date: '2026-11-06', time: '17:00', rrule: 'FREQ=WEEKLY;BYDAY=FR', string: 'every fri' });
+  // (two of them: a mask two places late would hide the t of tomorrow)
+  const text = '🎉🎉 call p1 tomorrow';
+  assert.deepEqual(p(text).tokens.map(t => text.slice(t.start, t.end)), ['p1', 'tomorrow']);
+  assert.equal(p(text).title, '🎉🎉 call');
+});
+
+test('a repeat before the rule library has loaded: its first day all the same (the simple rules)', () => {
+  const none = { RRule: null };
+  assert.deepEqual(due('Gym every fri', none), { date: '2026-11-06', rrule: 'FREQ=WEEKLY;BYDAY=FR', string: 'every fri' });
+  assert.equal(due('Rent every month on the 15th', none)?.date, due('Rent every month on the 15th')?.date);
+  assert.equal(due('Water plants every day', none)?.date, '2026-11-01');
 });

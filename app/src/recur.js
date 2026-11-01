@@ -220,6 +220,41 @@ export function firstDay(rrule, from, RRule) {
 }
 
 /**
+ * firstDay without the rule library, for the rules simple enough to work out by hand (quick add before the library
+ * has loaded): no BY part (the day itself), weekly on some weekdays, monthly on some days of the month. null for the
+ * others (and a rule with an end), which wait for the library.
+ * @param {string} rrule @param {string} from @returns {string | null}
+ */
+export function firstDayPlain(rrule, from) {
+  const p = ruleParts(rrule), by = Object.keys(p).filter(k => k !== 'FREQ' && k !== 'INTERVAL' && k !== 'WKST');
+  const every = Math.max(1, +(p.INTERVAL ?? 1));
+  if (!['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'].includes(p.FREQ) || !isDay(from)) return null;
+  if (!by.length) return from;
+  if (by.length !== 1) return null;
+  if (p.FREQ === 'WEEKLY' && p.BYDAY) {
+    const days = p.BYDAY.split(',');
+    if (!days.every(c => WEEKDAY_CODES.includes(c))) return null;
+    // (every other week and more: only a day left in this week (weeks start on Monday) is sure without the library)
+    const left = every === 1 ? 6 : (7 - weekdayOf(from)) % 7;
+    for (let i = 0; i <= left; i++) { const k = addDays(from, i); if (days.includes(WEEKDAY_CODES[weekdayOf(k)])) return k; }
+    return null;
+  }
+  if (p.FREQ === 'MONTHLY' && p.BYMONTHDAY) {
+    const want = p.BYMONTHDAY.split(',').map(Number);
+    if (!want.every(n => Number.isInteger(n) && (n === -1 || (n >= 1 && n <= 31)))) return null;
+    for (let m = 0; m < (every === 1 ? 12 : 1); m++) {
+      const first = addMonths(`${from.slice(0, 8)}01`, m), y = +first.slice(0, 4), mo = +first.slice(5, 7);
+      const last = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+      const hit = want.map(n => (n === -1 ? last : n)).filter(n => n <= last).map(n => `${first.slice(0, 8)}${String(n).padStart(2, '0')}`)
+        .filter(k => k >= from).sort()[0];
+      if (hit) return hit;
+    }
+    return null;
+  }
+  return null;
+}
+
+/**
  * The next date of a repeating task once it is done: "every" counts from the day it was due (done late, the cycle
  * holds), and when that is still before today it jumps to the first match from today on; "every!" counts from the day
  * it was done. Past the rule's end: null (it is done for good).
@@ -323,4 +358,24 @@ export function ruleChoices(rrule) {
 /** @type {Promise<{ chrono: import('chrono-node').Chrono, RRule: RRuleClass }> | undefined} */
 let libs;
 /** the date libraries (vendored, tools/vendor-lib.mjs), fetched the first time a screen needs them */
-export const dateLibs = () => (libs ??= Promise.all([import('chrono-node'), import('rrule')]).then(([c, r]) => ({ chrono: c.casual, RRule: r.RRule })));
+// (a failed load is not kept: offline before the files were kept, the next ask tries again)
+export const dateLibs = () => (libs ??= Promise.all([import('chrono-node'), import('rrule')]).then(([c, r]) => ({ chrono: c.casual, RRule: r.RRule }),
+  e => { libs = undefined; throw e; }));
+
+/**
+ * The next date of each repeating task once done today (nextDay), for several at once (select mode's Complete). When
+ * the rule library does not load (offline before it was kept) none is worked out: a repeating task left out of the
+ * map must stay as it is, as done for good would be wrong.
+ * @param {{ id: string, due?: import('./dates.js').Due | null }[]} tasks @param {string} today
+ * @param {() => Promise<RRuleClass>} load @returns {Promise<Map<string, string | null>>}
+ */
+export async function nextDays(tasks, today, load) {
+  /** @type {Map<string, string | null>} */
+  const out = new Map();
+  const repeating = tasks.filter(t => t.due?.rrule);
+  if (!repeating.length) return out;
+  let RRule;
+  try { RRule = await load(); } catch { return out; }
+  for (const t of repeating) out.set(t.id, nextDay(/** @type {import('./dates.js').Due} */ (t.due), { done: today, today }, RRule));
+  return out;
+}

@@ -1,7 +1,7 @@
 // recur.js: "every …" words to a rule and back, and the next date once done. node --test app/test/recur.unit.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { findRecur, describe, nextDay, firstDay, presets, buildRule, ruleChoices, dayOf, timeOf } from '../src/recur.js';
+import { findRecur, describe, nextDay, nextDays, dateLibs, firstDay, firstDayPlain, presets, buildRule, ruleChoices, dayOf, timeOf } from '../src/recur.js';
 import { RRule } from '../public/vendor/rrule/2.8.1/rrule.js';
 
 const today = '2026-11-01';   // a Sunday
@@ -148,4 +148,42 @@ test('days and times in the words', () => {
   assert.equal(timeOf('12am', false), '00:00');
   assert.equal(timeOf('9', false), null);
   assert.equal(timeOf('13pm', false), null);
+});
+
+test('several done at once: each repeating one gets its next date; none when the library does not load (never done for good)', async () => {
+  const tasks = [{ id: 'w', due: { date: today, rrule: 'FREQ=WEEKLY' } }, { id: 'plain', due: { date: today } }, { id: 'end', due: { date: today, rrule: 'FREQ=DAILY;COUNT=1' } }];
+  const got = await nextDays(tasks, today, async () => RRule);
+  assert.deepEqual([...got], [['w', '2026-11-08'], ['end', null]]);
+  const offline = await nextDays(tasks, today, () => Promise.reject(new Error('offline')));
+  assert.equal(offline.size, 0, 'left out: the caller keeps them as they are');
+  assert.equal((await nextDays([{ id: 'plain' }], today, () => { throw new Error('not asked'); })).size, 0);
+});
+
+test('a failed library load is not kept: the next ask tries again', async () => {
+  // (in node the import map's bare names do not resolve, so each load fails)
+  const first = dateLibs();
+  await assert.rejects(first);
+  const again = dateLibs();
+  assert.notEqual(again, first);
+  await assert.rejects(again);
+});
+
+test('the first day without the library: the same as with it for the simple rules, null for the rest', () => {
+  const rules = ['FREQ=DAILY', 'FREQ=DAILY;INTERVAL=3', 'FREQ=WEEKLY', 'FREQ=MONTHLY', 'FREQ=YEARLY', 'FREQ=WEEKLY;BYDAY=FR', 'FREQ=WEEKLY;BYDAY=MO,WE',
+    'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR', 'FREQ=WEEKLY;INTERVAL=2;BYDAY=FR', 'FREQ=WEEKLY;INTERVAL=2;BYDAY=MO', 'FREQ=MONTHLY;BYMONTHDAY=15',
+    'FREQ=MONTHLY;BYMONTHDAY=31', 'FREQ=MONTHLY;BYMONTHDAY=1,15', 'FREQ=MONTHLY;BYMONTHDAY=-1', 'FREQ=MONTHLY;INTERVAL=2;BYMONTHDAY=20'];
+  let known = 0;
+  for (let i = 0; i < 70; i++) {
+    const from = new Date(Date.UTC(2026, 10, 1 + i * 3)).toISOString().slice(0, 10);
+    for (const r of rules) {
+      const plain = firstDayPlain(r, from);
+      if (plain === null) continue;
+      known++;
+      assert.equal(plain, firstDay(r, from, RRule), `${r} from ${from}`);
+    }
+  }
+  assert.ok(known > 900);
+  assert.equal(firstDayPlain('FREQ=WEEKLY;BYDAY=FR', '2026-11-01'), '2026-11-06');
+  assert.equal(firstDayPlain('FREQ=MONTHLY;BYDAY=+1MO', '2026-11-01'), null);
+  assert.equal(firstDayPlain('FREQ=DAILY;UNTIL=20261110T235959Z', '2026-11-01'), null);
 });

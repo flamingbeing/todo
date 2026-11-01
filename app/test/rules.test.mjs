@@ -211,7 +211,10 @@ test('account options: one doc per person, only theirs, only the allowed fields'
   assert.equal((await as('member').set('spaces/_/settings/u-member', mine)).ok, false, 'unstamped');
   assert.equal((await as('member').set('spaces/_/settings/u-member', { ...mine, other: 1 }, at)).ok, false, 'an option the app did not list');
   assert.equal((await as('member').set('spaces/_/settings/u-member', { showCounts: 'yes', updatedAt: 1 }, at)).ok, false, 'wrong type');
-  assert.equal((await as('member').set('spaces/_/settings/u-member', { defaultList: 'l1', updatedAt: 1 }, at)).ok, false, 'the old list option is gone');
+  // (an older version's doc still holds defaultList: saving other options to it must go on working)
+  await emu.seed('spaces/_/settings/u-member', { defaultList: 'l1', showCounts: false, updatedAt: 1 });
+  assert.equal((await as('member').update('spaces/_/settings/u-member', { defaultList: 'l1', showCounts: true, updatedAt: 2 }, at)).ok, true, 'a doc with the old option still saves');
+  assert.equal((await as('member').set('spaces/_/settings/u-member', { defaultList: 'x'.repeat(65), updatedAt: 3 }, at)).ok, false, 'the old option, checked as before');
   assert.equal((await as('member').set('spaces/_/settings/u-member', { showCounts: null, profile: null, updatedAt: 2 }, at)).ok, true, 'null forgets a value');
 });
 
