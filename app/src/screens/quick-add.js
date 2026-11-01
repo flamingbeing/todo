@@ -52,7 +52,7 @@ export function openQuickAdd(ctx, start, hold = null) {
   /** what the person set by hand (a chip or the foot): it wins over the words */
   const manual = /** @type {{ due?: Due | null, priority?: number, labels?: string[], place?: { projectId: string, sectionId: string | null } }} */ ({});
   /** where the page shown says a task goes, and its date */
-  const base = { projectId: start.projectId ?? INBOX, sectionId: start.sectionId ?? null, parentId: start.parentId ?? null, due: start.due ?? null };
+  const base = { projectId: start.projectId ?? INBOX, sectionId: start.sectionId ?? null, parentId: start.parentId ?? null, due: start.due ?? null, order: typeof start.order === 'number' ? start.order : undefined };
   /** cleared ranges of the name: the words stay text */
   let ignore = /** @type {{ start: number, end: number }[]} */ ([]);
   let was = '';
@@ -232,12 +232,18 @@ export function openQuickAdd(ctx, start, hold = null) {
   const ready = () => { send.disabled = !parsed.title; };
   foot.append(place, send);
 
+  // (the FAB dropped between two rows gives the first task that place; the next ones go to the end)
+  const atDrop = (/** @type {{ projectId: string, sectionId: string | null, parentId: string | null }} */ v) => {
+    const o = base.order;
+    base.order = undefined;
+    return o !== undefined && v.projectId === base.projectId && v.sectionId === base.sectionId && v.parentId === base.parentId ? o : undefined;
+  };
   /** adds one task from a name (with its words) and the description @param {Parsed} p @param {ReturnType<typeof value>} v @param {string} about */
   const addOne = async (p, v, about) => {
     const known = new Set(ctx.data().labels.map(l => l.name.toLowerCase()));
     for (const n of v.labels) if (!known.has(n.toLowerCase())) { known.add(n.toLowerCase()); void ctx.app.addLabel({ name: n }); }
     return ctx.app.addTask({ title: p.title, description: about || undefined, projectId: v.projectId, sectionId: v.sectionId, parentId: v.parentId,
-      priority: v.priority, labels: v.labels.length ? v.labels : undefined, due: v.due ?? undefined });
+      priority: v.priority, labels: v.labels.length ? v.labels : undefined, due: v.due ?? undefined, order: atDrop(v) });
   };
   const clearAll = () => {
     title.value = ''; desc.value = ''; desc.style.height = ''; ignore = []; was = '';

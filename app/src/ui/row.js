@@ -73,6 +73,7 @@ export function taskRow(line, c) {
   const t = line.task, p = priorityOf(t);
   const li = /** @type {HTMLLIElement} */ (el('li', 'td-row'));
   li.dataset.id = t.id;
+  li.toggleAttribute('data-swipe-own', c.canWrite);   // (a sideways swipe on a row is the row's: ui/row-swipe.js)
   li.dataset.priority = String(p);
   if (line.depth) li.style.setProperty('--depth', String(line.depth));
   if (c.changed?.has(t.id)) li.classList.add('changed');

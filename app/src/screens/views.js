@@ -2,7 +2,7 @@
 // heard (tasks.js says what goes where; ui/row.js draws a row). Only the page on screen is drawn at once; the others
 // when they come up (or are asked to draw ahead for a swipe). The task sheet, quick add, Browse, the project sheet and
 // Completed load the first time they are needed (lazyModules), then in idle moments after the first screen.
-import { conflictSheet, refusedList, toaster, undoToast, loadState, confirmModal, lazyModules, glide, plural, holdKeyboard } from '@core/ui';
+import { conflictSheet, refusedList, toaster, undoToast, loadState, confirmModal, lazyModules, glide, plural, holdKeyboard, captured } from '@core/ui';
 import { COLL, REFUSED, INBOX, itemText } from '../items.js';
 import { projectView, todayView, upcomingView, isTask, placeText, projectCascade, projectOf, priorityOf } from '../tasks.js';
 import { dayKey, dayTitle, dueLine } from '../dates.js';
@@ -49,7 +49,7 @@ import { modules } from '../modules.js';
  * @property {() => import('../items.js').User | undefined} user
  * @property {ItemFiles | undefined} files
  */
-/** @typedef {{ projectId?: string, sectionId?: string | null, parentId?: string | null, due?: import('../dates.js').Due | null }} AddContext */
+/** @typedef {{ projectId?: string, sectionId?: string | null, parentId?: string | null, due?: import('../dates.js').Due | null, order?: number }} AddContext */
 
 const UPCOMING_STEP = 28;
 
@@ -60,7 +60,7 @@ export function views(app) {
   let data = { tasks: [], projects: [], sections: [], labels: [], filters: [] };
   /** @type {import('../items.js').User | undefined} */
   let user;
-  let changed = new Set();
+  let changed = new Set(), held = false;
   let drawnDay = dayKey();
   let upcomingDays = UPCOMING_STEP;
   /** the project the project page shows */
@@ -84,6 +84,7 @@ export function views(app) {
     browse: () => import('./browse.js'),
     projectSheet: () => import('./project-sheet.js'),
     completed: () => import('./completed.js'),
+    gestures: () => import('../ui/row-gestures.js'),
   });
 
   /** @type {Ctx} */
@@ -145,8 +146,8 @@ export function views(app) {
   const fab = $('fab'), more = $('more-btn');
   fab.addEventListener('click', () => { if (canWrite) { const hold = holdKeyboard(); void lazy.withMod('add', m => m.openQuickAdd(ctx, addContext(), hold)); } });
   more.addEventListener('click', () => pageMenu());
+  const lists = ['inbox-page', 'today-page', 'upcoming-page', 'project-page'];
   const onScreen = () => {
-    const lists = ['inbox-page', 'today-page', 'upcoming-page', 'project-page'];
     fab.hidden = !canWrite || !lists.includes(top);
     more.hidden = !canWrite || !(top === 'inbox-page' || top === 'project-page');
     paint(top);
@@ -158,6 +159,7 @@ export function views(app) {
     openMenu(more, [
       ...(pid !== INBOX && p ? [{ label: 'Edit project', icon: ICONS.pencil, run: () => ctx.openProjectSheet({ project: p }) }] : []),
       { label: 'Add section', icon: ICONS.circlePlus, run: () => newSection(pid) },
+      { label: 'Select tasks', icon: ICONS.squareCheck, run: () => { void lazy.withMod('gestures', m => m.select(ctx, top.slice(0, -5))); } },
       ...(pid !== INBOX && p ? [null, { label: 'Delete project', icon: ICONS.trash2, danger: true, run: () => { void removeProject(p); } }] : []),
     ], { label: 'Project' });
   };
@@ -257,6 +259,7 @@ export function views(app) {
     }
     if (v.today.length || v.overdue.length) {
       const g = document.createElement('section'); g.className = 'td-group';
+      g.dataset.day = today;
       g.append(groupHead(dayTitle(today, today)), rowList(v.today, rowCtx({ place: true, own: today }), 'Today'));
       parts.push(g);
     }
@@ -354,12 +357,21 @@ export function views(app) {
     hide() { screen.hide(); fab.hidden = true; more.hidden = true; },
     /** @param {Data} next @param {Set<string>} ids  tasks changed elsewhere since the last draw */
     draw(next, ids) {
-      data = next; changed = ids;
+      data = next; changed = new Set([...changed, ...ids]);
       filter?.feed(data.tasks);
       loading.done();
-      redraw();
+      // (not under a finger on a row, held or held up for a drag: drawn again, the row would leave it; once it is let go)
+      const now = () => { held = captured() === 'drag' || !!document.querySelector('[data-holding]'); if (held) setTimeout(now, 150); else redraw(); };
+      if (!held) now();
       // the quick add and the task sheet straight after the first draw (the main ways in, and may be used offline), then the rest
-      if (!warmed) { warmed = true; lazy.need('add').then(() => lazy.need('sheet')).catch(() => {}); lazy.warmUp(); }
+      if (!warmed) {
+        warmed = true;
+        lazy.need('add').then(() => lazy.need('sheet')).catch(() => {});
+        // the rows' swipes, holds and drags, and the + button's drag (each list host is wired once)
+        lazy.need('gestures').then(m => m.wire(ctx, { hosts: { today: 'days', upcoming: 'days', inbox: 'tree', project: 'tree', search: null },
+          top: () => (lists.includes(top) ? top.slice(0, -5) : ''), projectId: () => projectId, add: ctx.openQuickAdd, newSection })).catch(() => {});
+        lazy.warmUp();
+      }
     },
     /** @returns {import('../hint.js').Row[]} what Today shows (the next start paints it first) */
     shown: () => shownToday.map(t => {

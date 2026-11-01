@@ -277,3 +277,31 @@ export async function itemIdOf(text) {
   }
 }
 // }cloud
+
+// A finger on an element (pointer events, as a touch screen sends them): down at its middle (or at `at`, from its
+// top left), held `hold` ms, moved by each [dx, dy] in turn (a frame apart, the last one ending `wait` ms before the
+// lift), then lifted. The rows' gestures load after the first screen: wait for them first (gesturesReady).
+export async function finger(page, selector, steps = [], { hold = 0, at = null, wait = 16 } = {}) {
+  await page.locator(selector).first().scrollIntoViewIfNeeded();
+  await page.evaluate(async ([selector, steps, hold, at, wait]) => {
+    const el = /** @type {HTMLElement} */ (document.querySelector(selector));
+    const r = el.getBoundingClientRect();
+    const x = at ? r.left + at[0] : r.left + r.width / 2, y = at ? r.top + at[1] : r.top + r.height / 2;
+    const target = el.querySelector('.td-row-main') ?? el;
+    const sleep = ms => new Promise(f => setTimeout(f, ms));
+    const fire = (type, dx, dy) => target.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, composed: true, pointerId: 41,
+      pointerType: 'touch', isPrimary: true, clientX: x + dx, clientY: y + dy, button: 0, buttons: type === 'pointerup' ? 0 : 1 }));
+    fire('pointerdown', 0, 0);
+    if (hold) await sleep(hold);
+    for (const [dx, dy] of steps) { await sleep(16); fire('pointermove', dx, dy); }
+    await sleep(wait);
+    const [lx, ly] = steps.at(-1) ?? [0, 0];
+    fire('pointerup', lx, ly);
+    // (a quick lift with no move is a tap as well; after a long press a phone sends no click)
+    if (!steps.length && hold < 500) target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+  }, [selector, steps, hold, at, wait]);
+}
+// (wired last: the + button's drag, which takes its touches whole)
+export const gesturesReady = page => page.waitForFunction(() => document.getElementById('fab')?.style.touchAction === 'none', null, { timeout: 15_000 });
+/** [dx, dy] steps from 0 to (x, y) in n moves */
+export const steps = (x, y, n = 10) => Array.from({ length: n }, (_, i) => [Math.round(x * (i + 1) / n), Math.round(y * (i + 1) / n)]);
