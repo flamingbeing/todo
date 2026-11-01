@@ -15,8 +15,7 @@ import { orderAtEnd, orderBetween } from './order.js';
 /** @typedef {import('./items.js').Data} Data */
 
 /**
- * The tasks a delete takes: a task with its subtasks, a section's tasks (with theirs), a project's with its
- * sub-projects' (never the Inbox's). Their attached files go too (cloud.js).
+ * The tasks a delete takes, subtasks included (none for the Inbox).
  * @param {'task' | 'section' | 'project'} kind @param {{ id: string }} x @param {Data} data @returns {Task[]}
  */
 export function tasksGone(kind, x, data) {
@@ -117,7 +116,7 @@ export function taskOps({ save, id, data, now = Date.now, drop = () => {} }) {
         const { id: _i, createdAt: _c, updatedAt: _u, serverAt: _s, _edits: _e, doneAt: _d, extId: _x, ...rest } = t;
         return put(COLL, { ...rest, ...extra, id: map.get(t.id), done: false, doneAt: null, createdAt: now() }, null);
       };
-      // (between it and the next of its siblings, or after it when last: a copy never lands on another's place)
+      // between it and the next sibling
       const after = siblings(projectOf(task), task.sectionId, task.parentId).map(t => t.order).filter(o => typeof o === 'number' && o > task.order);
       const order = orderBetween(task.order, after.length ? Math.min(...after) : null);
       return first([copy(task, { order }), ...under.map(t => copy(t, { parentId: map.get(String(t.parentId)) ?? t.parentId }))]);

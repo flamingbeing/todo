@@ -225,8 +225,7 @@ export async function start({ canReload = null }) {
   const id = () => (crypto.randomUUID?.() || String(Date.now()) + Math.random().toString(36).slice(2)).replace(/-/g, '');
   const { removeTask, removeProject, removeSection, put, ...ops } = taskOps({ save: (coll, record, base) => app.sync.save(coll, SPACE, record, base), id,
     data: () => latest, drop: (coll, ids) => { void app.sync.hub.drop(SPACE, coll, ids); } });
-  /** the delete's answer, once the files of every task it took are gone too
-   * @param {Item[]} gone @param {Promise<string>} deleting @param {((id: string) => unknown[]) | undefined} filesOf */
+  /** @param {Item[]} gone @param {Promise<string>} deleting @param {((id: string) => unknown[]) | undefined} filesOf */
   const withFiles = async (gone, deleting, filesOf) => {
     const attached = filesOf ? gone.flatMap(t => filesOf(t.id)) : [];
     const refused = await deleting;
@@ -247,8 +246,7 @@ export async function start({ canReload = null }) {
     // the writes resolve to '' when the save is stored or queued, or to the reason when the server refused it at once
     // (task-ops.js); base: the copy the change started from
     ...ops,
-    // a delete takes the task's subtasks with it, and the files attached to each task it takes (the files recipe;
-    // filesOf: a task's files, the screens' files slot); so does a project's or a section's
+    // deletes take subtasks and each task's files too (filesOf: the files slot)
     /** @param {Item} item @param {(id: string) => unknown[]} [filesOf] */
     remove: (item, filesOf) => withFiles(tasksGone('task', item, latest), removeTask(item), filesOf),
     /** @param {import('./items.js').Project} p @param {(id: string) => unknown[]} [filesOf] */

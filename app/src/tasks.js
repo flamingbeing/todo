@@ -158,19 +158,6 @@ export function sectionCascade(id, tasks) {
   return [...out.values()];
 }
 
-/**
- * Reschedule's new date for a task (several at once): the day picked; its time when it has one, else the task's own;
- * a repeat picked replaces the task's (rule, words and "every!"), else a repeating task keeps its rule. "No date"
- * (null) clears a plain task's date and leaves a repeating one be (undefined: no change).
- * @param {import('./dates.js').Due | null | undefined} was @param {import('./dates.js').Due | null} picked
- * @returns {import('./dates.js').Due | null | undefined}
- */
-export function rescheduled(was, picked) {
-  if (!picked) return was?.rrule ? undefined : null;
-  const rule = picked.rrule ? { rrule: picked.rrule, string: picked.string ?? null, fromDone: picked.fromDone ?? null } : {};
-  return cleanDue({ ...was, ...rule, date: picked.date, ...(picked.time ? { time: picked.time } : {}) });
-}
-
 /** @param {unknown} v @returns {import('./dates.js').Due | null} */
 export function cleanDue(v) {
   const d = dueOf(v);

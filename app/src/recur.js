@@ -5,6 +5,7 @@
 // Days are local 'YYYY-MM-DD' text; the rule runs on them as UTC midnights, so no time zone moves a day.
 // Phrases this grammar does not know (hour-based repeats, "except", two rules in one) give null: the words stay text.
 import { addDays, weekdayOf, isDay } from './dates.js';
+import { cleanDue } from './tasks.js';
 
 /** @typedef {{ rrule: string, fromDone: boolean, string: string, time?: string, start?: string }} Recur */
 /** @typedef {{ index: number, end: number, recur: Recur }} RecurHit  index..end: the words in the text */
@@ -378,4 +379,17 @@ export async function nextDays(tasks, today, load) {
   try { RRule = await load(); } catch { return out; }
   for (const t of repeating) out.set(t.id, nextDay(/** @type {import('./dates.js').Due} */ (t.due), { done: today, today }, RRule));
   return out;
+}
+
+/**
+ * Reschedule's new date for a task (several at once): the day picked; its time when it has one, else the task's own;
+ * a repeat picked replaces the task's (rule, words and "every!"), else a repeating task keeps its rule. "No date"
+ * (null) clears a plain task's date and leaves a repeating one be (undefined: no change).
+ * @param {import('./dates.js').Due | null | undefined} was @param {import('./dates.js').Due | null} picked
+ * @returns {import('./dates.js').Due | null | undefined}
+ */
+export function rescheduled(was, picked) {
+  if (!picked) return was?.rrule ? undefined : null;
+  const rule = picked.rrule ? { rrule: picked.rrule, string: picked.string ?? null, fromDone: picked.fromDone ?? null } : {};
+  return cleanDue({ ...was, ...rule, date: picked.date, ...(picked.time ? { time: picked.time } : {}) });
 }

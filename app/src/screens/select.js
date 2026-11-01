@@ -8,7 +8,8 @@
 import { confirmModal, plural, haptic, icon } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { REFUSED } from '../items.js';
-import { isTask, priorityOf, projectOf, rescheduled } from '../tasks.js';
+import { isTask, priorityOf, projectOf } from '../tasks.js';
+import { rescheduled } from '../recur.js';
 import { descendants } from '../tree.js';
 import { dayKey } from '../dates.js';
 import { openMenu } from '../ui/menu.js';
@@ -55,7 +56,7 @@ export function scheduleTasks(ctx, tasks, after) {
   }, { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1) });
 }
 
-/** Today's Reschedule: a new day for every overdue task at once (tasks.js rescheduled: a timed one keeps its time unless
+/** Today's Reschedule: a new day for every overdue task at once (recur.js rescheduled: a timed one keeps its time unless
  * one is picked, a repeating one its rule unless a repeat is picked; "No date" leaves the repeating ones be); one Undo for them all @param {Ctx} ctx @param {Task[]} tasks */
 export function rescheduleTasks(ctx, tasks) {
   if (!tasks.length) return;
