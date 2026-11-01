@@ -1,7 +1,8 @@
 // A task row: the round checkbox in the priority's colour, the title, one line of description, and the meta line (the
 // due date in its tone, a repeat mark, the subtask count, labels, and on day lists the project at the right). Subtasks
 // sit 24 px further in per level; a parent has a fold chevron at the right. A tap on the row opens the task; a tap on
-// the box completes it (the row then fades out and the list shows the undo toast).
+// the box completes it (the row then fades out and the list shows the undo toast). A title starting "* " is a note:
+// no box and no swipe to complete (plainRow).
 import { icon } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { dueLine, deadlineLine } from '../dates.js';
@@ -23,6 +24,9 @@ import { INBOX } from '../items.js';
  * @property {(t: Task, row: HTMLElement) => void} onComplete
  * @property {(t: Task) => void} [onFold]
  */
+
+/** a title starting "* " is a note in the list: no box to tick (shown without the "* ") @param {Task} t */
+export const plainRow = t => /^\* \S/.test(String(t.title));
 
 /** @param {string} tag @param {string} cls @param {string} [text] */
 const el = (tag, cls, text) => { const e = document.createElement(tag); e.className = cls; if (text) e.textContent = text; return e; };
@@ -93,6 +97,7 @@ export function taskRow(line, c) {
   box.setAttribute('aria-label', `Complete: ${t.title}`);
   box.disabled = !c.canWrite;
   box.append(icon(ICONS.check, { class: 'td-check-mark' }));
+  if (plainRow(t)) { li.classList.add('is-plain'); box.disabled = true; box.tabIndex = -1; box.setAttribute('aria-hidden', 'true'); }
   box.addEventListener('click', () => {
     if (t.done) { c.onComplete(t, li); return; }
     if (li.classList.contains('is-done')) return;
@@ -103,7 +108,7 @@ export function taskRow(line, c) {
 
   const main = /** @type {HTMLButtonElement} */ (el('button', 'td-row-main'));
   main.type = 'button';
-  main.append(el('span', 'td-title', t.title));
+  main.append(el('span', 'td-title', plainRow(t) ? t.title.slice(2) : t.title));
   if (t.description) main.append(el('span', 'td-desc', String(t.description).split('\n')[0]));
   const m = meta(line, c);
   if (m) main.append(m);

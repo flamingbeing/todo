@@ -772,3 +772,6 @@ body {
 .is-selecting .td-row.is-selected > .td-check { --ring: var(--td-fill); background: var(--td-fill); color: #fff; }
 .is-selecting .td-row > .td-check .td-check-mark { opacity: 0; }
 .is-selecting .td-row.is-selected > .td-check .td-check-mark { opacity: 1; }
+/* a "* " row: a note in the list, its box kept for the line-up but not shown (select mode shows its circle) */
+.td-row.is-plain > .td-check { visibility: hidden; }
+.is-selecting .td-row.is-plain > .td-check { visibility: visible; }

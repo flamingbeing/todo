@@ -29,7 +29,10 @@ export function swipeRows(host, o) {
   let parts = [];
   let width = 1, past = false, side = 0;
   const reach = () => Math.min(140, width * 0.35);
-  const ways = () => o.ways();
+  // (a "* " row, a note with no box, has no Complete either way)
+  const waysFor = (/** @type {HTMLElement | null} */ r) => { const w = o.ways(), no = (/** @type {Swipe} */ s) => (s === 'complete' ? 'none' : s);
+    return r?.classList.contains('is-plain') ? { right: no(w.right), left: no(w.left) } : w; };
+  const ways = () => waysFor(row);
   const wayOf = (/** @type {number} */ x) => (x > 0 ? ways().right : x < 0 ? ways().left : 'none');
   /** the band behind for the side the row moves to @param {number} s 1 right, -1 left */
   const showBand = s => {
@@ -78,7 +81,7 @@ export function swipeRows(host, o) {
       // (a board's cards: a sideways move scrolls its columns, unless the option hands it to the card, whose touch-action
       // then keeps the browser's pan off it: app.css; a done row has nothing to swipe)
       if (!r || !host.contains(r) || r.classList.contains('is-done') || r.classList.contains('is-complete') || r.classList.contains('is-lifted') || (r.closest('.td-board') && !o.board?.())) return false;
-      const w = ways();
+      const w = waysFor(r);
       if (w.right === 'none' && w.left === 'none') return false;
       row = r;
       width = r.getBoundingClientRect().width || 1;
