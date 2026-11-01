@@ -133,9 +133,6 @@ export function taskOps({ save, id, data, now = Date.now, drop = () => {} }) {
       const { projects, sections, tasks } = projectCascade(p.id, data().projects, data().sections, data().tasks);
       return first([remove(COLL, tasks), remove(SECTIONS, sections), remove(PROJECTS, projects)]);
     },
-    /** the Inbox's own record, made once (a task with no project is in it even before) */
-    ensureInbox: () => (data().projects.some(p => p.id === INBOX) ? Promise.resolve('')
-      : put(PROJECTS, { id: INBOX, name: 'Inbox', color: 'charcoal', parentId: null, order: 0, view: 'list', inbox: true, createdAt: now() }, null)),
 
     /** @param {string} projectId @param {string} name @param {number} [order] at the end unless given @returns {Promise<{ refused: string, id: string }>} */
     addSection: async (projectId, name, order) => {

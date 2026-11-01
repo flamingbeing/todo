@@ -158,20 +158,16 @@ test('duplicate copies a task and its subtasks under new ids, open', async () =>
 
 test('projects: add at the end with a known colour; delete takes sub-projects, sections and tasks; the Inbox stays', async () => {
   const s = store();
-  assert.equal(await s.ops.ensureInbox(), '');
-  assert.equal(await s.ops.ensureInbox(), '');
-  assert.equal(s.data.projects.length, 1, 'the Inbox is made once');
-  assert.deepEqual([s.data.projects[0].id, s.data.projects[0].inbox], ['inbox', true]);
   const { id: w } = await s.ops.addProject({ name: ' Work ', color: 'pink' });
-  assert.deepEqual([s.data.projects[1].name, s.data.projects[1].color, s.data.projects[1].view], ['Work', 'charcoal', 'list']);
+  assert.deepEqual([s.data.projects[0].name, s.data.projects[0].color, s.data.projects[0].view], ['Work', 'charcoal', 'list']);
   const { id: w2 } = await s.ops.addProject({ name: 'Sub', parentId: w, color: 'blue' });
   const { id: sec } = await s.ops.addSection(w2, 'Admin');
   await s.ops.addTask({ title: 'in sub', projectId: w2, sectionId: sec });
   await s.ops.addTask({ title: 'in inbox' });
   assert.equal((await s.ops.addProject({ name: '' })).refused, 'A project needs a name');
-  assert.equal(await s.ops.removeProject(s.data.projects[0]), 'The Inbox stays');
-  await s.ops.removeProject(s.data.projects[1]);
-  assert.deepEqual([s.data.projects.map(p => p.id), s.data.sections.length, s.data.tasks.map(x => x.title)], [['inbox'], 0, ['in inbox']]);
+  assert.equal(await s.ops.removeProject({ id: 'inbox', name: 'Inbox' }), 'The Inbox stays');
+  await s.ops.removeProject(s.data.projects[0]);
+  assert.deepEqual([s.data.projects.map(p => p.id), s.data.sections.length, s.data.tasks.map(x => x.title)], [[], 0, ['in inbox']]);
 });
 
 test('sections: add, rename, fold, delete with their tasks', async () => {
