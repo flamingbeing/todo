@@ -16,7 +16,7 @@
   "spaces/_/filters/f2": {"name": "Errands this week", "query": "@errand & 7 days", "color": "teal", "order": 2},
   "spaces/_/filters/f3": {"name": "No date", "query": "no date", "color": "charcoal", "order": 3},
   "spaces/_/tasks/s1": {"title": "Pay the electricity bill", "projectId": "home", "order": 1, "priority": 1, "due": {"date": "{{today+-2}}"}},
-  "spaces/_/tasks/s2": {"title": "Send the weekly report", "projectId": "work", "sectionId": "w1", "order": 1, "priority": 2, "description": "Include the budget table", "due": {"date": "{{today}}", "time": "09:30"}},
+  "spaces/_/tasks/s2": {"title": "Send the weekly report", "projectId": "work", "sectionId": "w1", "order": 1, "priority": 2, "description": "Include the budget table", "deadline": "{{today+5}}", "due": {"date": "{{today}}", "time": "09:30"}},
   "spaces/_/tasks/s2a": {"title": "Collect the numbers", "projectId": "work", "sectionId": "w1", "parentId": "s2", "order": 1, "priority": 4, "done": true, "doneAt": "{{now}}"},
   "spaces/_/tasks/s2b": {"title": "Write the summary", "projectId": "work", "sectionId": "w1", "parentId": "s2", "order": 2, "priority": 4},
   "spaces/_/tasks/s3": {"title": "Buy bread and milk", "projectId": "inbox", "order": 1, "priority": 4, "labels": ["l1"], "due": {"date": "{{today}}"}},

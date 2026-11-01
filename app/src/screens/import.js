@@ -1,4 +1,4 @@
-// Settings > Import from Todoist: the person pastes their personal API token, the page fetches their projects, sections,
+// The import page (Settings > Data): the person pastes their personal API token, the page fetches their projects, sections,
 // labels, open tasks and filters straight from the browser (the API answers any origin, so no relay), shows what would
 // come over, and on a second tap writes it through the write queue (import-map.js says what is written).
 // The token is typed once and used once: it lives in the field and in one variable, never in storage, a draft, a log or a
@@ -54,7 +54,7 @@ export function importScreen(host, { app, openInbox = () => {}, fetcher = (...a)
 
   const root = el('div', 'td-import');
   const intro = el('p', 'td-import-intro',
-    'Bring your projects, sections, labels, open tasks and filters over from your Todoist account. Copy your personal API token from the web app: Settings, Integrations, Developer. It is used once, in this browser only, and never saved.');
+    'Bring your projects, sections, labels, open tasks and filters over from your account in the other task app. Copy your personal API token from the web settings of that app (Integrations, Developer). It is used once, in this browser only, and never saved.');
   const field = el('div', 'td-import-field');
   const label = /** @type {HTMLLabelElement} */ (el('label', 'td-import-label', 'API token'));
   const input = /** @type {HTMLInputElement} */ (el('input'));

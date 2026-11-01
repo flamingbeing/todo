@@ -1,4 +1,4 @@
-// Settings > Import from Todoist: the API is answered by a made-up route (app/test/fixtures/import-sync.json, ids and
+// Settings > Import: the API is answered by a made-up route (app/test/fixtures/import-sync.json, ids and
 // names made unique per run), the preview counts what would come over, the import writes it, a second import adds
 // nothing, and the token never lands in storage and leaves the field. The page passes axe.
 import fs from 'node:fs';
@@ -94,6 +94,7 @@ test('preview, import, no token left behind, a second import adds nothing', asyn
 
   // what was written: ids kept in extId, priority inverted, sections and labels, the recurring date, a deadline
   const pre = `${u}-`;
+  await synced(page);
   const tasks = await byExt('tasks', pre), projects = await byExt('projects', pre), sections = await byExt('sections', pre);
   expect(tasks).toHaveLength(9);
   expect(projects.map(p => p.name.replace(` ${u}`, '')).sort()).toEqual(['Garden', 'Home', 'Inbox', 'Shed']);   // (the Inbox is the app's own, with the source id added)
@@ -122,7 +123,7 @@ test('preview, import, no token left behind, a second import adds nothing', asyn
   await expect(row('Water the ferns')).toHaveAttribute('data-priority', '3');
   await expect(row('Check the mailbox')).toHaveAttribute('data-priority', '2');
   await expect(row('Sort the drawers')).toHaveAttribute('data-priority', '4');
-  await expect(row('Water the ferns').locator('.td-date')).toContainText('4 Nov 2099');
+  await expect(row('Water the ferns').locator('.td-date:not(.td-deadline)')).toContainText('4 Nov 2099');
   expect(home.view).toBe('list');
 
   // nothing stored, nothing in the field

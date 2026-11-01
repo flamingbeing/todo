@@ -1,5 +1,5 @@
-// Import from Todoist, the pure half: one full sync answer (POST https://api.todoist.com/api/v1/sync with
-// sync_token=* and resource_types=["projects","sections","labels","items","filters"]) becomes the records this app
+// The import's pure half: one full sync answer (the request is in screens/import.js: sync_token=* and
+// resource_types=["projects","sections","labels","items","filters"]) becomes the records this app
 // writes. Nothing here touches the network, the clock or the page: the caller passes the day, an id maker and the
 // records the app already has, so the same import twice gives the same records (every record keeps the source's id in
 // `extId`, and a second run updates those instead of adding copies).
