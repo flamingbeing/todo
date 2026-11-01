@@ -10,7 +10,7 @@ import { signedOutScreen } from './screens/signed-out.js';
 import { noAccessScreen } from './screens/no-access.js';
 import { notSetUpScreen } from './screens/not-set-up.js';
 import { views } from './screens/views.js';
-import { startShell, settingsPage } from './shell.js';
+import { startShell, settingsPage, showToday } from './shell.js';
 
 const typing = () => document.activeElement?.tagName === 'INPUT' && !!(/** @type {HTMLInputElement} */ (document.activeElement).value);
 const sheetOpen = () => !!document.querySelector('dialog[open]');
@@ -52,7 +52,7 @@ if (lastSignedIn()) {
 const app = await start({ canReload: withSW ? () => !typing() && !sheetOpen() : null });
 settingsPage(app);
 
-if (!app) notSetUpScreen().show({ phase: 'not-set-up' });
+if (!app) { showToday(); notSetUpScreen().show({ phase: 'not-set-up' }); }
 else {
   // the chip and the tests' status read the whole app (sync and files), not the sync module alone: "Saved" only when
   // nothing is unsent anywhere, the same count sign-out reports. (The files module says 'saving'; the chip's word is 'pending'.)
@@ -91,6 +91,8 @@ else {
       $('who').textContent = s.user ? s.user.email : '';
       $('sign-out').hidden = !s.user;
       if (s.user) $('sign-out-msg').textContent = '';
+      // sign-in, access and set-up live on Today: with Home set to another tab, the app would open on a blank page
+      if (s.phase !== 'ready') showToday();
       show(s);
     },
     onData(data, changed) {
