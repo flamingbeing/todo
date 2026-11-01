@@ -122,3 +122,34 @@ test('Settings > About offers "Install this app" as a button, (a tap shows how, 
   await row.getByRole('button', { name: 'Install this app' }).click();
   await expect(a.locator('dialog[open]')).toContainText(/Add to Home screen|Install app/i);
 });
+
+test('Settings > About: the Install row is hidden when the app already runs installed (standalone)', async ({ phone }) => {
+  const a = await phone();
+  await a.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: true }));
+  await signIn(a, 'member');
+  await open(a, 'About');
+  await expect(a.locator('#settings-host .ui-setting').filter({ hasText: /Version|About|Account/ }).first()).toBeVisible();
+  await expect(a.locator('#settings-host .ui-setting').filter({ hasText: 'Install this app' })).toHaveCount(0);
+  await expect(a.getByRole('button', { name: 'Install this app' })).toHaveCount(0);
+});
+
+test('no install banner, dialog or prompt on load; the browser\'s offer is kept for the Settings row', async ({ phone }) => {
+  const a = await phone();
+  await a.addInitScript(() => { window.__prompted = 0; addEventListener('beforeinstallprompt', e => { e.prompt = () => { window.__prompted++; return Promise.resolve(); }; }, true); });
+  await signIn(a, 'member');
+  await synced(a);
+  // the browser offers installing: the page stops the mini-infobar and keeps the event
+  const held = await a.evaluate(() => {
+    const e = new Event('beforeinstallprompt', { cancelable: true });
+    window.dispatchEvent(e);
+    return { prevented: e.defaultPrevented, kept: globalThis.coreInstallPrompt === e };
+  });
+  expect(held).toEqual({ prevented: true, kept: true });
+  await expect(a.locator('dialog[open]')).toHaveCount(0);
+  await expect(a.locator('text=/install/i >> visible=true')).toHaveCount(0);   // (the Settings row is built but its page is not shown)
+  expect(await a.evaluate(() => window.__prompted)).toBe(0);
+  // only a tap on the Settings row asks
+  await open(a, 'About');
+  await a.getByRole('button', { name: 'Install this app' }).click();
+  expect(await a.evaluate(() => window.__prompted)).toBe(1);
+});
