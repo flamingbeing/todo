@@ -40,3 +40,39 @@ export function placeAt(list, i) {
   }
   return { order: orderBetween(a, b), renumber: [] };
 }
+
+/** @typedef {{ task: { id: string, order?: unknown, collapsed?: boolean | null }, depth: number }} TreeLine */
+
+/**
+ * Where a dragged task lands in a list drawn as a tree (lines without the task and its subtasks; at: the gap it is
+ * dropped in, 0..lines.length): the depth wanted (from how far it was pulled sideways) is kept within what the gap
+ * allows (at most one deeper than the line above, at least as deep as the line below, no deeper than MAX_DEPTH with
+ * its own subtasks); the parent is the nearest line above one level up; index is its place among that parent's lines.
+ * @template {TreeLine} L @param {L[]} lines @param {number} at @param {number} want @param {number} [height] how deep
+ * the moved task's own subtasks go @param {number} [maxDepth]
+ * @returns {{ depth: number, parentId: string | null, siblings: L['task'][], index: number }}
+ */
+export function placeInTree(lines, at, want, height = 0, maxDepth = 4) {
+  at = Math.max(0, Math.min(at, lines.length));
+  const prev = lines[at - 1], next = lines[at];
+  const max = Math.max(0, Math.min(prev ? prev.depth + (prev.task.collapsed ? 0 : 1) : 0, maxDepth - height));
+  const min = Math.min(next ? next.depth : 0, max);
+  const depth = Math.max(min, Math.min(max, Math.round(want)));
+  let p = -1;
+  if (depth > 0) for (let i = at - 1; i >= 0; i--) if (lines[i].depth === depth - 1) { p = i; break; }
+  // the parent's lines at this depth: from just after it to where the tree climbs back above it
+  /** @type {L['task'][]} */
+  const siblings = [];
+  let index = 0;
+  for (let i = p + 1; i < lines.length; i++) {
+    if (lines[i].depth < depth) break;
+    if (lines[i].depth !== depth) continue;
+    if (i < at) index++;
+    siblings.push(lines[i].task);
+  }
+  return { depth, parentId: p < 0 ? null : lines[p].task.id, siblings, index };
+}
+
+/** a list's records numbered 1..n in the order given, only those whose number changes @template {{ order?: unknown }} T @param {T[]} list @param {keyof T & string} [key] */
+export const renumbered = (list, key = /** @type {keyof T & string} */ ('order')) =>
+  list.map((item, k) => ({ item, order: k + 1 })).filter(x => x.item[key] !== x.order);

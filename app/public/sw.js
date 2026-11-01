@@ -32,6 +32,8 @@ const SHELL = [
   'src/modules.js',
   'src/options.js',
   'src/order.js',
+  'src/parse.js',
+  'src/recur.js',
   'src/roles.js',
   'src/screen-switch.js',
   'src/screens/add-sheet.js',
