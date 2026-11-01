@@ -413,6 +413,7 @@ body:has(dialog[open]) .ui-fab.td-fab { display: none; }
 .td-cal-day[data-tone="tomorrow"] { --td-d-tone: var(--td-d-tomorrow); }
 .td-cal-day[data-tone="week"] { --td-d-tone: var(--td-d-week); }
 .td-cal-month { position: absolute; top: -1px; font-size: 11px; line-height: 11px; color: var(--td-text-2); }
+.td-cal-day[aria-selected="true"] .td-cal-month { display: none; }
 .td-cal-dot { position: absolute; bottom: 1px; width: 4px; height: 4px; border-radius: 50%; background: var(--td-text-3); }
 .td-cal-day[aria-selected="true"] .td-cal-dot { background: var(--td-accent); }
 /* custom repeat */
