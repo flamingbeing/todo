@@ -1,6 +1,7 @@
 // Quick add's words: a task's name as typed becomes its title and its parts. "#Work" picks a project (the longest
 // known name, so "#Home Renovation" works), "/Admin" a section, "@errand" and "%errand" labels, "p1".."p4" a priority,
-// "every …" a repeat (recur.js), "{march 30}" a deadline (a day, no time, no repeat), "for 45 min" a duration, and dates: the app's own shortcuts first ("tod", "tmr", "next week", "this weekend",
+// "every …" a repeat (recur.js), "{march 30}" a deadline (a day, no time, no repeat), "for 45 min" a duration, a time range
+// ("10am-11:15am", "from 2 to 3pm": the start and how long), and dates: the app's own shortcuts first ("tod", "tmr", "next week", "this weekend",
 // "evening", "mid jan", "end of month", "in 3 days", "+3 days"), then the chrono library for the rest ("next friday",
 // "dec 5", "at 5pm"). Each part found is a token with where it sits in the text, so the editor can colour it and the
 // chip can clear it; a range the person cleared (ignore) stays text. With smart dates off only #, /, @, % and p count.
@@ -93,6 +94,32 @@ function dayOf(s, c, now, chrono) {
   return isDay(date) ? date : null;
 }
 
+/** a range's time in minutes after midnight, or null: "11:15am", "14:00", "10" @param {string} h @param {string | undefined} m @param {string | undefined} ap */
+const rangeMin = (h, m, ap) => {
+  const hh = +h, mm = m ? +m : 0;
+  if (mm > 59 || (ap ? hh < 1 || hh > 12 : hh > 23)) return null;
+  return (ap ? (hh % 12) + (ap[0].toLowerCase() === 'p' ? 12 : 0) : hh) * 60 + mm;
+};
+const TM = '(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm|a|p)?';
+/** "10am-11:15am", "10-11am", "11-1pm", "14:00–15:30", "from 2 to 3pm": a time and a length; one end needs a colon or
+ * am/pm ("pages 3-4" stays words), an end without am/pm takes the one that makes the range shortest */
+const RANGE = new RegExp(`(?<=^|\\s)((?:from\\s+)?${TM})(\\s*(?:-|–|—|\\s(?:to|until|till)\\s)\\s*${TM})(?=$|[\\s,.;])`, 'giu');
+/** @param {RegExpMatchArray} m @returns {{ time: number, length: number } | null} */
+function rangeOf(m) {
+  const [, , h1, m1, a1, , h2, m2, a2] = m;
+  if (!a1 && !a2 && m1 === undefined && m2 === undefined) return null;
+  const other = (/** @type {string} */ a) => (a[0].toLowerCase() === 'p' ? 'am' : 'pm');
+  const starts = !a1 && a2 && +h1 <= 12 ? [a2, other(a2)].map(a => rangeMin(h1, m1, a)) : [rangeMin(h1, m1, a1)];
+  const ends = a1 && !a2 && +h2 <= 12 ? [a1, other(a1)].map(a => rangeMin(h2, m2, a)) : [rangeMin(h2, m2, a2)];
+  let best = /** @type {{ time: number, length: number } | null} */ (null);
+  for (const s of starts) for (const e of ends) {
+    if (s === null || e === null) continue;
+    const length = (((e - s) % 1440) + 1440) % 1440;
+    if (length > 0 && (!best || length < best.length)) best = { time: s, length };
+  }
+  return best;
+}
+
 /**
  * Splits a task name into its title and parts. @param {string} text @param {ParseContext} [ctx] @returns {Parsed}
  */
@@ -179,6 +206,17 @@ export function parse(text, ctx = {}) {
       if (!free(i, i + m[0].length) || n < 1 || n > 1440) continue;
       duration = n; take(i, i + m[0].length, 'duration', n); break;
     }
+    // 10am-11:15am: the start (with the day found below, else today, or tomorrow once it has passed) and how long
+    let range = /** @type {{ time: string, start: number, end: number } | null} */ (null);
+    for (const m of text.matchAll(RANGE)) {
+      const i = /** @type {number} */ (m.index), mid = i + m[1].trimEnd().length, end = i + m[0].length, r = rangeOf(m);
+      if (!r || !free(i, end)) continue;
+      range = { time: `${pad(Math.floor(r.time / 60))}:${pad(r.time % 60)}`, start: i, end: mid };
+      taken.fill(1, i, mid);
+      if (duration == null) duration = r.length;
+      take(mid, end, 'duration', r.length);
+      break;
+    }
     // {march 30}: a deadline, read by the shortcuts or chrono; the braces hide it from the date scan below
     for (const m of text.matchAll(/\{([^{}]+)\}/g)) {
       const i = /** @type {number} */ (m.index), end = i + m[0].length;
@@ -236,11 +274,20 @@ export function parse(text, ctx = {}) {
         break;
       }
     }
+    if (range) {
+      const { start, end, time } = range;
+      // the start joins the day's words when only spaces part them ("tomorrow 10am"), else is a date part of its own
+      const near = tokens.find(t => t.kind === 'date' && t.end <= start && !text.slice(t.end, start).trim());
+      if (day?.date) day.time = time;
+      if (!day && !recur) day = { date: time <= timeKey(now) ? addDays(today, 1) : today, time };
+      if (near) near.end = end;
+      else take(start, end, 'date', day ?? { date: today, time });
+    }
     if (recur) {
       const startDay = recur.start ?? day?.date ?? today;
       // (before the rule library has loaded, the simple rules are worked out by hand)
       const date = (ctx.RRule ? firstDay(recur.rrule, startDay, ctx.RRule) : firstDayPlain(recur.rrule, startDay)) ?? startDay;
-      const time = recur.time ?? day?.time;
+      const time = recur.time ?? range?.time ?? day?.time;
       due = { date, ...(time ? { time } : {}), rrule: recur.rrule, string: recur.string, ...(recur.fromDone ? { fromDone: true } : {}) };
     } else if (day) {
       if (day.date) due = { date: day.date, ...(day.time ? { time: day.time } : {}) };

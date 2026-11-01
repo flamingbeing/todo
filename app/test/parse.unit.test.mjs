@@ -245,3 +245,25 @@ test('for 45 min, for 1h, for 2h 30m, for 90 minutes: a duration, marked, out of
   assert.equal(p('a for 45 min', { smartDates: false }).duration, null, 'smart dates off');
   assert.equal(p('a for 45 min', { ignore: [{ start: 2, end: 12 }] }).duration, null, 'cleared: text');
 });
+
+test('a time range: 10am-11:15am, 10-11am, from 2 to 3pm: the start and how long, the end marked as the duration', () => {
+  const r = p('Meet tomorrow 10am-11:15am p2');
+  assert.equal(r.title, 'Meet');
+  assert.deepEqual(r.due, { date: '2026-11-02', time: '10:00' });
+  assert.equal(r.duration, 75);
+  assert.deepEqual(r.tokens.map(t => [t.kind, 'Meet tomorrow 10am-11:15am p2'.slice(t.start, t.end)]), [['date', 'tomorrow 10am'], ['duration', '-11:15am'], ['priority', 'p2']]);
+  const from = p('Meet tomorrow from 10am to 11:15am');
+  assert.deepEqual([from.title, from.due, from.duration], ['Meet', { date: '2026-11-02', time: '10:00' }, 75]);
+  assert.deepEqual([p('a fri 2-3pm').due, p('a fri 2-3pm').duration], [{ date: '2026-11-06', time: '14:00' }, 60], 'the start takes the end’s pm');
+  assert.deepEqual([p('a tmr 11-1pm').due.time, p('a tmr 11-1pm').duration], ['11:00', 120], '…or the other, whichever is shorter');
+  assert.deepEqual([p('a tmr 14:00–15:30').due.time, p('a tmr 14:00–15:30').duration], ['14:00', 90]);
+  assert.deepEqual([p('a tmr 11pm-1am').due.time, p('a tmr 11pm-1am').duration], ['23:00', 120], 'past midnight');
+  assert.deepEqual([p('a 1pm-2pm').due, p('a 1pm-2pm').duration], [{ date: '2026-11-01', time: '13:00' }, 60], 'no day: today…');
+  assert.deepEqual(p('a 9am-10am').due, { date: '2026-11-02', time: '09:00' }, '…or tomorrow once it has passed');
+  const rep = p('Standup every mon 9am-9:15am');
+  assert.deepEqual([rep.title, rep.due.time, rep.due.string, rep.duration], ['Standup', '09:00', 'every mon', 15], 'with a repeat');
+  assert.equal(p('a tmr 10am-11am for 30 min').duration, 30, '"for" says how long');
+  assert.equal(p('Read pages 3-4').title, 'Read pages 3-4', 'no colon, no am/pm: words');
+  assert.equal(p('Call 555-1234').duration, null);
+  assert.equal(p('a tmr 10am-11am', { smartDates: false }).duration, null, 'smart dates off');
+});
