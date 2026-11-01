@@ -56,8 +56,13 @@ test('"Select tasks" from the Inbox\'s "…": Select all, Complete N with Undo',
   await page.getByRole('menuitem', { name: 'Select tasks' }).click();
   await expect(page.locator('.td-select-count')).toHaveText('0 selected');
   await page.locator('.td-select-top').getByRole('button', { name: 'Select all' }).click();
-  const n = await page.locator('#inbox .td-row').count();
-  await expect(page.locator('.td-select-count')).toHaveText(`${n} selected`);
+  // (the Inbox is shared with tests running at once: rows that arrive after Select all are not selected, so the count
+  // is checked against the ticked rows, not every row)
+  await expect.poll(async () => {
+    const said = Number((await page.locator('.td-select-count').textContent())?.match(/\d+/)?.[0]);
+    const ticked = await page.locator('#inbox .td-row.is-selected').count();
+    return said >= 2 && said === ticked;
+  }, { timeout: 10_000 }).toBe(true);
   // just the two: all off, then each
   await page.locator('.td-select-top').getByRole('button', { name: 'Deselect all' }).click();
   await page.locator(`${rowIn('inbox', a)} .td-row-main`).click();

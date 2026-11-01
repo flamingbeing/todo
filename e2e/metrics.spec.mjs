@@ -18,10 +18,8 @@ for (const scheme of ['light', 'dark']) {
     });
     // (a dated task shows its time on the meta line, which makes it the two-line row)
     // (once it has settled: a row drawn anew as other tests' tasks arrive slides in from no height)
-    await expect.poll(async () => (await size(b)).row, { timeout: 10_000 }).toBe(74);
-    const two = await size(b);
-    expect(two.check).toEqual([22, 22]);
-    expect(two.titleX).toBe(50);
+    // (all three measured in one go, and again until they agree: a redraw mid-measure gives a row whose box has no size yet)
+    await expect.poll(() => size(b), { timeout: 10_000 }).toEqual({ row: 74, check: [22, 22], titleX: 50 });
     const fab = await page.locator('#fab').evaluate(e => [e.getBoundingClientRect().width, e.getBoundingClientRect().height]);
     expect(fab).toEqual([56, 56]);
   });
