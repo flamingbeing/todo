@@ -7,6 +7,7 @@ import { INBOX, REFUSED } from '../items.js';
 import { isTask, projectCascade } from '../tasks.js';
 import { openMenu } from '../ui/menu.js';
 import { ICONS } from '../icons.js';
+import { byOrder, orderBetween } from '../order.js';
 
 /** @typedef {import('./views.js').Ctx} Ctx */
 /** @typedef {import('../items.js').Project} Project */
@@ -34,11 +35,15 @@ export function pageMenu(ctx, more, o) {
   ], { label: 'List' });
 }
 
-/** a section's "…" @param {Ctx} ctx @param {Section} s @param {HTMLElement} b @param {(s: Section) => void} rename */
-export function sectionMenu(ctx, s, b, rename) {
+/** a section's "…" @param {Ctx} ctx @param {Section} s @param {HTMLElement} b @param {(s: Section) => void} rename
+ * @param {(pid: string, after: string, order: number) => void} addAfter  a new section's name field after this one, at that order */
+export function sectionMenu(ctx, s, b, rename, addAfter) {
+  // (the order halfway to the next section's, or past the last)
+  const mine = byOrder(ctx.data().sections.filter(x => x.projectId === s.projectId)), next = mine[mine.findIndex(x => x.id === s.id) + 1];
   openMenu(b, [
     { label: 'Rename section', icon: ICONS.pencil, run: () => rename(s) },
     { label: 'Add task', icon: ICONS.plus, run: () => ctx.openQuickAdd({ projectId: s.projectId, sectionId: s.id }) },
+    { label: 'Add section after', icon: ICONS.circlePlus, run: () => addAfter(s.projectId, s.id, orderBetween(s.order ?? 0, next?.order ?? null)) },
     null,
     { label: 'Delete section', icon: ICONS.trash2, danger: true, run: async () => {
       const n = ctx.data().tasks.filter(t => t.sectionId === s.id && isTask(t) && !t.done).length;

@@ -1,7 +1,7 @@
 // A project as a board (its view is 'board'; Display switches it): one column per section, side by side, a column to
 // a screen's width less a glimpse of the next, snapping as it is scrolled sideways. The tasks outside the sections
 // come first in "No section" when there are any. A column has its name, how many tasks, a "…" (rename, add a task,
-// delete), its cards and "Add task"; the last column adds a section. A card is held to lift it and dragged in its
+// add a section after it, delete), its cards and "Add task"; the last column adds a section. A card is held to lift it and dragged in its
 // column or to another (row-drag.js knows a board). Dots under it say which column is shown.
 // Any other list as a board (Display's Layout, this device's), and a project grouped by Display: one column per group
 // (drawGroupBoard), with no "Add section"; a card dragged to another column takes that group's value (group-drop.js).
@@ -90,12 +90,14 @@ export function drawBoard(ctx, pid, host, below, d) {
     col.append(rowList(tops, c, name));
     if (canWrite) col.append(addRow('Add task', () => ctx.openQuickAdd({ projectId: pid, sectionId: s ? s.id : null })));
     cols.push(col);
+    // (a new section named here, between this column and the next: its "…" > Add section after)
+    if (s && naming && !naming.sectionId && naming.after === s.id) { const add = el('section', 'td-col td-col-new'); add.append(ctx.sections.field('', null, pid)); cols.push(add); }
   };
   if (v.loose.length || !v.sections.length) column(null, v.loose);
   for (const { section, lines } of v.sections) column(section, lines);
   if (canWrite) {
     const end = el('section', 'td-col td-col-new');
-    if (naming && !naming.sectionId && naming.projectId === pid) end.append(ctx.sections.field('', null, pid));
+    if (naming && !naming.sectionId && !naming.after && naming.projectId === pid) end.append(ctx.sections.field('', null, pid));
     else {
       const b = /** @type {HTMLButtonElement} */ (el('button', 'td-add-section td-col-add-section'));
       b.type = 'button';

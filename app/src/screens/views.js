@@ -59,7 +59,7 @@ if (linked) history.replaceState(history.state, '', location.pathname + location
  * @property {(view: string) => import('../tasks.js').Display} display  a list's Display choices
  * @property {() => void} redraw
  * @property {{ menu: (s: import('../items.js').Section, b: HTMLElement) => void, field: (value: string, s: import('../items.js').Section | null, pid: string) => HTMLElement,
- *   naming: () => { projectId: string, sectionId: string } | null, add: (pid: string) => void }} sections  a project's sections, named in place
+ *   naming: () => { projectId: string, sectionId: string, after?: string } | null, add: (pid: string) => void }} sections  a project's sections, named in place
  */
 /** @typedef {{ projectId?: string, sectionId?: string | null, parentId?: string | null, due?: import('../dates.js').Due | null, deadline?: string | null, order?: number, duration?: number, priority?: number, labels?: string[] }} AddContext */
 
@@ -201,10 +201,11 @@ export function views(app) {
   };
 
   // ---- sections: the inline name field (a new section at the end, or a rename in place)
-  /** @type {{ projectId: string, sectionId: string } | null} */
+  /** (after, order: a new section after that one, at that order; else at the end)
+   * @type {{ projectId: string, sectionId: string, after?: string, order?: number } | null} */
   let naming = null;
-  /** @param {string} pid */
-  const newSection = pid => { naming = { projectId: pid, sectionId: '' }; fresh.clear(); paint(top); focusNaming(); };
+  /** @param {string} pid @param {string} [after] @param {number} [order] */
+  const newSection = (pid, after, order) => { naming = { projectId: pid, sectionId: '', after, order }; fresh.clear(); paint(top); focusNaming(); };
   const focusNaming = () => requestAnimationFrame(() => /** @type {HTMLInputElement | null} */ (document.querySelector(`#${top} .td-name-field input`))?.focus());
   /** @param {string} value @param {import('../items.js').Section | null} section @param {string} pid */
   const nameField = (value, section, pid) => {
@@ -213,12 +214,13 @@ export function views(app) {
     input.value = value; input.maxLength = 120; input.placeholder = 'Name this section';
     input.setAttribute('aria-label', section ? `New name for ${section.name}` : 'Name of the new section');
     let done = false;
+    const at = naming?.order;
     const finish = async (/** @type {boolean} */ save) => {
       if (done) return;
       done = true; naming = null;
       const name = input.value.trim();
       if (save && name) {
-        const r = section ? await app.renameSection(section, name) : (await app.addSection(pid, name)).refused;
+        const r = section ? await app.renameSection(section, name) : (await app.addSection(pid, name, at)).refused;
         if (r) toast(REFUSED);
       }
       fresh.clear(); paint(top);
@@ -230,7 +232,7 @@ export function views(app) {
     return form;
   };
   /** @param {import('../items.js').Section} s @param {HTMLElement} b */
-  const sectionMenu = (s, b) => { void lazy.withMod('menus', m => m.sectionMenu(ctx, s, b, x => { naming = { projectId: x.projectId, sectionId: x.id }; fresh.clear(); paint(top); focusNaming(); })); };
+  const sectionMenu = (s, b) => { void lazy.withMod('menus', m => m.sectionMenu(ctx, s, b, x => { naming = { projectId: x.projectId, sectionId: x.id }; fresh.clear(); paint(top); focusNaming(); }, newSection)); };
 
   /** whether a list is in its calendar layout (Display) @param {string} view */
   const inCal = view => disp(view).layout === 'calendar';
@@ -274,8 +276,9 @@ export function views(app) {
         if (canWrite) sec.append(addRow('Add task', () => ctx.openQuickAdd({ projectId: pid, sectionId: s.id })));
       }
       parts.push(sec);
+      if (naming && !naming.sectionId && naming.after === s.id) parts.push(nameField('', null, pid));
     }
-    if (naming && !naming.sectionId && naming.projectId === pid) parts.push(nameField('', null, pid));
+    if (naming && !naming.sectionId && !naming.after && naming.projectId === pid) parts.push(nameField('', null, pid));
     else if (canWrite) {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'td-add-section'; b.textContent = 'Add section';

@@ -89,3 +89,27 @@ test('a board grouped by priority: a column per priority, a card dragged to Prio
   await expect.poll(async () => (await db.get(`spaces/_/tasks/${a}`))?.priority, { timeout: 15_000 }).toBe(1);
   await expect(board.locator('.td-col').first().locator('.td-row[data-id]')).toHaveCount(2);
 });
+
+test('a column\'s "…" > Add section after: the name field opens between the columns, the new section lands there', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const pid = uniq('bp'), name = uniq('Board'), s1 = uniq('s1'), s2 = uniq('s2'), made = uniq('Middle');
+  await db.put(`spaces/_/projects/${pid}`, { name, color: 'blue', parentId: null, view: 'board', order: Date.now(), ...now() });
+  await db.put(`spaces/_/sections/${s1}`, { name: 'First', projectId: pid, order: 1, collapsed: false, ...now() });
+  await db.put(`spaces/_/sections/${s2}`, { name: 'Last', projectId: pid, order: 2, collapsed: false, ...now() });
+  await synced(page);
+  await openTab(page, 'browse');
+  await page.locator('#browse').getByRole('button', { name: new RegExp(`^${name}`) }).click();
+  await expect(page.locator('#project .td-col')).toHaveCount(3);
+  await page.locator(`#project .td-col[data-id="${s1}"] .td-col-more`).click();
+  await page.getByRole('menuitem', { name: 'Add section after' }).click();
+  const field = page.getByRole('textbox', { name: 'Name of the new section' });
+  await expect(field).toBeFocused();
+  // (the field's column sits right after First)
+  await expect(page.locator(`#project .td-col[data-id="${s1}"] + .td-col-new input`)).toBeVisible();
+  expect(await AxeBuilder(page)).toEqual([]);
+  await field.fill(made);
+  await field.press('Enter');
+  await expect(page.locator('#project .td-col-title')).toHaveText(['First', made, 'Last']);
+  await expect.poll(async () => (await db.list('spaces/_/sections')).find(d => d.name === made)?.order, { timeout: 15_000 }).toBe(1.5);
+});
