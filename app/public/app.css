@@ -15,9 +15,10 @@ body {
   --td-peach: light-dark(#fde7d9, rgb(220 76 62 / .28));
   --td-selected: light-dark(#f0f0f0, #333);
   --td-accent: var(--accent, #dc4c3e);
-  /* a filled control with a white mark on it (the + button, Done, send, chosen days): the full red in light and dark,
-     since the theme's lighter dark-mode accent gives white only about 2:1 (white on this red is about 4:1) */
-  --td-fill: #dc4c3e;
+  /* a filled control with white on it (the + button, Done, send, chosen days): the accent in light; in dark the theme's
+     accent is a light tint (white on it about 2:1), so the fill is that hue at full colour and mid lightness (white on
+     it about 5:1, the reference's solid red for the default accent) */
+  --td-fill: var(--td-accent);
   /* the accent as small text: a shade darker on light, lighter on dark, so it reads (4.5:1) */
   --td-accent-text: light-dark(color-mix(in srgb, var(--td-accent) 82%, #000), color-mix(in srgb, var(--td-accent) 78%, #fff));
   --td-p1: #d1453b; --td-p2: #eb8909; --td-p3: #246fe0; --td-p4: #b3b3b3;
@@ -43,6 +44,9 @@ body {
   font-family: var(--td-font);
   background: var(--td-ground);
   color: var(--td-text);
+}
+@supports (color: oklch(from red l c h)) {
+  body { --td-fill: light-dark(var(--td-accent), oklch(from var(--td-accent) .55 calc(c * 2.2) h)); }
 }
 input, textarea, select, button { font: inherit; color: inherit; }
 .ui-screen > :not(.ui-large-title, .ui-back) { max-width: 44rem; margin-inline: auto; }
