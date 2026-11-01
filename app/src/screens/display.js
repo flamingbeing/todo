@@ -179,3 +179,28 @@ function picture(kind) {
   else { rect(6, 4, 36, 4); for (let r = 0; r < 4; r++) for (let c = 0; c < 6; c++) rect(6 + c * 6.2, 11 + r * 5, 4.6, 3.6); }
   return svg;
 }
+
+/**
+ * The line over a list whose sort or grouping is not its own ("Sorted by priority · Grouped by label"), with Reset (back
+ * to the list's own order and grouping; the filters and the layout stay). Put just before the list, as its sibling, so a
+ * list drawn again keeps it; none when both are the list's own. @param {Ctx} ctx @param {string} view @param {HTMLElement} host
+ */
+export function appliedLine(ctx, view, host) {
+  host.parentElement?.querySelector(`:scope > .td-applied[data-for="${host.id}"]`)?.remove();
+  const d = ctx.display(view), base = cleanDisplay({}, view), say = (/** @type {readonly (readonly [string, string])[]} */ w, /** @type {string} */ v) => (w.find(x => x[0] === v)?.[1] ?? '').toLowerCase();
+  const bits = [d.sort !== 'manual' ? `Sorted by ${say(SORT_WORDS, d.sort)}${d.dir === 'desc' ? ', descending' : ''}` : '', d.group !== base.group ? `Grouped by ${say(GROUP_WORDS, d.group)}` : ''].filter(Boolean);
+  if (!bits.length) return;
+  const line = el('div', 'td-applied');
+  line.dataset.for = host.id;
+  const reset = /** @type {HTMLButtonElement} */ (el('button', 'td-text-btn td-applied-reset', 'Reset'));
+  reset.type = 'button';
+  reset.setAttribute('aria-label', `Reset: ${bits.join(', ')}`);
+  reset.addEventListener('click', () => {
+    const settings = ctx.app.settings, all = { .../** @type {Record<string, unknown>} */ (settings.get('display') ?? {}) };
+    const next = cleanDisplay({ ...ctx.display(view), sort: 'manual', dir: 'asc', group: base.group }, view);
+    if (plainDisplay(next, view)) delete all[view]; else all[view] = next;
+    settings.set('display', all);
+  });
+  line.append(icon(MORE.arrowUpDown, { class: 'td-applied-icon' }), el('span', 'td-applied-text', bits.join(' · ')), reset);
+  host.before(line);
+}

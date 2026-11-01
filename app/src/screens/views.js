@@ -362,10 +362,19 @@ export function views(app) {
     projectList($('project'), projectId, $('project-empty'));
   };
 
+  // (a sort or a grouping not the list's own: a line over the list says so, with Reset; display.js)
+  /** @param {string} view @param {string} host */
+  const applied = (view, host) => {
+    const d = disp(view), h = $(host);
+    if (d.sort !== 'manual' || d.group !== cleanDisplay({}, view).group) void lazy.withMod('display', m => m.appliedLine(ctx, view, h));
+    else h.parentElement?.querySelector(`:scope > .td-applied[data-for="${host}"]`)?.remove();
+  };
   /** draws a page if the data changed since it was last drawn @param {string} id */
   const paint = id => {
     if (fresh.has(id)) return;
     fresh.add(id);
+    if (id === 'today-page' || id === 'inbox-page' || id === 'upcoming-page') applied(id.slice(0, -5), id.slice(0, -5));
+    else if (id === 'project-page') applied(projectId === INBOX ? 'inbox' : `project:${projectId}`, 'project');
     if (id === 'today-page') paintToday();
     else if (id === 'inbox-page') projectList($('inbox'), INBOX, $('inbox-empty'));
     else if (id === 'upcoming-page') paintUpcoming();

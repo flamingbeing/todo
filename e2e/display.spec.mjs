@@ -56,6 +56,14 @@ test('grouping by priority, by name descending, done tasks shown: kept per list,
   await synced(page);
   await openProject(page, name);
   await want(page);
+  // the line over the list: what is applied, and Reset (grouping and order back; done tasks still shown)
+  const line = page.locator('#project-page .td-applied');
+  await expect(line).toHaveText(/Sorted by name, descending · Grouped by priority/);
+  expect(await AxeBuilder(page)).toEqual([]);
+  await line.getByRole('button', { name: /^Reset/ }).click();
+  await expect(line).toHaveCount(0);
+  await expect(page.locator('#project .td-group-title')).toHaveCount(0);
+  await expect(page.locator('#project .td-title')).toHaveText([`B ${u}`, `A ${u}`, `C ${u}`, `D ${u}`]);
 
   // Today keeps its own
   await openTab(page, 'today');

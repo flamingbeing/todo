@@ -798,3 +798,9 @@ textarea.has-md { color: transparent; }
 .td-completed-select { display: block; margin: -4px 8px 0 auto; }
 .td-completed-select[hidden], .is-selecting > .td-completed-select { display: none; }
 .is-selecting .td-row:not(.is-selected) > .td-check { background: var(--tint); }
+
+/* the line over a list sorted or grouped its own way, with Reset */
+.td-applied { display: flex; align-items: center; gap: 8px; margin: 0 8px 0 16px; font-size: 13px; color: var(--td-text-2); }
+.td-applied-icon { flex: none; width: 15px !important; height: 15px !important; color: var(--td-text-3); }
+.td-applied-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td-applied-reset { font-size: 15px; }
