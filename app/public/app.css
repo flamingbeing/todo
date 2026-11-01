@@ -537,6 +537,10 @@ body:has(dialog[open]) .ui-fab.td-fab { display: none; }
 .td-list.td-board { display: flex; align-items: flex-start; gap: 12px; padding: 4px 16px 24px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 16px;
   overscroll-behavior-x: contain; scrollbar-width: none; }
 .td-board::-webkit-scrollbar { display: none; }
+/* the board scrolls sideways under a finger (the swipe code sets pan-y on its host, which would stop that); with Swipe board
+   cards on, a card takes sideways moves for itself (its swipe actions) and the columns page from their gaps and heads */
+.td-list.td-board { touch-action: pan-x pan-y !important; }
+html[data-board-swipe] .td-board .td-row { touch-action: pan-y; }
 .td-board > .td-col { flex: none; box-sizing: border-box; width: 90%; max-width: 360px; scroll-snap-align: start; }
 .td-col-head { display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 0 0 4px; }
 .td-col-title { min-width: 0; margin: 0; font-size: 15px; font-weight: 600; color: var(--td-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

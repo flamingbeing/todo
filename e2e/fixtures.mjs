@@ -256,7 +256,7 @@ export const settingsBack = async page => {
   else return;
   await expect(page.locator('#settings-host .ui-settings-menu')).toBeVisible();
 };
-// (a tab tapped while a Settings page is open over Browse first closes that page: then a second tap goes)
+// (a tab tapped while a Settings page is open over Browse goes straight there: shell.js closes that page first; the retry is for a tap during a slide)
 export const openTab = async (page, name) => {
   await toTop(page);
   await expect(async () => {
@@ -368,3 +368,25 @@ export const listFoot = page => page.evaluate(() => {
   const t = /** @type {HTMLElement | null} */ (document.querySelector('.ui-tabbar'));
   return t && t.offsetParent && t.getBoundingClientRect().height ? t.getBoundingClientRect().top : innerHeight;
 });
+
+// Real touches through the browser (CDP Input.dispatchTouchEvent): the page sees what a finger on a phone makes (touch
+// events, pointer events, the browser's own panning and its touch-action rules), which finger() and press() do not
+// (they send pointer events to one element). `paths` = one list of [x, y] page points per finger, all the same length
+// (the first point is where it lands, the last where it lifts); the fingers move together, `wait` ms between steps.
+/** @param {import('@playwright/test').Page} page @param {number[][][]} paths @param {{ wait?: number, hold?: number }} [o] */
+export async function fingers(page, paths, { wait = 16, hold = 0 } = {}) {
+  const cdp = await page.context().newCDPSession(page);
+  const points = i => paths.map((p, id) => ({ x: p[i][0], y: p[i][1], id }));
+  try {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: points(0) });
+    if (hold) await page.waitForTimeout(hold);
+    for (let i = 1; i < paths[0].length; i++) {
+      await page.waitForTimeout(wait);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: points(i) });
+    }
+    await page.waitForTimeout(wait);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  } finally { await cdp.detach().catch(() => {}); }
+}
+/** A straight path from (x, y) by (dx, dy) in n moves, for touch() */
+export const line = (x, y, dx, dy, n = 12) => Array.from({ length: n + 1 }, (_, i) => [Math.round(x + dx * i / n), Math.round(y + dy * i / n)]);

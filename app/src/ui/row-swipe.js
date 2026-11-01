@@ -2,7 +2,8 @@
 // row slides over a coloured band with the action's icon, green with a check for Complete and violet with a calendar
 // for Schedule (red with a bin for Delete), as chosen per device in Settings > General. Past about a third of the row
 // (a tick there), or flung that way, the action runs; short of it the row springs back. Nothing swipes in select mode,
-// while a row is held up for a drag, or for a person who may only read.
+// while a row is held up for a drag, or for a person who may only read. A board's cards swipe too when Settings > General
+// "Swipe board cards" is on (off: a sideways move scrolls the columns).
 import { drag, glide, haptic, icon } from '@core/ui';
 import { ICONS } from '../icons.js';
 
@@ -16,7 +17,7 @@ const FLING = 0.6;   // px/ms
 
 /**
  * @param {HTMLElement} host  a list page's body (its rows come and go; the host stays)
- * @param {{ ways: () => { right: Swipe, left: Swipe }, can: () => boolean, run: (way: Swipe, id: string, row: HTMLElement) => unknown }} o  run: false (or a promise of it) when nothing was done
+ * @param {{ ways: () => { right: Swipe, left: Swipe }, can: () => boolean, board?: () => boolean, run: (way: Swipe, id: string, row: HTMLElement) => unknown }} o  board: whether a board's cards swipe too (Settings > General, off: a sideways move scrolls the columns); run: false (or a promise of it) when nothing was done
  * @returns {() => void} stop
  */
 export function swipeRows(host, o) {
@@ -74,8 +75,9 @@ export function swipeRows(host, o) {
     filter: e => {
       if (!o.can() || row) return false;
       const r = /** @type {HTMLElement | null} */ (/** @type {Element} */ (e.target).closest('.td-row'));
-      // (a board's cards: a sideways move scrolls its columns; a done row has nothing to swipe)
-      if (!r || !host.contains(r) || r.classList.contains('is-done') || r.classList.contains('is-complete') || r.classList.contains('is-lifted') || r.closest('.td-board')) return false;
+      // (a board's cards: a sideways move scrolls its columns, unless the option hands it to the card, whose touch-action
+      // then keeps the browser's pan off it: app.css; a done row has nothing to swipe)
+      if (!r || !host.contains(r) || r.classList.contains('is-done') || r.classList.contains('is-complete') || r.classList.contains('is-lifted') || (r.closest('.td-board') && !o.board?.())) return false;
       const w = ways();
       if (w.right === 'none' && w.left === 'none') return false;
       row = r;
