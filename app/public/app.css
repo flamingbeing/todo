@@ -505,7 +505,7 @@ body:has(dialog[open]) .ui-fab.td-fab { display: none; }
 /* ---------- the Display sheet ---------- */
 .ui-sheet.td-display-sheet { background: light-dark(#eeedeb, #1e1e1e); }
 .td-sheet-ok { background: var(--td-accent) !important; color: #fff !important; }
-.td-display-h { margin: 16px 20px 6px; font-size: 13px; font-weight: 600; color: var(--td-text-2); text-transform: uppercase; letter-spacing: .02em; }
+.td-display-h { margin: 18px 20px 8px; font-size: 15px; font-weight: 600; color: var(--td-text-2); }
 .td-layouts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; }
 .td-layout { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 8px 10px; border: 0; border-radius: 12px; background: none; color: var(--td-text-2); cursor: pointer; }
 .td-layout-pic { width: 64px; height: 44px; fill: currentColor; opacity: .55; }
@@ -513,7 +513,7 @@ body:has(dialog[open]) .ui-fab.td-fab { display: none; }
 .td-layout[aria-checked="true"] { background: color-mix(in srgb, var(--td-accent) 10%, transparent); color: var(--td-accent-text); }
 .td-layout[aria-checked="true"] .td-layout-pic { opacity: 1; }
 .td-layout[aria-checked="true"] .td-layout-name { background: var(--td-accent); color: #fff; }
-.td-display-done { margin-top: 12px; }
+.td-display-done { width: auto; margin-top: 12px; }
 .td-display-reset { display: block; margin: 8px auto 0; }
 
 /* ---------- Overdue's Reschedule ---------- */
@@ -529,7 +529,7 @@ body:has(dialog[open]) .ui-fab.td-fab { display: none; }
 .td-week-view { overflow: hidden; touch-action: pan-y; }
 .td-week { display: grid; grid-template-columns: repeat(7, 1fr); padding: 0 8px 4px; }
 .td-wday { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 58px; padding: 4px 0 6px; border: 0; border-bottom: 2px solid transparent;
-  background: none; color: var(--td-text); cursor: pointer; }
+  border-radius: 0; background: none; color: var(--td-text); cursor: pointer; }
 .td-wday:disabled { color: var(--td-text-3); cursor: default; opacity: .6; }
 .td-wday-letter { font-size: 11px; color: var(--td-text-3); }
 .td-wday-num { font-size: 17px; line-height: 22px; font-weight: 500; }

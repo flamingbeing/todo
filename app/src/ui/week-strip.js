@@ -8,6 +8,7 @@ import { ICONS } from '../icons.js';
 import { isTask } from '../tasks.js';
 import { dayKey, addDays, daysBetween, weekOf, monthGrid, monthTitle, weekdayName, dueOf } from '../dates.js';
 import { el, sheetHead } from '../screens/pick.js';
+import { underBar } from './stick.js';
 
 /** @typedef {import('../screens/views.js').Ctx} Ctx */
 /** @typedef {{ list: HTMLElement, days: () => number, more: (n: number) => void }} StripOptions */
@@ -29,6 +30,7 @@ export function drawStrip(ctx, host, o) {
     build(host, s);
   }
   s.o = o; s.ctx = ctx;
+  underBar(host);
   s.draw();
 }
 
@@ -95,10 +97,10 @@ function build(host, s) {
     if (need > s.o.days()) s.o.more(need + 14);
     const sec = /** @type {HTMLElement | null} */ (s.o.list.querySelector(`[data-day="${key}"]`));
     if (!sec) return;
-    const sc = scroller(), off = host.getBoundingClientRect().bottom;
-    const base = sc === document.scrollingElement ? 0 : sc.getBoundingClientRect().top;
+    const sc = scroller(), base = sc === document.scrollingElement ? 0 : sc.getBoundingClientRect().top;
+    const off = base + (parseFloat(host.style.top) || 0) + host.offsetHeight;   // (where the strip's foot is once it sticks)
     following = performance.now() + 900;
-    sc.scrollTo({ top: sc.scrollTop + sec.getBoundingClientRect().top - Math.max(off, base) - 4, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    sc.scrollTo({ top: sc.scrollTop + sec.getBoundingClientRect().top - off - 4, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   };
   // the list scrolled by hand: the first day in sight is picked (not while a tap's own scroll runs)
   let following = 0, queued = false;

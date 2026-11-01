@@ -8,6 +8,7 @@ import { colorHex } from '../colors.js';
 import { searchAll, remember } from '../search.js';
 import { rowList, emptyNote } from '../ui/row.js';
 import { el } from './pick.js';
+import { underBar } from '../ui/stick.js';
 
 /** @typedef {import('./views.js').Ctx} Ctx */
 
@@ -18,6 +19,8 @@ export function drawSearch(ctx, input, host) {
   const settings = ctx.app.settings;
   const recent = () => /** @type {string[]} */ (settings.get('recentSearches') ?? []);
   const keep = () => { const v = input.value.trim(); if (v) settings.set('recentSearches', remember(recent(), v)); };
+  const box = /** @type {HTMLElement | null} */ (input.closest('.td-search'));
+  if (box) underBar(box);
   if (!wired.has(input)) {
     wired.add(input);
     input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); keep(); input.blur(); } });
