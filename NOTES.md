@@ -90,6 +90,23 @@ be saved. Where values live (change these only with a migration; `settings.unit.
 - Decision: `@core/theme`'s per-device choice can later move onto settings (device scope, same storage shape); today it
   keeps its own storage, so adopting settings changes no theme file.
 
+## Vendored libraries (`tools/vendor-lib.mjs`)
+
+The date words (chrono-node 2.10.3, English parsers only) and repeat rules (rrule 2.8.1) are npm packages bundled once
+into one minified ESM file each under `app/public/vendor/<name>/<version>/`, with the licence and a hand-written
+`index.d.ts` for the parts the app uses. The import map names them, `modules.json` lists them as lazy, so neither is
+on the first screen: `recur.js`'s `dateLibs()` loads both the first time quick add, the scheduler or a repeating tick
+needs them. `node tools/vendor-lib.mjs <name>` rebuilds one (network), `--check` checks each folder offline. Vite keeps
+every import-map name external, so a build never bundles them.
+
+## Row gestures (`app/src/ui/row-*.js`)
+
+Task rows have their own swipe, hold and drag rather than app-ui's `selectMode`/`holdMenus`: a page can hold several
+lists (Upcoming's days, a project's sections) that select as one, and a hold must both open the row's menu (let go)
+and lift the row for a drag (moved), which a hold-to-menu helper cannot share. Movement still goes through app-ui's
+gesture module: `drag` (swipe, as `cards`), `claim('drag')` for a lifted row or the + button, `glide`, `haptic`.
+Animations from `glide` are cancelled once they land, so the next gesture's inline transforms show.
+
 ## Search (`@core/search`)
 
 `createSearch({ fields, boost, store, operators, newest })` (`app/public/search/`) is an in-memory index over vendored
