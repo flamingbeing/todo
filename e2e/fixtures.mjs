@@ -249,6 +249,10 @@ const toTop = page => page.evaluate(() => { scrollTo(0, 0); document.querySelect
 export const openSettings = async (page, title) => {
   await toTop(page);
   if (!(await page.locator('#settings-host').isVisible())) {
+    for (let i = 0; i < 4 && !(await page.locator('.ui-tabbar').isVisible()); i++) {   // (a pushed page hides the tab bar: Back first)
+      await page.locator('.ui-bar-back:visible').first().click();
+      await page.waitForTimeout(450);
+    }
     await page.locator(tabLink('browse-page')).first().click();
     await page.locator('#browse-settings').click();
   }
@@ -268,9 +272,13 @@ export const settingsBack = async page => {
   else return;
   await expect(page.locator('#settings-host .ui-settings-menu')).toBeVisible();
 };
-// (a tab tapped while a Settings page is open over Browse goes straight there: shell.js closes that page first; the retry is for a tap during a slide)
+// (the tab bar is hidden on a pushed Settings page, so Back out of Settings first; the retry is for a tap during a slide)
 export const openTab = async (page, name) => {
   await toTop(page);
+  for (let i = 0; i < 4 && !(await page.locator('.ui-tabbar').isVisible()); i++) {
+    await page.locator('.ui-bar-back:visible').first().click();
+    await page.waitForTimeout(450);
+  }
   await expect(async () => {
     await page.locator(tabLink(`${name}-page`)).first().click();
     await expect(page.locator(`#${name}-page`)).toBeVisible({ timeout: 1500 });

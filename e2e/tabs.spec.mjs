@@ -53,16 +53,16 @@ test('a long press on the tab bar opens Tab bar settings; a tap still switches t
   await expect(page.locator('#inbox-page')).toBeHidden();
 });
 
-// A tab tapped with a Settings page open goes straight there; the next Back goes Home (Today), not to Settings.
-test('a tab tapped over a Settings page shows at once, then Back goes Home', async ({ phone }) => {
+// A pushed Settings page hides the tab bar; Back (twice: page, menu) shows it again over Browse.
+test('a pushed Settings page hides the tab bar until Back leaves Settings', async ({ phone }) => {
   const page = await phone();
   await signIn(page, 'member');
   await synced(page);
   await openSettings(page, 'General');
-  await page.locator('.ui-tabbar [data-tab-id="upcoming"]').click();
-  await expect(page.locator('#upcoming-page')).toBeVisible({ timeout: 2000 });
-  await expect(page.locator('#settings-host')).toBeHidden();
-  await page.goBack();
-  await expect(page.locator('#today-page')).toBeVisible();
+  await expect(page.locator('.ui-tabbar')).toBeHidden();
+  await expect(async () => {
+    if (!(await page.locator('.ui-tabbar').isVisible())) await page.locator('.ui-bar-back:visible').first().click();
+    await expect(page.locator('.ui-tabbar')).toBeVisible({ timeout: 800 });
+  }).toPass({ timeout: 10_000 });
   await expect(page.locator('#settings-host')).toBeHidden();
 });

@@ -53,14 +53,16 @@ test('with Home view set to Upcoming the app opens there and Back comes back to 
   await expect(page.getByText('Press Back again to close')).toBeVisible();
 });
 
-test('a tab tapped with a Settings page open goes straight there, and Back then goes Home, not into Settings', async ({ phone }) => {
+test('a Settings page hides the tab bar, and Back leaves it for Browse, with the tab bar back', async ({ phone }) => {
   const page = await phone();
   await signIn(page, 'member');
   await openSettings(page, 'General');
+  await expect(page.locator('.ui-tabbar')).toBeHidden();
+  await expect(async () => {   // (Back from the page to Settings' menu, then out of Settings)
+    if (!(await page.locator('.ui-tabbar').isVisible())) await page.locator('.ui-bar-back:visible').first().click();
+    await expect(page.locator('.ui-tabbar')).toBeVisible({ timeout: 800 });
+  }).toPass({ timeout: 10_000 });
   await page.locator('.ui-tabbar [data-tab-id="upcoming"]').click();
   await expect(page.locator('#upcoming-page')).toBeVisible({ timeout: 3000 });
-  await expect(page.locator('#settings-host')).toBeHidden();
-  await page.goBack();
-  await expect(page.locator('#today-page')).toBeVisible();
   await expect(page.locator('#settings-host')).toBeHidden();
 });
