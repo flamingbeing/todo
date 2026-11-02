@@ -1,12 +1,17 @@
 // A list by day from today on (Upcoming, and a list's Agenda: screens/calendar.js): Overdue first (with Reschedule),
 // then each day with its tasks and an Add task row, more days drawn as the end comes near; over it the strip.
-// The strip (#upcoming-strip, or the Agenda's): the month and year of the week shown with a caret (a tap, or the handle
-// under the strip, opens five weeks in place; a day picked there closes it), then the week as seven days: the weekday's
-// letter over the day's number, today's in a filled accent circle, the day picked in a soft one. A swipe sideways goes a week on or back (not before this week); a tap on
-// a day scrolls the list to it, and scrolling the list moves the pick. A task dragged onto a day moves to it
+// The strip (#upcoming-strip, or the Agenda's): the month and year of the week shown with a caret, then the week as seven
+// days: the weekday's letter over the day's number, today's in a filled accent circle, the day picked in a soft one. A
+// swipe sideways goes a week on or back (not before this week); a tap on a day scrolls the list to it, and scrolling the
+// list moves the pick. The month opens from the handle under the week: dragging it down grows the calendar under the
+// finger, row by row, from the one week to six rows; dragging up shrinks it back; let go, it settles open or shut by
+// distance and speed (a tap on the handle or the month title toggles; less motion: it just switches). Out, the month
+// title is in the accent colour from the first pull (the caret turns up once open) and the weeks run on in a scroller from this week, with more drawn
+// near the end (a year and more ahead), the title following the top row's month; past days are disabled; a day picked
+// there closes the calendar and scrolls the list to it. A task dragged onto a day moves to it
 // (row-drag.js reads data-drop-day); a long press on a day opens the quick add dated that day. The week starts on the
 // day the setting says.
-import { icon, drag, glide, haptic } from '@core/ui';
+import { icon, drag, glide, spring, still, haptic } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { MORE } from '../icons-more.js';
 import { isTask, dayOrder } from '../tasks.js';
@@ -26,6 +31,9 @@ import { underBar } from './stick.js';
  */
 
 const STEP = 28;
+/** the open calendar: a week row's height (keep in step with .td-weeks-row in app.css), the letters row above the weeks,
+ * the rows the open calendar shows, and the weeks drawn at a time (the first draw reaches a year and more ahead) */
+const ROW = 48, HEAD = 20, ROWS = 6, CHUNK = 26;
 /** how many days each list draws @type {WeakMap<HTMLElement, number>} */
 const shown = new WeakMap();
 
@@ -95,6 +103,8 @@ function foot(host) {
   set();
   if (!feet.has(host)) { feet.add(host); new ResizeObserver(set).observe(host); }
 }
+/** the list-scroll listener each strip has, to drop on a rebuild @type {WeakMap<HTMLElement, AbortController>} */
+const scrolls = new WeakMap();
 /** strips whose foot is watched @type {WeakSet<HTMLElement>} */
 const feet = new WeakSet();
 
@@ -103,7 +113,6 @@ function build(host, s) {
   const top = el('div', 'td-strip-top');
   const month = /** @type {HTMLButtonElement} */ (el('button', 'td-month'));
   month.type = 'button';
-  month.setAttribute('aria-haspopup', 'dialog');
   const monthName = el('span', 'td-month-name');
   const caret = icon(ICONS.chevronDown, { class: 'td-month-chevron' });
   month.append(monthName, caret);
@@ -114,15 +123,100 @@ function build(host, s) {
   const week = el('div', 'td-week');
   week.setAttribute('role', 'group');
   view.append(week);
-  // five weeks from the one shown, drawn while the month is open
+  // the calendar: a clip (its height follows the finger) over the letters and a scroller of weeks, drawn from this week
+  // while the calendar is open or moving
+  const cal = el('div', 'td-wcal');
+  cal.hidden = true;
+  const letters = el('div', 'td-weeks-head');
+  letters.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < 7; i++) letters.append(el('span', '', LETTERS[(s.start + i) % 7]));
   const grid = el('div', 'td-weeks');
-  grid.hidden = true;
+  grid.setAttribute('role', 'group');
+  grid.setAttribute('aria-label', 'Weeks');
+  cal.append(letters, grid);
   const handle = /** @type {HTMLButtonElement} */ (el('button', 'td-strip-handle'));
   handle.type = 'button';
   handle.setAttribute('aria-label', 'Show more weeks');
   handle.append(el('span', 'td-strip-grab'));
-  host.replaceChildren(top, view, grid, handle);
-  let open = false;
+  host.replaceChildren(top, view, cal, handle);
+  /** open: settled open (or going there); busy: the calendar is drawn (open, or moving between the two) */
+  let open = false, busy = false;
+  /** the week the scroller starts at, the weeks drawn, the week row's month shown in the title, the closed height */
+  let first = '', rows = 0, topKey = '', baseH = 64;
+  /** the settle now @type {{ stop: () => number, running: () => boolean, done: Promise<boolean> } | undefined} */
+  let run;
+  const full = HEAD + ROWS * ROW;
+  const span = () => full - baseH;
+  const setH = (/** @type {number} */ h) => { cal.style.height = `${h}px`; };
+  const sync = () => { view.hidden = open || busy; cal.hidden = !(open || busy); month.toggleAttribute('data-out', open || busy); };
+
+  /** draws weeks until n are there */
+  const ensure = (/** @type {number} */ n) => {
+    const today = s.day, parts = [];
+    for (; rows < n; rows++) {
+      const r = el('div', 'td-weeks-row');
+      r.setAttribute('role', 'group');
+      for (let i = 0; i < 7; i++) {
+        const key = addDays(first, rows * 7 + i), b = /** @type {HTMLButtonElement} */ (el('button', 'td-wday td-wcell'));
+        b.type = 'button'; b.dataset.day = key;
+        if (key >= today) b.dataset.dropDay = key; else b.disabled = true;
+        b.classList.toggle('is-today', key === today);
+        b.setAttribute('aria-pressed', String(key === s.pick));
+        if (key.endsWith('-01')) b.append(el('span', 'td-wcell-mon', MONTHS[+key.slice(5, 7) - 1].slice(0, 3)));
+        b.append(el('span', 'td-sr', `${weekdayName(key)} `), el('span', 'td-wday-num', String(+key.slice(8))), el('span', 'td-sr', ` ${MONTHS[+key.slice(5, 7) - 1]}`));
+        r.append(b);
+      }
+      parts.push(r);
+    }
+    grid.append(...parts);
+  };
+  /** the month the title shows: while the calendar is out, the top row's (or the pick, when that row has it) */
+  const titleKey = () => (busy || open) && topKey ? topKey : s.pick >= s.week && s.pick <= addDays(s.week, 6) ? s.pick : s.week;
+  const title = () => {
+    monthName.textContent = monthTitle(titleKey());
+    month.setAttribute('aria-label', `${monthName.textContent}, ${open ? 'close' : 'show'} the weeks`);
+  };
+  /** the weeks start at this week, the shown one at the top */
+  const place = () => {
+    first = weekOf(s.day, s.start);
+    const at = daysBetween(first, s.week) / 7;
+    ensure(at + 60);
+    grid.scrollTop = at * ROW;
+    topKey = s.pick >= s.week && s.pick <= addDays(s.week, 6) ? s.pick : s.week;
+  };
+  /** the calendar comes out at the week's height */
+  const prep = () => {
+    if (busy || open) return;
+    baseH = view.offsetHeight || baseH;
+    setH(baseH);
+    busy = true; sync();
+    place();
+  };
+  /** the calendar has landed: open at full height, or put away (the weeks are dropped) */
+  const land = () => {
+    run = undefined; busy = false;
+    if (open) setH(full);
+    else { cal.style.height = ''; grid.replaceChildren(); rows = 0; topKey = ''; }
+    sync(); s.draw();
+  };
+  /** to open (or shut) from `from` px of growth, the finger's speed v (px/ms); less motion: a switch. Resolves once it lands @returns {Promise<void>} */
+  const settle = (/** @type {boolean} */ want, /** @type {number} */ from, /** @type {number} */ v, /** @type {boolean} */ calm = false) => {
+    open = want; s.draw();
+    run?.stop();
+    if (calm) { land(); return Promise.resolve(); }
+    // (a live height, on purpose: the list below the calendar has to be pushed down or pulled up with it, which only
+    // layout does, and one spring per settle is all that runs; the drag's own frames are the finger's)
+    run = spring(x => setH(baseH + x), from, want ? span() : 0, v);
+    const mine = run;
+    return mine.done.then(landed => { if (landed && run === mine) land(); });
+  };
+  /** a tap on the handle or the title */
+  const toggle = () => {
+    const want = !open;
+    if (busy && run?.running()) { void settle(want, run.stop() , 0); return; }
+    prep();
+    void settle(want, open ? span() : 0, 0, still());
+  };
 
   const count = () => {
     /** @type {Map<string, number>} */
@@ -132,35 +226,15 @@ function build(host, s) {
   };
   s.draw = () => {
     const today = s.day, by = count();
-    monthName.textContent = monthTitle(s.pick >= s.week && s.pick <= addDays(s.week, 6) ? s.pick : s.week);
-    month.setAttribute('aria-label', `${monthName.textContent}, ${open ? 'close' : 'show'} the weeks`);
+    title();
     month.setAttribute('aria-expanded', String(open));
     handle.setAttribute('aria-label', open ? 'Show one week' : 'Show more weeks');
     host.classList.toggle('is-open', open);
-    view.hidden = open; grid.hidden = !open;
-    const flip = (/** @type {Element} */ c) => c.classList.toggle('is-up', open);
-    flip(caret);
-    if (open) {
-      const head = el('div', 'td-weeks-head');
-      head.setAttribute('aria-hidden', 'true');
-      for (let i = 0; i < 7; i++) head.append(el('span', '', LETTERS[(s.start + i) % 7]));
-      grid.replaceChildren(head, ...Array.from({ length: 5 }, (_, w) => {
-        const r = el('div', 'td-weeks-row');
-        r.setAttribute('role', 'group');
-        for (let i = 0; i < 7; i++) {
-          const key = addDays(s.week, w * 7 + i), b = /** @type {HTMLButtonElement} */ (el('button', 'td-wday td-wcell'));
-          b.type = 'button'; b.dataset.day = key;
-          if (key >= today) b.dataset.dropDay = key; else b.disabled = true;
-          b.classList.toggle('is-today', key === today);
-          b.setAttribute('aria-pressed', String(key === s.pick));
-          const first = key.endsWith('-01');
-          if (first) b.append(el('span', 'td-wcell-mon', MONTHS[+key.slice(5, 7) - 1].slice(0, 3)));
-          b.append(el('span', 'td-sr', `${weekdayName(key)} `), el('span', 'td-wday-num', String(+key.slice(8))), el('span', 'td-sr', ` ${MONTHS[+key.slice(5, 7) - 1]}`));
-          b.addEventListener('click', () => { open = false; go(key, true); });
-          r.append(b);
-        }
-        return r;
-      }));
+    sync();
+    caret.classList.toggle('is-up', open);
+    if (rows) {
+      grid.querySelector('[aria-pressed="true"]')?.setAttribute('aria-pressed', 'false');
+      grid.querySelector(`[data-day="${s.pick}"]`)?.setAttribute('aria-pressed', 'true');
     }
     week.setAttribute('aria-label', `Week of ${+s.week.slice(8)} ${MONTHS[+s.week.slice(5, 7) - 1]}`);
     week.replaceChildren(...Array.from({ length: 7 }, (_, i) => {
@@ -203,7 +277,8 @@ function build(host, s) {
   };
   // the list scrolled by hand: the first day in sight is picked (not while a tap's own scroll runs)
   let following = 0, queued = false;
-  const onScroll = () => {
+  const onScroll = (/** @type {Event} */ e) => {
+    if (host.contains(/** @type {Node} */ (e.target))) return;   // (the calendar's own scroll is its own)
     if (queued || performance.now() < following || host.closest('[hidden]')) return;
     queued = true;
     requestAnimationFrame(() => {
@@ -215,15 +290,41 @@ function build(host, s) {
       if (key && key !== s.pick) go(key, false);
     });
   };
-  addEventListener('scroll', onScroll, { passive: true, capture: true });
+  // (one listener per build: a rebuild, for a new day or week start, drops the last one)
+  scrolls.get(host)?.abort();
+  const own = new AbortController();
+  scrolls.set(host, own);
+  addEventListener('scroll', onScroll, { passive: true, capture: true, signal: own.signal });
 
-  const toggleOpen = () => { open = !open; s.draw(); };
-  month.addEventListener('click', toggleOpen);
-  // the handle: a tap, or a drag down (open) or up (close)
-  let hy = 0;
-  handle.addEventListener('pointerdown', e => { hy = e.clientY; });
-  handle.addEventListener('pointerup', e => { const dy = e.clientY - hy; if (Math.abs(dy) > 14) { if ((dy > 0) !== open) toggleOpen(); e.preventDefault(); } });
-  handle.addEventListener('click', e => { if (e.detail !== 0 && Math.abs(e.clientY - hy) > 14) return; toggleOpen(); });
+  month.addEventListener('click', toggle);
+  handle.addEventListener('click', toggle);
+  // a day in the calendar: it closes, and the list scrolls to the day
+  grid.addEventListener('click', e => {
+    const b = /** @type {HTMLButtonElement | null} */ (/** @type {Element} */ (e.target).closest('.td-wcell'));
+    if (!b || b.disabled) return;
+    const key = String(b.dataset.day);
+    void settle(false, run?.running() ? run.stop() : span(), 0, still()).then(() => go(key, true));
+  });
+  // the weeks scroll: the title follows the top row, more weeks are drawn near the end
+  grid.addEventListener('scroll', () => {
+    const i = Math.max(0, Math.round(grid.scrollTop / ROW)), a = addDays(first, i * 7);
+    topKey = s.pick >= a && s.pick <= addDays(a, 6) ? s.pick : addDays(a, 3);
+    title();
+    if (grid.scrollTop + grid.clientHeight > grid.scrollHeight - 13 * ROW) ensure(rows + CHUNK);
+  }, { passive: true });
+  // the handle: dragged down, the calendar grows under the finger (from the one week to six rows); up, it shrinks;
+  // let go, it settles by distance and speed
+  let moved = false;
+  drag(handle, { axis: 'y', mouse: true, name: 'cards',
+    start: () => { moved = false; if (busy && run?.running()) { moved = true; return run.stop(); } return open ? span() : 0; },
+    bounds: () => [0, span()],
+    move: d => { moved = true; if (!busy) prep(); setH(baseH + d); },
+    end: (d, v) => {
+      if (!moved) return;
+      const want = Math.abs(v) > 0.3 ? v > 0 : d > span() / 2;
+      if (want !== open) haptic();
+      void settle(want, d, v, still());
+    } });
 
   // a long press on a day (today on): the quick add, dated that day; the tap that ends it does not also pick the day
   /** @type {ReturnType<typeof setTimeout> | undefined} */

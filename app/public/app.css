@@ -654,7 +654,7 @@ html[data-board-swipe] .td-board .td-row { touch-action: pan-y; }
 
 .td-strip-top { display: flex; align-items: center; padding: 8px 16px 0; }
 .td-month { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0; border: 0; background: none; color: var(--td-text); font-size: 17px; font-weight: 400; cursor: pointer; }
-.td-month[aria-expanded="true"] { color: var(--td-accent-text); }
+.td-month[aria-expanded="true"], .td-month[data-out] { color: var(--td-accent-text); }
 .td-month-chevron { width: 16px !important; height: 16px !important; transition: transform .15s; }
 .td-month-chevron.is-up { transform: rotate(180deg); }
 .td-week { display: grid; grid-template-columns: repeat(7, 1fr); padding: 0 8px; }
@@ -666,12 +666,19 @@ html[data-board-swipe] .td-board .td-row { touch-action: pan-y; }
 .td-wday[aria-pressed="true"]:not(.is-today) .td-wday-num { background: var(--td-card-edge); }
 .td-wday-dot { display: none; }
 .td-wday.is-drop .td-wday-num { background: color-mix(in srgb, var(--td-accent) 24%, transparent); }
-.td-weeks { padding: 0 8px; }
+/* the month calendar: a clip whose height follows the handle's drag (JS sets it), the letters, then a scroller of week
+   rows (48px each, six showing; keep in step with ROW/HEAD/ROWS in week-strip.js). The first row sits where the week
+   view's number circles do, so the week turns into the calendar without a jump. */
+.td-wcal { overflow: hidden; }
+.td-wcal > .td-weeks-head { padding: 0 8px; }
+.td-weeks { height: calc(48px * 6); padding: 0 8px; overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y proximity; scrollbar-width: none; }
+.td-weeks::-webkit-scrollbar { display: none; }
 .td-weeks-head, .td-weeks-row { display: grid; grid-template-columns: repeat(7, 1fr); justify-items: center; }
+.td-weeks-row { height: 48px; scroll-snap-align: start; }
 .td-weeks-head > span { font-size: 12px; line-height: 20px; color: var(--td-text-2); }
-.td-wcell { min-height: 54px; justify-content: center; gap: 0; width: 100%; }
+.td-wcell { min-height: 0; height: 48px; justify-content: center; gap: 0; width: 100%; }
 .td-wcell-mon { font-size: 12px; line-height: 14px; margin-bottom: -4px; }
-.td-strip-handle { display: grid; place-items: center; width: 100%; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; }
+.td-strip-handle { display: grid; place-items: center; width: 100%; height: 28px; padding: 0; border: 0; background: none; cursor: pointer; }
 .td-strip-grab { width: 32px; height: 4px; border-radius: 2px; background: var(--td-text-3); }
 .td-mon-nav { display: flex; align-items: center; gap: 4px; padding: 0 12px 6px 20px; }
 .td-mon-name { flex: 1; margin: 0; font-size: 17px; font-weight: 600; }
@@ -983,10 +990,10 @@ body:has(.ui-screen.td-grouped:not([hidden])) .ui-bar { background: var(--td-bar
 /* the bar's Back: a bare arrow, as the reference's */
 .ui-bar .ui-bar-back { width: 48px; min-width: 48px; height: 48px; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; color: var(--td-text); margin-inline-start: -12px; }
 
-/* the task sheet (screens/task-sheet.js): full height, a dark ground with slim cards, the project at the top left and "⋮" at
+/* the task sheet (screens/task-sheet.js): app-ui's detents (medium = half the screen on a phone, large = full height, which
+   the kit sizes: no height rule here), a dark ground with slim cards, the project at the top left and "⋮" at
    the right, the unset attributes as chips in a row that scrolls sideways, the sub-tasks under them, the comment box fixed at the bottom */
 #task-sheet.td-sheet { background: light-dark(#f6f3ee, #202020); border-radius: 16px 16px 0 0; }
-@media (max-width: 839.98px) { #task-sheet.td-sheet { height: calc(100dvh - 12px); } }
 #task-sheet .td-sheet-body { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0; }
 #task-sheet .td-sheet-head { flex: none; padding: 2px 16px 6px; }
 .td-sheet-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 0 0 16px; }
