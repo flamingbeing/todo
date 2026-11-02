@@ -606,6 +606,8 @@ html[data-board-swipe] .td-board .td-row { touch-action: pan-y; }
 /* ---------- Upcoming's head: the month, Today, the week ---------- */
 .td-strip { position: sticky; top: 0; z-index: 3; background: var(--td-ground); border-bottom: .5px solid var(--td-hair); }
 .td-strip:empty { display: none; }
+/* a day's head pins under the strip while its day is on screen; the next day's pushes it up */
+#upcoming .td-group > .td-group-head { position: sticky; top: var(--td-strip-foot, 0px); z-index: 2; background: var(--td-ground); }
 .td-strip-top { display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 16px; }
 .td-month { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0; border: 0; background: none; color: var(--td-text); font-size: 17px; font-weight: 600; cursor: pointer; }
 .td-month-chevron { width: 16px !important; height: 16px !important; color: var(--td-text-2); }

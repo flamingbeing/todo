@@ -81,7 +81,18 @@ export function drawStrip(ctx, host, o) {
   s.o = o; s.ctx = ctx;
   underBar(host);
   s.draw();
+  foot(host);
 }
+
+/** where the strip ends while stuck, for the day heads to stick under it (--td-strip-foot on the page: a day's head
+ * pins below the strip, not behind it); kept as the strip grows (the month calendar) @param {HTMLElement} host */
+function foot(host) {
+  const set = () => host.parentElement?.style.setProperty('--td-strip-foot', `${(parseFloat(host.style.top) || 0) + host.offsetHeight}px`);
+  set();
+  if (!feet.has(host)) { feet.add(host); new ResizeObserver(set).observe(host); }
+}
+/** strips whose foot is watched @type {WeakSet<HTMLElement>} */
+const feet = new WeakSet();
 
 /** the strip's parts, made once @param {HTMLElement} host @param {NonNullable<ReturnType<typeof state.get>>} s */
 function build(host, s) {
