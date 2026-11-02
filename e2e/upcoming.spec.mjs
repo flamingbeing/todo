@@ -57,10 +57,11 @@ test('a swipe to next week, a tap scrolls to the day (the + adds there), the mon
   await finger(page, `#upcoming .td-row[data-id="${far}"]`, steps(dx, dy, 12), { hold: 650, wait: 80 });
   await expect.poll(async () => (await db.get(`spaces/_/tasks/${far}`))?.due?.date, { timeout: 15_000 }).toBe(drop);
 
-  // the month: five weeks open in place (no sheet); today picked there closes them and picks it
+  // the month: a scroller of weeks (a year and more) opens in place (no sheet); a day picked there closes it and picks it
   await strip.locator('.td-month').click();
-  await expect(strip.locator('.td-weeks .td-wcell')).toHaveCount(35);
   await expect(strip.locator('.td-month')).toHaveAttribute('aria-expanded', 'true');
+  await expect(strip.locator('.td-weeks')).toBeVisible();
+  await expect.poll(() => strip.locator('.td-weeks .td-wcell').count()).toBeGreaterThanOrEqual(53 * 7);
   expect(await AxeBuilder(page)).toEqual([]);
   await strip.locator(`.td-wcell[data-day="${plus(weekOf(now), 7)}"]`).click();
   await expect(strip.locator('.td-weeks')).toBeHidden();
