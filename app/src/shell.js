@@ -68,6 +68,7 @@ export function startShell() {
   if (start) for (const t of tabs) { if (t === start) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); }
   const go = tabPages(bar, { screens: kit.screens, host, ahead: page => page.dispatchEvent(new CustomEvent('draw-ahead')), backToFirst: false });
   kit.tabs = go;
+  goTo = page => { if (go.current() !== page) go.go(page); };
   try { history.scrollRestoration = 'manual'; } catch { /* none */ }
   /** @type {(() => void) | null} */
   let unsay = null;
@@ -85,6 +86,14 @@ export function startShell() {
   });
   const shell = adaptiveShell(/** @type {HTMLElement} */ (document.querySelector('.ui-shell')), { screens: kit.screens });
   Object.assign(window, { kit, shell });   // for the tests
+}
+
+/** @type {(page: HTMLElement) => void} set by startShell */
+let goTo = () => {};
+/** Today's page, whatever Home is: it holds sign-in, access and set-up, so a signed-out start must land there */
+export function showToday() {
+  const page = document.getElementById('today-page');
+  if (page) goTo(page);
 }
 
 /** the Home view's tab, from the options (the next start opens on it) @param {unknown} id */

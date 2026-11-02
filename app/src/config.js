@@ -7,7 +7,7 @@ export const KIT = 'https://design.flamingbeing.com/v1/';
 export const firebaseConfig = {
   "projectId": "flamingbeing-todo",
   "authDomain": "todo.anawj.com",
-  "apiKey": "AIzaSyD7rV2C1RLyYrgdub_n3FNyqbgC8kMdpWk",
+  "apiKey": "AIzaSyB8Rx10LaTeUl7Kta2M0FmzdsEq4P6Brx4",
   "appId": "1:526891832069:web:ad4f8c40325548ac015d6c",
   "storageBucket": "flamingbeing-todo.firebasestorage.app",
   "messagingSenderId": "526891832069"
