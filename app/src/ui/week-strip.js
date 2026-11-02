@@ -5,8 +5,8 @@
 // swipe sideways goes a week on or back (not before this week); a tap on a day scrolls the list to it, and scrolling the
 // list moves the pick. The month opens from the handle under the week: dragging it down grows the calendar under the
 // finger, row by row, from the one week to six rows; dragging up shrinks it back; let go, it settles open or shut by
-// distance and speed (a tap on the handle or the month title toggles; less motion: it just switches). Open, the month
-// title and caret are in the accent colour (caret up) and the weeks run on in a scroller from this week, with more drawn
+// distance and speed (a tap on the handle or the month title toggles; less motion: it just switches). Out, the month
+// title is in the accent colour from the first pull (the caret turns up once open) and the weeks run on in a scroller from this week, with more drawn
 // near the end (a year and more ahead), the title following the top row's month; past days are disabled; a day picked
 // there closes the calendar and scrolls the list to it. A task dragged onto a day moves to it
 // (row-drag.js reads data-drop-day); a long press on a day opens the quick add dated that day. The week starts on the
@@ -103,6 +103,8 @@ function foot(host) {
   set();
   if (!feet.has(host)) { feet.add(host); new ResizeObserver(set).observe(host); }
 }
+/** the list-scroll listener each strip has, to drop on a rebuild @type {WeakMap<HTMLElement, AbortController>} */
+const scrolls = new WeakMap();
 /** strips whose foot is watched @type {WeakSet<HTMLElement>} */
 const feet = new WeakSet();
 
@@ -111,7 +113,6 @@ function build(host, s) {
   const top = el('div', 'td-strip-top');
   const month = /** @type {HTMLButtonElement} */ (el('button', 'td-month'));
   month.type = 'button';
-  month.setAttribute('aria-haspopup', 'dialog');
   const monthName = el('span', 'td-month-name');
   const caret = icon(ICONS.chevronDown, { class: 'td-month-chevron' });
   month.append(monthName, caret);
@@ -124,7 +125,7 @@ function build(host, s) {
   view.append(week);
   // the calendar: a clip (its height follows the finger) over the letters and a scroller of weeks, drawn from this week
   // while the calendar is open or moving
-  const cal = el('div', 'td-cal');
+  const cal = el('div', 'td-wcal');
   cal.hidden = true;
   const letters = el('div', 'td-weeks-head');
   letters.setAttribute('aria-hidden', 'true');
@@ -147,7 +148,7 @@ function build(host, s) {
   const full = HEAD + ROWS * ROW;
   const span = () => full - baseH;
   const setH = (/** @type {number} */ h) => { cal.style.height = `${h}px`; };
-  const sync = () => { view.hidden = open || busy; cal.hidden = !(open || busy); };
+  const sync = () => { view.hidden = open || busy; cal.hidden = !(open || busy); month.toggleAttribute('data-out', open || busy); };
 
   /** draws weeks until n are there */
   const ensure = (/** @type {number} */ n) => {
@@ -289,7 +290,11 @@ function build(host, s) {
       if (key && key !== s.pick) go(key, false);
     });
   };
-  addEventListener('scroll', onScroll, { passive: true, capture: true });
+  // (one listener per build: a rebuild, for a new day or week start, drops the last one)
+  scrolls.get(host)?.abort();
+  const own = new AbortController();
+  scrolls.set(host, own);
+  addEventListener('scroll', onScroll, { passive: true, capture: true, signal: own.signal });
 
   month.addEventListener('click', toggle);
   handle.addEventListener('click', toggle);
@@ -318,7 +323,7 @@ function build(host, s) {
       if (!moved) return;
       const want = Math.abs(v) > 0.3 ? v > 0 : d > span() / 2;
       if (want !== open) haptic();
-      void settle(want, d, v);
+      void settle(want, d, v, still());
     } });
 
   // a long press on a day (today on): the quick add, dated that day; the tap that ends it does not also pick the day

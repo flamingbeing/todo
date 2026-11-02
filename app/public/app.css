@@ -654,7 +654,7 @@ html[data-board-swipe] .td-board .td-row { touch-action: pan-y; }
 
 .td-strip-top { display: flex; align-items: center; padding: 8px 16px 0; }
 .td-month { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0; border: 0; background: none; color: var(--td-text); font-size: 17px; font-weight: 400; cursor: pointer; }
-.td-month[aria-expanded="true"] { color: var(--td-accent-text); }
+.td-month[aria-expanded="true"], .td-month[data-out] { color: var(--td-accent-text); }
 .td-month-chevron { width: 16px !important; height: 16px !important; transition: transform .15s; }
 .td-month-chevron.is-up { transform: rotate(180deg); }
 .td-week { display: grid; grid-template-columns: repeat(7, 1fr); padding: 0 8px; }
@@ -669,8 +669,8 @@ html[data-board-swipe] .td-board .td-row { touch-action: pan-y; }
 /* the month calendar: a clip whose height follows the handle's drag (JS sets it), the letters, then a scroller of week
    rows (48px each, six showing; keep in step with ROW/HEAD/ROWS in week-strip.js). The first row sits where the week
    view's number circles do, so the week turns into the calendar without a jump. */
-.td-cal { overflow: hidden; }
-.td-cal > .td-weeks-head { padding: 0 8px; }
+.td-wcal { overflow: hidden; }
+.td-wcal > .td-weeks-head { padding: 0 8px; }
 .td-weeks { height: calc(48px * 6); padding: 0 8px; overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y proximity; scrollbar-width: none; }
 .td-weeks::-webkit-scrollbar { display: none; }
 .td-weeks-head, .td-weeks-row { display: grid; grid-template-columns: repeat(7, 1fr); justify-items: center; }
