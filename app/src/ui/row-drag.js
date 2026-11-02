@@ -174,7 +174,7 @@ export function dragRows(host, ctx, o) {
     if (kindOf(host, o) !== 'groups') for (let n = r.nextElementSibling; n instanceof HTMLElement && depthOf(n) > p.base; n = n.nextElementSibling) p.kids.push(n);
     for (const k of p.kids) k.style.opacity = '0.35';
     r.classList.add('is-lifted');
-    r.style.transform = 'scale(1.03)';
+    r.style.transform = `scale(${grow(r)})`;
     haptic('long');
   };
   const row = () => /** @type {HTMLElement} */ (p?.row);
@@ -196,7 +196,7 @@ export function dragRows(host, ctx, o) {
     const skip = new Set([String(row().dataset.id), ...q.kids.map(k => String(k.dataset.id))]);
     if (b || !q.gaps) q.gaps = gapsOf(host, skip, kind === 'tree' && !b, q.from);
     const sx = b ? host.scrollLeft - q.sx : 0, sy = top(sc()) - q.sy;
-    row().style.transform = `translate(${dx + sx}px, ${dy + sy}px) scale(1.03)${b ? ' rotate(2deg)' : ''}`;
+    row().style.transform = `translate(${dx + sx}px, ${dy + sy}px) scale(${grow(row())})${b ? ' rotate(2deg)' : ''}`;
     for (const k of q.kids) k.style.transform = `translate(${dx}px, ${dy + sy}px)`;
     // over Today's postpone place: no line
     const z = q.zone?.getBoundingClientRect();
@@ -321,10 +321,15 @@ export function dragRows(host, ctx, o) {
   };
 }
 
+/** How much a lifted row grows: a board's card 3 %; a list's row spans the screen, so it stays its size (grown, its
+ * sides would run past the edges and cover the line above) and only its shadow lifts it @param {HTMLElement} r */
+const grow = r => r.closest('.td-board') ? 1.03 : 1;
+
 /** a lifted row back to its size, its subtasks unfaded @param {HTMLElement} r @param {HTMLElement[]} kids */
 function settleRow(r, kids) {
+  const g = grow(r) - 1;
   r.classList.remove('is-lifted');
-  void glide([[r, k => ({ transform: `scale(${1 + 0.03 * k})` })], ...kids.map(n => /** @type {[HTMLElement, (k: number) => Keyframe]} */ (
+  void glide([[r, k => ({ transform: `scale(${1 + g * k})` })], ...kids.map(n => /** @type {[HTMLElement, (k: number) => Keyframe]} */ (
     [n, k => ({ opacity: String(1 - 0.65 * k) })]))], 1, 0).done.then(() => letGo([r, ...kids]));
 }
 

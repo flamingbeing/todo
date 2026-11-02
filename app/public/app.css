@@ -453,7 +453,7 @@ body:has(dialog[open]) .ui-fab.td-fab { display: none; }
 .td-swipe-band[data-side="right"] { justify-content: flex-end; padding-inline-end: 20px; }
 .td-swipe-band[data-side="left"] { justify-content: flex-start; padding-inline-start: 20px; }
 .td-swipe-icon { width: 24px; height: 24px; stroke-width: 2.5; opacity: 0; transition: transform .15s ease-out; }
-.td-row.is-lifted { z-index: 6; background: var(--td-ground); border-radius: 10px; box-shadow: 0 10px 28px rgb(0 0 0 / .2), 0 1px 4px rgb(0 0 0 / .12); }
+.td-row.is-lifted { z-index: 6; background: var(--td-card); box-shadow: 0 6px 20px rgb(0 0 0 / .18), 0 1px 3px rgb(0 0 0 / .12); }
 .td-row.is-lifted::after { display: none; }
 .td-drop-clip { position: fixed; left: 0; top: 0; height: 100%; overflow: hidden; z-index: 20; pointer-events: none; }
 .td-drop-line { position: absolute; left: 0; top: 0; height: 2px; border-radius: 1px; background: var(--td-drop); opacity: 0; }
