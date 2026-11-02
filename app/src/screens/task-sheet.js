@@ -7,7 +7,7 @@ import { icon, confirmModal } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { MORE } from '../icons-more.js';
 import { REFUSED } from '../items.js';
-import { priorityOf, placeText, projectOf, labelsOf } from '../tasks.js';
+import { taskLink, priorityOf, placeText, projectOf, labelsOf } from '../tasks.js';
 import { dueLine, deadlineLine, dayKey, minutesText } from '../dates.js';
 import { colorHex } from '../colors.js';
 import { flatten, descendants, canNest } from '../tree.js';
@@ -83,8 +83,7 @@ function draw(ctx) {
   more.type = 'button'; more.setAttribute('aria-label', 'More'); more.setAttribute('aria-haspopup', 'menu'); more.append(icon(ICONS.ellipsis));
   // (Copy link: this page's address with #task=<id>, which opens this task's sheet on load; a viewer can copy it too)
   const copyLink = { label: 'Copy link', icon: MORE.link, run: async () => {
-    const url = `${location.origin}${location.pathname}${location.search}#task=${encodeURIComponent(t.id)}`;
-    try { await navigator.clipboard.writeText(url); ctx.toast('Link copied'); } catch { ctx.toast('Could not copy the link'); }
+    try { await navigator.clipboard.writeText(taskLink(t.id)); ctx.toast('Link copied'); } catch { ctx.toast('Could not copy the link'); }
   } };
   more.addEventListener('click', () => openMenu(more, writable ? [
     { label: 'Duplicate', icon: MORE.copy, run: async () => { const now = current(ctx); if (now && await ctx.app.duplicateTask(now)) ctx.toast(REFUSED); else ctx.toast('Duplicated'); } },

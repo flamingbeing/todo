@@ -180,3 +180,6 @@ export function cleanDisplay(v, view) {
 }
 /** whether a view's choices are the defaults @param {Display} d @param {string} view */
 export const plainDisplay = (d, view) => JSON.stringify(d) === JSON.stringify(cleanDisplay({}, view));
+
+/** the address that opens a task's sheet on load (this page with #task=<id>) @param {string} id */
+export const taskLink = id => `${location.origin}${location.pathname}${location.search}#task=${encodeURIComponent(id)}`;

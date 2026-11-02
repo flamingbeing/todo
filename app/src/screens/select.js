@@ -9,7 +9,7 @@ import { confirmModal, plural, haptic, icon } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { MORE } from '../icons-more.js';
 import { REFUSED, COLL } from '../items.js';
-import { isTask, priorityOf, projectOf } from '../tasks.js';
+import { taskLink, isTask, priorityOf, projectOf } from '../tasks.js';
 import { rescheduled } from '../recur.js';
 import { descendants } from '../tree.js';
 import { dayKey } from '../dates.js';
@@ -164,6 +164,9 @@ export function holdMenu(ctx, task, row, host) {
     { label: 'Schedule', icon: ICONS.calendar, run: () => scheduleTasks(ctx, [task]) },
     { label: 'Priority', icon: MORE.flag, run: () => priorityMenu(ctx, anchor, [task]) },
     { label: 'Move to', icon: ICONS.hash, run: () => moveTasks(ctx, [task]) },
+    { label: 'Copy link', icon: MORE.link, run: async () => {
+      try { await navigator.clipboard.writeText(taskLink(task.id)); ctx.toast('Link copied'); } catch { ctx.toast('Could not copy the link'); }
+    } },
     null,
     { label: 'Delete', icon: MORE.trash2, danger: true, run: () => { void deleteTasks(ctx, [task]); } },
   ], { label: task.title });
@@ -266,8 +269,7 @@ export function startSelect(ctx, host, ids = [], { done = false } = {}) {
     if (ids.every(id => picked.has(id))) picked.clear(); else for (const id of ids) picked.add(id);
     draw();
   });
-  back.addEventListener('click', async () => {
-    const list = chosen();
+  const notDone = async (/** @type {Task[]} */ list) => {
     stop();
     if (await ctx.app.untick(list)) { ctx.toast(REFUSED); return; }
     // (Undo: done again, each with the time it was done, so Completed keeps its order)
@@ -277,7 +279,8 @@ export function startSelect(ctx, host, ids = [], { done = false } = {}) {
         if (await ctx.app.writeRecord(COLL, { ...now, done: true, doneAt: t.doneAt ?? null }, now)) { ctx.toast(REFUSED); break; }
       }
     });
-  });
+  };
+  back.addEventListener('click', () => { void notDone(chosen()); });
   gone.addEventListener('click', async () => { if (await deleteTasks(ctx, chosen())) stop(); });
   date.addEventListener('click', () => scheduleTasks(ctx, chosen(), stop));
   move.addEventListener('click', () => moveTasks(ctx, chosen(), stop));

@@ -2,6 +2,7 @@
 
 ## Now
 
+- Small gaps (2026-11-02, slice 1 of 4): a held row's menu now has Copy link (same address as the task sheet's). The rest of the list was already in place (Upcoming's + adds for the viewed day, Back goes to Home, board Add section, week-strip hold adds, applied sort/group line with Reset, label rules checks, Not done in Completed's select mode).
 - A task manager for one person's own tasks, on app-ui 1.0.0-rc.80's kit shell (2026-11-01). Done so far (part 1 of 4):
   the data model (tasks with projects, sections, subtasks, priority 1-4, due dates with time and repeat rules, labels,
   filters; the Inbox is the project `inbox`), its rules and rules tests; five tabs (Inbox, Today, Upcoming, Search,
