@@ -24,10 +24,11 @@ test('the sheet\'s Deadline row sets a day only; the row shows it; No deadline c
   await expect(page.locator(`${sheet} .td-sheet-title`)).toHaveText('Deadline');
   await expect(page.locator(`${sheet} .td-sched-time`)).toHaveCount(0);
   await expect(page.locator(`${sheet} .td-sched-more`)).toHaveCount(0);
-  await expect(page.locator(`${sheet} .td-sched-row`).filter({ hasText: 'No deadline' })).toHaveCount(1);
+  // (No deadline only once there is one to take off)
+  await expect(page.locator(`${sheet} .td-sched-row`).filter({ hasText: 'No deadline' })).toHaveCount(0);
   expect(await AxeBuilder(page)).toEqual([]);
   await page.locator(`${sheet} .td-cal-day[data-day="${day(3)}"]`).click();
-  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await page.locator(`${sheet} .td-sched-save`).click();
   await expect(page.locator(sheet)).toBeHidden();
   await expect.poll(() => deadlineOf(t), { timeout: 15_000 }).toBe(day(3));
   await expect(attr).toHaveAttribute('aria-label', 'Deadline: in 3 days');
@@ -79,7 +80,7 @@ test('quick add: {words} make the deadline, the "…" menu has Deadline, the tas
   await page.getByRole('menuitem', { name: 'Deadline' }).click();
   await expect(page.locator(sheet)).toBeVisible();
   await page.locator(`${sheet} .td-cal-day[data-day="${day(6)}"]`).click();
-  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await page.locator(`${sheet} .td-sched-save`).click();
   await expect(chip).toHaveAttribute('aria-label', /^Deadline: in 6 days/);
   // the x leaves the words and the chip
   await chip.locator('xpath=following-sibling::button').click();
