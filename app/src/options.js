@@ -32,6 +32,8 @@ export const OPTIONS = {
   display: { scope: 'device', default: {}, clean: v => (v && typeof v === 'object' && !Array.isArray(v) ? v : {}) },
   // the last searches on the Search tab (this device), newest first
   recentSearches: { scope: 'device', default: [], clean: v => (Array.isArray(v) ? v.filter(x => typeof x === 'string').slice(0, 10) : []) },
+  // notify when a reminder is due (this device)
+  reminders: { scope: 'device', default: false },
   // add: options
 };
 
@@ -49,6 +51,7 @@ export const SETTING_SECTIONS = [
     { key: 'swipeRight', label: 'Swipe right', sub: 'This device', choices: SWIPE_CHOICES },
     { key: 'swipeLeft', label: 'Swipe left', sub: 'This device', choices: SWIPE_CHOICES },
     { key: 'home', label: 'Home view', sub: 'Where the app opens and Back returns to; Today if it is off the tab bar', choices: HOMES },
+    { key: 'reminders', label: 'Reminders', sub: 'Notify when a reminder is due. This device' },
     { key: 'weekStart', label: 'Start of the week', sub: 'This device', choices: /** @type {[unknown, string][]} */ ([[1, 'Monday'], [0, 'Sunday']]) },
   ] },
   { title: 'Tasks', icon: ICONS.listChecks, sub: 'Counts and row size', group: 'Tasks', rows: [

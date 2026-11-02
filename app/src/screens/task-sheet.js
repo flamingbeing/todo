@@ -19,6 +19,7 @@ import { pickDate } from './scheduler.js';
 import { pickLabels, ticksOf, onIds } from './labels.js';
 import { hasMarks, showMarks } from '../markdown.js';
 import { commentsSection } from './comments.js';
+import { LEADS, cleanReminders, leadText, dueMs } from '../reminders.js';
 
 /** @typedef {import('../items.js').Task} Task */
 /** @typedef {import('./views.js').Ctx} Ctx */
@@ -146,7 +147,8 @@ function draw(ctx) {
   const rows = el('div', 'td-card td-attrs');
   const place = attrRow(ICONS.hash, 'Project', []), date = attrRow(ICONS.calendar, 'Date', []), prio = attrRow(MORE.flag, 'Priority', []);
   const labels = attrRow(ICONS.tag, 'Labels', []), deadline = attrRow(ICONS.target, 'Deadline', []);
-  for (const b of [place, date, deadline, prio, labels]) b.disabled = !writable;
+  const remind = attrRow(MORE.bell, 'Reminders', []);
+  for (const b of [place, date, deadline, remind, prio, labels]) b.disabled = !writable;
   const move = () => { const now = current(ctx); if (now) pickPlace(ctx.data(), { projectId: projectOf(now), sectionId: now.sectionId }, async to => {
     const at = current(ctx);
     if (at && await ctx.app.moveTask(at, { ...to, parentId: null })) ctx.toast(REFUSED);
@@ -159,7 +161,16 @@ function draw(ctx) {
   labels.addEventListener('click', () => { const now = current(ctx); if (now) pickLabels(ctx, ticksOf(now, ctx.data().labels), ticks => save({ labels: onIds(ticks) })); });
   prio.addEventListener('click', () => openMenu(prio, [1, 2, 3, 4].map(p => ({ label: `Priority ${p}`, icon: MORE.flag, color: PRIORITY_COLOR[p],
     checked: priorityOf(/** @type {Task} */ (current(ctx))) === p, run: () => save({ priority: p }) })), { label: 'Priority' }));
-  rows.append(place, date, deadline, prio, labels);
+  // reminders: tick the leads wanted (before the due time; a date with no time counts as 09:00)
+  remind.addEventListener('click', () => {
+    const now = current(ctx);
+    if (!now) return;
+    if (dueMs(now) === null) { ctx.toast('Set a date first'); return; }
+    const has = cleanReminders(now.reminders);
+    openMenu(remind, LEADS.map(([lead, label]) => ({ label, icon: MORE.bell, checked: has.includes(lead),
+      run: () => save({ reminders: has.includes(lead) ? has.filter(x => x !== lead) : [...has, lead] }) })), { label: 'Reminders' });
+  });
+  rows.append(place, date, deadline, remind, prio, labels);
 
   // subtasks
   const subs = el('section', 'td-subtasks');
@@ -204,6 +215,10 @@ function draw(ctx) {
     deadline.replaceChildren(icon(ICONS.target, { class: 'td-attr-icon td-deadline-icon' }), el('span', `td-attr-text${dl ? '' : ' td-attr-empty'}`, dl ? dl.text : 'Deadline'));
     if (dl) /** @type {HTMLElement} */ (deadline.lastElementChild).dataset.tone = dl.tone;
     deadline.setAttribute('aria-label', dl ? `Deadline: ${dl.text}` : 'Deadline');
+    const rem = cleanReminders(now.reminders);
+    const remText = rem.length ? rem.map(leadText).join(', ').replace(/ before/g, '') : '';
+    remind.replaceChildren(icon(MORE.bell, { class: 'td-attr-icon' }), el('span', `td-attr-text${remText ? '' : ' td-attr-empty'}`, remText || 'Reminders'));
+    remind.setAttribute('aria-label', remText ? `Reminders: ${remText}` : 'Reminders');
     const flag = icon(MORE.flag, { class: `td-attr-icon td-flag${p < 4 ? ' is-filled' : ''}` });
     flag.style.color = PRIORITY_COLOR[p];
     prio.replaceChildren(flag, el('span', 'td-attr-text', `Priority ${p}`));

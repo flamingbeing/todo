@@ -2,6 +2,7 @@
 
 ## Now
 
+- Reminders (2026-11-02, slice 3 of 4): a task has up to 5 reminders (at its time, or 5 min to 1 week before; a date with no time counts as 09:00), set in a Reminders row in the task sheet (needs a date) and saved as `reminders` (minutes before) with rules and tests. The per-device option Settings > General > Reminders is off by default and asks for the notification permission only when turned on (back off if refused). While the app is open or in the background a timer shows each due reminder once through the service worker (a tap opens the task); a closed app shows nothing until Web Push is set up (Next). Quick-add words ("remind 30m before") are not built. Code loads only when the option is on (`reminders-wire.js`).
 - Comments (2026-11-02, slice 2 of 4): the task sheet has a Comments section (add a plain-text comment, up to 2000 characters, shown with its time and the existing small markdown marks; the author edits or deletes their own); a row shows a small speech-bubble count when a task has comments. They sync as their own `comments` collection (members write, viewers read; only the author or an admin edits or deletes; not in the bin; deleting a task leaves its comments unseen, so Undo brings them back). Rules, rules tests and `e2e/comments.spec.mjs` added; no attachments.
 - Small gaps (2026-11-02, slice 1 of 4): a held row's menu now has Copy link (same address as the task sheet's). The rest of the list was already in place (Upcoming's + adds for the viewed day, Back goes to Home, board Add section, week-strip hold adds, applied sort/group line with Reset, label rules checks, Not done in Completed's select mode).
 - A task manager for one person's own tasks, on app-ui 1.0.0-rc.80's kit shell (2026-11-01). Done so far (part 1 of 4):
@@ -77,6 +78,14 @@
 
 ## Next
 
+- Web Push for reminders when the app is closed (client side is ready: `app/src/push.js` `subscribePush(vapidPublicKey)`, and
+  `sw.js` already handles `push` with a JSON body `{ title, body, taskId }` and the tap). Owner steps: (1) make a VAPID key pair
+  (`npx web-push generate-vapid-keys`); (2) put the private key and a contact `mailto:` in the Worker's secrets
+  (`wrangler secret put VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`) and the public key in the page (a `VAPID_PUBLIC_KEY` constant next to
+  `config.js`); never commit the private key; (3) add a Worker route `POST /api/push/subscribe` (signed in; stores the
+  subscription JSON per user, e.g. in the existing Firestore through the Worker, no new billing) and a Cloudflare cron trigger that
+  sends a push for each reminder coming due in the next minute; (4) call `subscribePush` after the Reminders option is turned on and
+  post its result to that route. iPhone needs the app installed to the Home Screen.
 - Calendar: resizing a block to change its duration; tapping a faded future repeat; a block's title in a narrow
   overlap lane breaks mid-word; the kit asks in the owner's private notes (gesture rank, edge auto-scroll).
 - app-ui: home tab option, then drop the stopgap (shell.js startShell; the asks are in the owner's private notes).
@@ -85,7 +94,7 @@
   (24 px from the side, 500/700 ms) has no e2e test; a sorted list says why it has no drag (a toast with Manual order)
   rather than allowing one. Edge auto-scroll is an app stopgap (`app/src/ui/edge-scroll.js`), asked of the kit.
 
-- Not built yet, by choice for now: comments on a task; archiving a project or section; any project, filter or label as
+- Not built yet, by choice for now: archiving a project or section; any project, filter or label as
   a tab; a completion sound; holidays in the calendar; a planning sidebar.
 - Startup is 289.3 of 290 KiB gz: the next feature on the first screen needs bytes won back first (row-drag.js,
   row-swipe.js and the week strip could load on first touch).

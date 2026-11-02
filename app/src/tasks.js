@@ -101,6 +101,9 @@ export function sectionCascade(id, tasks) {
   return [...out.values()];
 }
 
+/** reminders as saved: whole minutes before due, 0..4 weeks, once each, up to 5 @param {unknown} v @returns {number[]} */
+export const cleanReminders = v => [...new Set((Array.isArray(v) ? v : []).map(Number).filter(n => Number.isInteger(n) && n >= 0 && n <= 40320))].sort((a, b) => a - b).slice(0, 5);
+
 /** @param {unknown} v @returns {import('./dates.js').Due | null} */
 export function cleanDue(v) {
   const d = dueOf(v);
@@ -131,6 +134,7 @@ export function cleanFields(f) {
   if (f.due !== undefined) out.due = cleanDue(f.due);
   if (f.deadline !== undefined) out.deadline = isDay(f.deadline) ? f.deadline : null;
   if (f.duration !== undefined) { const n = Math.round(Number(f.duration)); out.duration = f.duration && n >= 1 ? Math.min(1440, n) : null; }
+  if (f.reminders !== undefined) out.reminders = cleanReminders(f.reminders);
   if (f.order !== undefined && typeof f.order === 'number') out.order = f.order;
   if (f.collapsed !== undefined) out.collapsed = !!f.collapsed;
   return /** @type {import('./items.js').Fields} */ (out);

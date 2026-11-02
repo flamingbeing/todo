@@ -8,7 +8,7 @@
 //   a sheet is open or saves are sending (app.js, canReload).
 // - Fetch: SHELL files and pages cache-first; the design kit refreshed in the background; the pinned shared modules
 //   once fetched. Sign-in pages (/__/), /api/ and sw.js always go to the network.
-const VERSION = 'app-v2';
+const VERSION = 'app-v3';
 const SHELL = [
   './',
   'app.css',
@@ -39,8 +39,12 @@ const SHELL = [
   'src/options.js',
   'src/order.js',
   'src/parse.js',
+  'src/push.js',
   'src/query.js',
   'src/recur.js',
+  'src/reminder-delivery.js',
+  'src/reminders-wire.js',
+  'src/reminders.js',
   'src/roles.js',
   'src/screen-switch.js',
   'src/screens/board.js',
@@ -195,6 +199,23 @@ const SHELL = [
 const MANIFEST = {};
 
 // add: service worker handlers
+// Reminders (src/reminder-delivery.js shows them here; a Web Push, once set up, arrives as 'push' with { title, body, taskId }).
+// A tap focuses an open window on the task, else opens one.
+self.addEventListener('push', e => {
+  let m = {};
+  try { m = e.data ? e.data.json() : {}; } catch { /* not JSON: shown plain */ }
+  e.waitUntil(self.registration.showNotification(String(m.title || 'Task'), { body: String(m.body || ''), tag: m.taskId ? 'task-' + m.taskId : undefined,
+    icon: 'icons/icon-192.png', data: { taskId: m.taskId || '', url: m.taskId ? './#task=' + encodeURIComponent(m.taskId) : './' } }));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = new URL((e.notification.data && e.notification.data.url) || './', self.registration.scope).href;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async list => {
+    const w = list[0];
+    if (w) { await w.focus(); if ('navigate' in w) await w.navigate(url).catch(() => {}); return; }
+    await self.clients.openWindow(url);
+  }));
+});
 
 importScripts('https://core.anawj.com/update/0.2.0/sw-core.js');
 AppUpdate.init({

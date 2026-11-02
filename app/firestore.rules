@@ -72,6 +72,13 @@ service cloud.firestore {
     function optNum(d, k) { return gone(d, k) || d[k] is number; }
     function optBool(d, k) { return gone(d, k) || d[k] is bool; }
     function text(d, k, max) { return d[k] is string && d[k].size() > 0 && d[k].size() <= max; }
+    // a task's reminders: up to 5 leads, each whole minutes before the due time (0 = at the time) up to 4 weeks
+    function leadOk(n) { return n is int && n >= 0 && n <= 40320; }
+    function remindersOk(r) {
+      return r is list && r.size() <= 5
+        && (r.size() <= 0 || leadOk(r[0])) && (r.size() <= 1 || leadOk(r[1])) && (r.size() <= 2 || leadOk(r[2]))
+        && (r.size() <= 3 || leadOk(r[3])) && (r.size() <= 4 || leadOk(r[4]));
+    }
     // a task's labels: up to 20, each a label's id (or, from before ids, its name), text of 1 to 64.
     // Rules have no loops: the lengths by one pattern over the list joined by line breaks (a break inside one reads as
     // two, both still short), then each place is text.
@@ -105,7 +112,7 @@ service cloud.firestore {
       allow read: if can(g, ['admin', 'member', 'viewer']);
       allow create, update: if writer(g)
         && request.resource.data.keys().hasOnly(['title', 'description', 'projectId', 'sectionId', 'parentId', 'order', 'dayOrder',
-          'priority', 'labels', 'due', 'deadline', 'duration', 'collapsed', 'done', 'doneAt', 'extId', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
+          'priority', 'labels', 'due', 'deadline', 'duration', 'reminders', 'collapsed', 'done', 'doneAt', 'extId', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
         && text(request.resource.data, 'title', 500)
         && optText(request.resource.data, 'description', 16000)
         && text(request.resource.data, 'projectId', 64)
@@ -118,6 +125,8 @@ service cloud.firestore {
         // the planned length from due.time in whole minutes, up to a day (a calendar block's height)
         && (gone(request.resource.data, 'duration') || (request.resource.data.duration is int
           && request.resource.data.duration >= 1 && request.resource.data.duration <= 1440))
+        // reminders: up to 5 leads, whole minutes before the due time, 0 to 4 weeks
+        && (gone(request.resource.data, 'reminders') || remindersOk(request.resource.data.reminders))
         && optBool(request.resource.data, 'collapsed')
         && request.resource.data.done is bool && optNum(request.resource.data, 'doneAt')
         && optId(request.resource.data, 'extId')

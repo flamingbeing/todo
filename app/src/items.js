@@ -25,7 +25,7 @@ export const REFUSED = 'The server refused that. A copy is kept in the refused l
  * absent or null (null clears one). done tasks keep doneAt (ms); duration: minutes planned from due.time (1-1440).
  * @typedef {{ id: string, title: string, description?: string | null, projectId: string, sectionId?: string | null,
  *   parentId?: string | null, order: number, dayOrder?: number | null, priority: number, labels?: string[] | null,
- *   due?: Due | null, deadline?: string | null, duration?: number | null, collapsed?: boolean | null, done: boolean, doneAt?: number | null,
+ *   due?: Due | null, deadline?: string | null, duration?: number | null, reminders?: number[] | null, collapsed?: boolean | null, done: boolean, doneAt?: number | null,
  *   extId?: string | null, createdAt?: number, updatedAt?: unknown, _deleted?: boolean } & Record<string, unknown>} Task
  */
 /** @typedef {Task} Item */
@@ -37,7 +37,7 @@ export const REFUSED = 'The server refused that. A copy is kept in the refused l
 /** @typedef {{ id: string, name: string, query: string, color: string, order: number, favorite?: boolean | null, createdAt?: number } & Record<string, unknown>} Filter */
 /** @typedef {{ tasks: Task[], projects: Project[], sections: Section[], labels: Label[], filters: Filter[], comments?: Comment[] }} Data  everything, as last heard */
 /** @typedef {{ title?: string, description?: string | null, projectId?: string, sectionId?: string | null, parentId?: string | null,
- *   priority?: number, labels?: string[] | null, due?: Due | null, deadline?: string | null, duration?: number | null, order?: number, collapsed?: boolean }} Fields  what an add or edit sets */
+ *   priority?: number, labels?: string[] | null, due?: Due | null, deadline?: string | null, duration?: number | null, reminders?: number[] | null, order?: number, collapsed?: boolean }} Fields  what an add or edit sets */
 /** one entry of the bin: a deleted item's last version (the bin recipe; docId is its document in the bin) */
 /** @typedef {{ docId: string, id: string, kind?: unknown, deletedAt: number, data?: any }} BinEntry */
 /** @typedef {{ list: () => Promise<BinEntry[]>, restore: (entry: BinEntry) => Promise<string>, purge: (entries: BinEntry[]) => Promise<void> }} BinApi */
