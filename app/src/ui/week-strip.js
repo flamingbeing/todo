@@ -1,5 +1,5 @@
 // A list by day from today on (Upcoming, and a list's Agenda: screens/calendar.js): Overdue first (with Reschedule),
-// then each day with its tasks and an Add task row, more days drawn as the end comes near; over it the strip.
+// then each day with its tasks (done ones after them when Display's Completed tasks is on) and an Add task row, more days drawn as the end comes near; over it the strip.
 // The strip (#upcoming-strip, or the Agenda's): the month and year of the week shown with a caret, then the week as seven
 // days: the weekday's letter over the day's number, today's in a filled accent circle, the day picked in a soft one. A
 // swipe sideways goes a week on or back (not before this week); a tap on a day scrolls the list to it, and scrolling the
@@ -40,7 +40,7 @@ const shown = new WeakMap();
 /** @param {Ctx} ctx @param {DaysOptions} o */
 export function drawDays(ctx, o) {
   const today = dayKey(), d = o.d, n = shown.get(o.list) ?? STEP;
-  const v = upcomingView(narrowTasks(o.tasks, d, ctx.data().labels, today), today, n, sorter(d.sort, d.dir, dayOrder)), parts = [];
+  const v = upcomingView(narrowTasks(o.tasks, d, ctx.data().labels, today), today, n, sorter(d.sort, d.dir, dayOrder), d.completed), parts = [];
   o.list.toggleAttribute('data-sorted', d.sort !== 'manual');
   // (back from Upcoming's board or calendar)
   o.list.classList.remove('td-board');
@@ -54,7 +54,7 @@ export function drawDays(ctx, o) {
   }
   for (const day of v.days) {
     const g = document.createElement('section'); g.className = 'td-group td-day'; g.dataset.day = day.key;
-    // "Monday, 2 Nov • Today": an empty day's head is dimmed (it stays, so a task can be dropped on it; a new task for
+    // "Monday, 2 Nov • Today": an empty day's head is dimmed and roomier, about 70px (it stays, so a task can be dropped on it; a new task for
     // it comes from the + while the day is in sight, or a long press on the day in the strip)
     const n = daysBetween(today, day.key);
     const title = `${weekdayName(day.key)}, ${shortDate(day.key, today)}${n === 0 ? ' \u2022 Today' : n === 1 ? ' \u2022 Tomorrow' : ''}`;

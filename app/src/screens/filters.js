@@ -1,6 +1,8 @@
 // Filters & Labels (#filters-page, from Browse): a group for the saved filters and one for the labels, each with a fold
 // and a +. A row is the filter's drop or the label's tag in its colour, the name, and how many open tasks it shows; a
-// tap opens its page; a hold lifts it to drag it to another place in its group (or Alt+Up and Alt+Down).
+// tap opens its page; a hold lifts it to drag it to another place in its group (or Alt+Up and Alt+Down). The rows of a group
+// sit in one rounded card that ends with a Manage filters (Manage labels) row: tapped, the rows show a chevron and a tap on one
+// edits it (name, colour, query) until Done.
 // Its page (#place-page): a label's open tasks, or a filter's, one list per comma part of its query (headed by that
 // part's words when there are several), with its error at the top when it can't be read.
 import { icon, gripDrag, haptic } from '@core/ui';
@@ -26,6 +28,11 @@ import { openNamedSheet, queryContext } from './named-sheet.js';
 
 const FOLD = (/** @type {string} */ kind) => `filters-labels:${kind}-folded`;
 const HOLD_MS = 450, SLOP = 10;
+/** the list being managed now ('' none): a tap on a row of it edits the row instead of opening its page @type {'' | 'filters' | 'labels'} */
+let managing = '';
+
+/** leaving the page ends managing */
+export const endManage = () => { managing = ''; };
 
 /** @param {Ctx} ctx @param {HTMLElement} host */
 export function drawFiltersLabels(ctx, host) {
@@ -74,7 +81,10 @@ export function drawFiltersLabels(ctx, host) {
       const n = kind === 'filters' ? countQuery(/** @type {Filter} */ (x).query, data.tasks, qc) : { count: open.filter(t => labelsOf(t, data.labels).includes(/** @type {Label} */ (x))).length, error: null };
       b.append(ic, el('span', 'td-fl-label', x.name));
       if (!n.error && n.count) b.append(el('span', 'td-fl-count', String(n.count)));
-      b.addEventListener('click', e => { if (b.dataset.dragged) { delete b.dataset.dragged; e.preventDefault(); return; } ctx.openPlace(kind, x.id); });
+      b.addEventListener('click', e => {
+        if (b.dataset.dragged) { delete b.dataset.dragged; e.preventDefault(); return; }
+        if (managing === kind) openNamedSheet(ctx, kind, x); else ctx.openPlace(kind, x.id);
+      });
       if (ctx.canWrite()) {
         b.setAttribute('aria-keyshortcuts', 'Alt+ArrowUp Alt+ArrowDown');
         b.addEventListener('keydown', e => {
@@ -88,6 +98,18 @@ export function drawFiltersLabels(ctx, host) {
       li.append(b);
       return li;
     }));
+    // the closing row: Manage filters / Manage labels (a tap on a row then edits it, until Done)
+    if (ctx.canWrite()) {
+      const li = el('li', 'td-fl-item'), m = /** @type {HTMLButtonElement} */ (el('button', 'td-fl-row td-fl-manage'));
+      const on = managing === kind;
+      m.type = 'button';
+      m.setAttribute('aria-pressed', String(on));
+      m.append(icon(on ? ICONS.check : ICONS.settings, { class: 'td-fl-icon' }), el('span', 'td-fl-label', on ? 'Done' : `Manage ${kind}`));
+      m.addEventListener('click', () => { managing = on ? '' : kind; drawFiltersLabels(ctx, host); });
+      li.append(m);
+      list.append(li);
+    }
+    list.classList.toggle('td-fl-managing', managing === kind);
     out.push(list);
     return out;
   };

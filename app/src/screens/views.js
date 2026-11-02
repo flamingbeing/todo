@@ -14,6 +14,7 @@ import { $, sectionScreen } from '../dom.js';
 import { rowList, addRow, groupHead, emptyNote } from '../ui/row.js';
 import { isOpen } from '../tree.js';
 import { screens } from '../shell.js';
+import { rememberPlace } from '../search.js';
 import { modules } from '../modules.js';
 
 // a task's link (#task=<id>, the sheet's "Copy link"): read before the tabs take the address over, opened once it is there
@@ -165,11 +166,27 @@ export function views(app) {
   let tabPage = 'today-page';
   /** @type {string} */
   let top = 'today-page';
-  host.addEventListener('ui-tab', e => {
-    tabPage = /** @type {CustomEvent} */ (e).detail.page.id; top = tabPage; onScreen();
-    if (top === 'search-page') /** @type {HTMLInputElement} */ ($('search-text')).focus({ preventScroll: true });
+  // the places last opened, kept for Search's "Recently visited" (the tabs, a project, Filters & Labels, a label or filter)
+  const visit = () => {
+    const key = ({ 'inbox-page': 'inbox', 'today-page': 'today', 'upcoming-page': 'upcoming', 'filters-page': 'filters' })[top]
+      ?? (top === 'project-page' ? (projectId === INBOX ? 'inbox' : `project:${projectId}`) : top === 'place-page' && place.id ? `${place.kind}:${place.id}` : '');
+    if (key) app.settings.set('recentPlaces', rememberPlace(/** @type {string[]} */ (app.settings.get('recentPlaces') ?? []), key));
+  };
+  host.addEventListener('ui-tab', e => { tabPage = /** @type {CustomEvent} */ (e).detail.page.id; top = tabPage; lazy.loaded('filters')?.endManage(); onScreen(); visit(); });
+  host.addEventListener('ui-screen', e => {
+    const was = top;
+    top = /** @type {CustomEvent} */ (e).detail.top.id;
+    // (Search is a page pushed over Browse: it opens with the keyboard up and empty, and Back leaves nothing typed)
+    if (was === 'search-page' && top !== 'search-page') { const f = /** @type {HTMLInputElement} */ ($('search-text')); if (f.value) { f.value = ''; fresh.delete('search-page'); } }
+    if (top !== 'filters-page') lazy.loaded('filters')?.endManage();
+    onScreen(); visit();
+    if (top === 'search-page') {
+      // (the kit moves the focus to the page's title right after this event: take it back on the next frame)
+      const f = /** @type {HTMLInputElement} */ ($('search-text'));
+      const ask = (/** @type {number} */ n) => { f.focus({ preventScroll: true }); if (document.activeElement !== f && n > 0 && top === 'search-page') requestAnimationFrame(() => ask(n - 1)); };
+      requestAnimationFrame(() => ask(40));
+    }
   });
-  host.addEventListener('ui-screen', e => { top = /** @type {CustomEvent} */ (e).detail.top.id; onScreen(); });
   for (const id of ['inbox-page', 'upcoming-page', 'search-page', 'browse-page', 'today-page']) $(id).addEventListener('draw-ahead', () => paint(id));
 
   /** what a new task starts with on the page shown @returns {AddContext} */
@@ -384,7 +401,7 @@ export function views(app) {
   const paintUpcoming = () => {
     const d = disp('upcoming'), cal = $('upcoming-strip').hidden = inCal('upcoming') || d.layout === 'board', ts = filtered().filter(t => !!t.due?.date);
     // (a board: a column a day)
-    if (cal) { if (d.layout === 'board') groupBoard($('upcoming'), null, ts.filter(t => !t.done), d, 'date', { projectId: INBOX }, ''); else drawCal('upcoming', $('upcoming'), null, ts, { projectId: INBOX }); return; }
+    if (cal) { if (d.layout === 'board') groupBoard($('upcoming'), null, d.completed ? ts : ts.filter(t => !t.done), d, 'date', { projectId: INBOX }, ''); else drawCal('upcoming', $('upcoming'), null, ts, { projectId: INBOX }); return; }
     void lazy.withMod('strip', m => m.drawDays(ctx, { list: $('upcoming'), strip: $('upcoming-strip'), tasks: filtered(), d, place: true, projectId: INBOX, resched }));
   };
 

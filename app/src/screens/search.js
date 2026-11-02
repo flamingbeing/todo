@@ -1,5 +1,6 @@
-// Search's results (#search, under the field at the top of the Search tab): with nothing typed, the last searches on
-// this device (a tap runs one again; Clear forgets them); else what has every word typed, in four groups: tasks,
+// Search's results (#search, under the field of the Search page pushed over Browse): with nothing typed, Recently visited (the last
+// few places opened on this device: Inbox, Today, Upcoming, a project, Filters & Labels, a label or filter; one card of rows,
+// a tap goes there) and the last searches (a tap runs one again; Clear forgets them); else what has every word typed, in four groups: tasks,
 // projects, labels and saved filters. A search is kept as recent once it is left (Enter, or a result opened).
 import { icon } from '@core/ui';
 import { ICONS } from '../icons.js';
@@ -8,6 +9,7 @@ import { colorHex } from '../colors.js';
 import { searchAll, remember } from '../search.js';
 import { rowList, emptyNote } from '../ui/row.js';
 import { el } from './pick.js';
+import { screens, showPage } from '../shell.js';
 import { underBar } from '../ui/stick.js';
 
 /** @typedef {import('./views.js').Ctx} Ctx */
@@ -27,8 +29,14 @@ export function drawSearch(ctx, input, host) {
   }
   const text = input.value.trim();
   if (!text) {
-    const list = recent();
-    if (!list.length) { host.replaceChildren(); return; }
+    const list = recent(), places = visited(ctx), parts = [];
+    if (places.length) {
+      const ul = el('ul', 'td-card td-results');
+      ul.setAttribute('aria-label', 'Recently visited');
+      ul.append(...places.map(p => item(p.ic, p.name, p.color, p.run)));
+      parts.push(el('h2', 'td-search-h', 'Recently visited'), ul);
+    }
+    if (!list.length) { host.replaceChildren(...parts); return; }
     const head = el('div', 'td-search-head');
     const clear = /** @type {HTMLButtonElement} */ (el('button', 'td-text-btn', 'Clear'));
     clear.type = 'button';
@@ -41,7 +49,7 @@ export function drawSearch(ctx, input, host) {
       input.value = q;
       input.dispatchEvent(new Event('input'));
     })));
-    host.replaceChildren(head, ul);
+    host.replaceChildren(...parts, head, ul);
     return;
   }
   const data = ctx.data(), hits = searchAll(text, data);
@@ -68,6 +76,26 @@ export function drawSearch(ctx, input, host) {
   named('Labels', hits.labels, ICONS.tag, id => ctx.openPlace('labels', id));
   named('Filters', hits.filters, MORE.droplet, id => ctx.openPlace('filters', id));
   host.replaceChildren(...(parts.length ? parts : [emptyNote('No matches', 'Try other words')]));
+}
+
+/** the places last opened, as rows: each with its icon, name and what a tap does (a place since deleted is left out)
+ * @param {Ctx} ctx @returns {{ ic: import('app-ui/icons/lucide.js').IconNodes, name: string, color: string, run: () => void }[]} */
+function visited(ctx) {
+  const data = ctx.data(), keys = /** @type {string[]} */ (ctx.app.settings.get('recentPlaces') ?? []);
+  const tab = (/** @type {import('app-ui/icons/lucide.js').IconNodes} */ ic, /** @type {string} */ name, /** @type {string} */ id) => ({ ic, name, color: '', run: () => showPage(`${id}-page`) });
+  return keys.flatMap(k => {
+    const [kind, id = ''] = k.split(':');
+    if (k === 'inbox') return [tab(ICONS.inbox, 'Inbox', 'inbox')];
+    if (k === 'today') return [tab(MORE.sun, 'Today', 'today')];
+    if (k === 'upcoming') return [tab(ICONS.calendar, 'Upcoming', 'upcoming')];
+    if (k === 'filters') return [{ ic: MORE.layoutGrid, name: 'Filters & Labels', color: '', run: () => screens()?.push('#filters-page') }];
+    if (kind === 'project') { const p = data.projects.find(x => x.id === id); return p ? [{ ic: ICONS.hash, name: p.name, color: colorHex(p.color), run: () => ctx.openProject(id) }] : []; }
+    if (kind === 'labels' || kind === 'filters') {
+      const x = (kind === 'labels' ? data.labels : data.filters).find((/** @type {{ id: string }} */ y) => y.id === id);
+      return x ? [{ ic: kind === 'labels' ? ICONS.tag : MORE.droplet, name: /** @type {any} */ (x).name, color: colorHex(/** @type {any} */ (x).color), run: () => ctx.openPlace(kind, id) }] : [];
+    }
+    return [];
+  });
 }
 
 /** a result row: its icon, its name @param {import('app-ui/icons/lucide.js').IconNodes} ic @param {string} label

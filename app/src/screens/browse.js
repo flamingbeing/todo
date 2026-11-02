@@ -17,7 +17,7 @@ import { openFiltersLabels } from './filters.js';
 import { colorHex } from '../colors.js';
 import { dayKey } from '../dates.js';
 import { byOrder, placeAt } from '../order.js';
-import { screens, showPage } from '../shell.js';
+import { screens } from '../shell.js';
 import { el, sheetHead } from './pick.js';
 
 /** @typedef {import('./views.js').Ctx} Ctx */
@@ -88,7 +88,7 @@ export function drawBrowse(ctx, host) {
 
   // Inbox, Today and Upcoming are tabs; Browse keeps the places that are not
   const places = card('Places', [
-    row({ label: 'Search', ic: MORE.search, flat: true, run: () => showPage('search-page') }),
+    row({ label: 'Search', ic: MORE.search, flat: true, run: () => { const f = /** @type {HTMLInputElement | null} */ (document.getElementById('search-text')); if (f) f.value = ''; screens()?.push('#search-page'); } }),
     row({ label: 'Filters & Labels', ic: MORE.layoutGrid, flat: true, run: openFiltersLabels }),
     row({ label: 'Reporting', ic: MORE.trendingUp, flat: true, run: () => screens()?.push('#productivity-page') }),
     row({ label: 'Completed', ic: ICONS.circleCheck, flat: true, run: () => screens()?.push('#completed-page') }),

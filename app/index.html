@@ -78,7 +78,6 @@
       <a class="ui-side-link" href="./" data-tab-page="#inbox-page"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>Inbox</a>
       <a class="ui-side-link" href="./" data-tab-page="#today-page" aria-current="page"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg><span class="today-num" data-today-num>1</span>Today</a>
       <a class="ui-side-link" href="./" data-tab-page="#upcoming-page"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>Upcoming</a>
-      <a class="ui-side-link" href="./" data-tab-page="#search-page"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>Search</a>
       <a class="ui-side-link" href="./" data-tab-page="#browse-page"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 8h10"/><path d="M7 12h10"/><path d="M7 16h10"/></svg>Browse</a>
     </nav>
 
@@ -125,9 +124,10 @@
         <div id="upcoming" class="td-list" data-view="upcoming"></div>
       </section>
 
-      <section class="ui-screen ui-tab-page" id="search-page" aria-labelledby="search-title" hidden>
+      <section class="ui-screen" id="search-page" aria-labelledby="search-title" hidden>
+        <button type="button" class="ui-back">Browse</button>
         <h1 class="ui-large-title" id="search-title">Search</h1>
-        <div class="td-search"><label class="td-search-box"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input id="search-text" type="search" placeholder="Tasks, projects and more" aria-label="Search" autocomplete="off"></label></div>
+        <div class="td-search"><label class="td-search-box"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input id="search-text" type="search" placeholder="Tasks, projects, and more" aria-label="Search" autocomplete="off"></label></div>
         <div id="search" class="td-list" data-view="search"></div>
       </section>
 
@@ -151,7 +151,7 @@
         </form>
       </section>
 
-      <section class="ui-screen" id="filters-page" aria-labelledby="filters-title" hidden>
+      <section class="ui-screen td-grouped" id="filters-page" aria-labelledby="filters-title" hidden>
         <button type="button" class="ui-back">Browse</button>
         <h1 class="ui-large-title" id="filters-title">Filters &amp; Labels</h1>
         <div id="filters" class="td-fl"></div>
@@ -195,7 +195,6 @@
       <button type="button" class="ui-tab" data-tab-page="#inbox-page" data-tab-id="inbox"><span class="ui-tab-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></span>Inbox</button>
       <button type="button" class="ui-tab" data-tab-page="#today-page" data-tab-id="today" aria-current="page"><span class="ui-tab-icon td-today-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg><span class="today-num" data-today-num>1</span></span>Today</button>
       <button type="button" class="ui-tab" data-tab-page="#upcoming-page" data-tab-id="upcoming"><span class="ui-tab-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg></span>Upcoming</button>
-      <button type="button" class="ui-tab" data-tab-page="#search-page" data-tab-id="search" hidden><span class="ui-tab-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>Search</button>
       <button type="button" class="ui-tab" data-tab-page="#browse-page" data-tab-id="browse"><span class="ui-tab-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 8h10"/><path d="M7 12h10"/><path d="M7 16h10"/></svg></span>Browse</button>
     </nav>
     <button type="button" class="ui-fab td-fab" id="fab" aria-label="Add task" hidden><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>

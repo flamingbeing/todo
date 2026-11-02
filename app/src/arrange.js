@@ -12,16 +12,19 @@ import { isTask, projectOf, priorityOf, labelsOf, dayOrder, dayLines } from './t
 const num = (/** @type {unknown} */ v) => (typeof v === 'number' ? v : Infinity);
 const open = (/** @type {Task[]} */ tasks) => tasks.filter(t => isTask(t) && !t.done);
 
-/** Upcoming: what is overdue, then every day from today for `days` days, empty days included (each in cmp's order)
- * @param {Task[]} tasks @param {string} today @param {number} days @param {(a: Task, b: Task) => number} [cmp] */
-export function upcomingView(tasks, today, days, cmp = dayOrder) {
+/** Upcoming: what is overdue, then every day from today for `days` days, empty days included (each in cmp's order); with
+ * `withDone` the done tasks show under their day, after the open ones (never under Overdue)
+ * @param {Task[]} tasks @param {string} today @param {number} days @param {(a: Task, b: Task) => number} [cmp] @param {boolean} [withDone] */
+export function upcomingView(tasks, today, days, cmp = dayOrder, withDone = false) {
   const dated = open(tasks).filter(t => dueOf(t.due)), all = tasks.filter(isTask);
+  const doneBy = (/** @type {string} */ k) => (withDone ? tasks.filter(t => isTask(t) && t.done && dueOf(t.due)?.date === k) : []);
+  const last = (/** @type {(a: Task, b: Task) => number} */ c) => (/** @type {Task} */ a, /** @type {Task} */ b) => Number(!!a.done) - Number(!!b.done) || c(a, b);
   /** @type {Map<string, Task[]>} */
   const by = new Map();
   for (const t of dated) { const k = /** @type {any} */ (t.due).date; (by.get(k) ?? by.set(k, []).get(k))?.push(t); }
   return {
     overdue: dayLines(dated.filter(t => /** @type {any} */ (t.due).date < today), all, cmp),
-    days: Array.from({ length: days }, (_, i) => { const key = addDays(today, i); return { key, lines: dayLines(by.get(key) ?? [], all, cmp) }; }),
+    days: Array.from({ length: days }, (_, i) => { const key = addDays(today, i); return { key, lines: dayLines([...(by.get(key) ?? []), ...doneBy(key)], all, last(cmp)) }; }),
   };
 }
 

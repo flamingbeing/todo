@@ -19,7 +19,7 @@ test('results in groups, accents ignored, recent searches kept and cleared', asy
   await openSearch(page);
   const field = page.locator('#search-text');
   await expect(field).toBeFocused();
-  await expect(field).toHaveAttribute('placeholder', 'Tasks, projects and more');
+  await expect(field).toHaveAttribute('placeholder', 'Tasks, projects, and more');
   await field.fill(`CREME ${w}`);
   await expect(page.locator(`#search .td-row[data-id="${t}"]`)).toBeVisible();
   await expect(page.locator('#search .td-search-h')).toHaveText(['Tasks']);
@@ -28,7 +28,7 @@ test('results in groups, accents ignored, recent searches kept and cleared', asy
   expect(await AxeBuilder(page)).toEqual([]);
   await field.press('Enter');
   await field.fill('');
-  await expect(page.locator('#search .td-search-h')).toHaveText(['Recent searches']);
+  await expect(page.locator('#search .td-search-h').filter({ hasText: 'Recent searches' })).toHaveText(['Recent searches']);
   await expect(page.locator('#search .td-result').first()).toHaveText(w);
   expect(await AxeBuilder(page)).toEqual([]);
   await page.locator('#search .td-result').first().click();
@@ -41,5 +41,5 @@ test('results in groups, accents ignored, recent searches kept and cleared', asy
   await openSearch(page);
   await field.fill('');
   await page.getByRole('button', { name: 'Clear recent searches' }).click();
-  await expect(page.locator('#search .td-search-h')).toHaveCount(0);
+  await expect(page.locator('#search .td-search-h').filter({ hasText: 'Recent searches' })).toHaveCount(0);
 });

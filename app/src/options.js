@@ -35,8 +35,10 @@ export const OPTIONS = {
   weekStart: { scope: 'device', default: 1, clean: v => (v === 0 ? 0 : 1) },
   // each list's Display choices (this device): a view's id to its grouping, sorting, filter and completed switch
   display: { scope: 'device', default: {}, clean: v => (v && typeof v === 'object' && !Array.isArray(v) ? v : {}) },
-  // the last searches on the Search tab (this device), newest first
+  // the last searches on the Search page (this device), newest first
   recentSearches: { scope: 'device', default: [], clean: v => (Array.isArray(v) ? v.filter(x => typeof x === 'string').slice(0, 10) : []) },
+  // the places last opened, newest first, for Search's "Recently visited" (this device): see rememberPlace in search.js
+  recentPlaces: { scope: 'device', default: [], clean: v => (Array.isArray(v) ? v.filter(x => typeof x === 'string').slice(0, 6) : []) },
   // notify when a reminder is due (this device)
   reminders: { scope: 'device', default: false },
     dailyGoal: goal(99),

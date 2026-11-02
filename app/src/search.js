@@ -34,3 +34,10 @@ export const remember = (recent, text) => {
   const v = String(text ?? '').trim().slice(0, 200);
   return v ? [v, ...recent.filter(x => fold(x) !== fold(v))].slice(0, 10) : recent.slice(0, 10);
 };
+
+/** the places last opened with this one first (at most 6, no repeats): 'inbox', 'today', 'upcoming', 'filters' (Filters & Labels),
+ * 'project:<id>', 'labels:<id>' or 'filters:<id>' @param {string[]} recent @param {string} place */
+export const rememberPlace = (recent, place) => {
+  const v = String(place ?? '').slice(0, 80);
+  return v ? [v, ...recent.filter(x => x !== v)].slice(0, 6) : recent.slice(0, 6);
+};

@@ -285,7 +285,7 @@ export const openTab = async (page, name) => {
   }).toPass({ timeout: 15_000 });
 };
 export const openToday = page => openTab(page, 'today');
-// Search is not on the tab bar: it is the first row in Browse
+// Search is a page pushed over Browse: its row is the first one in Browse
 export const openSearch = async page => {
   await openTab(page, 'browse');
   await page.locator('#browse .td-browse-row').filter({ hasText: /^Search/ }).click();

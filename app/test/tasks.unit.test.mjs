@@ -59,6 +59,14 @@ test('Upcoming: overdue, then every day from today, empty days included', () => 
   assert.deepEqual(ids(v.days[2].lines), ['third']);
 });
 
+test('Upcoming with done tasks: under their day after the open ones, never under Overdue', () => {
+  const tasks = [t('late', { due: { date: '2026-10-01' }, done: true }), t('d', { due: { date: T }, done: true }), t('o', { due: { date: T } })];
+  const v = upcomingView(tasks, T, 3, undefined, true);
+  assert.deepEqual(ids(v.overdue), []);
+  assert.deepEqual(ids(v.days[0].lines), ['o', 'd']);
+  assert.deepEqual(ids(upcomingView(tasks, T, 3).days[0].lines), ['o']);
+});
+
 test('Completed: newest first, by the day they were done', () => {
   const at = (d, h) => new Date(`${d}T${String(h).padStart(2, '0')}:00:00`).getTime();
   const g = completedView([t('a', { done: true, doneAt: at('2026-10-31', 9) }), t('b', { done: true, doneAt: at('2026-11-01', 8) }),
