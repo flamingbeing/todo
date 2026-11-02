@@ -107,6 +107,7 @@ export function views(app) {
     menus: () => import('./page-menu.js'),
     calendar: () => import('./calendar.js'),
     marks: () => import('../markdown.js'),
+    section: () => import('./section-page.js'),
   });
   /** a list's Display choices on this device @param {string} view */
   const disp = view => cleanDisplay(/** @type {any} */ (app.settings.get('display'))?.[view], view);
@@ -229,25 +230,8 @@ export function views(app) {
     naming = { projectId: pid, sectionId: '', after, order }; fresh.clear(); paint(top); focusNaming();
   };
   // a new section at the end of a list: its own screen (a name and the tick), as the page menu's Add section opens it
-  const sectionName = /** @type {HTMLInputElement} */ ($('section-name')), sectionDone = /** @type {HTMLButtonElement} */ ($('section-done'));
-  let sectionFor = INBOX;
   /** @param {string} pid */
-  const openSectionPage = pid => {
-    sectionFor = pid; sectionName.value = ''; sectionDone.disabled = true;
-    screens()?.push('#section-page');
-    setTimeout(() => sectionName.focus(), 120);
-  };
-  const saveSection = async () => {
-    const name = sectionName.value.trim();
-    if (!name || !canWrite) return;
-    sectionDone.disabled = true;
-    const r = (await app.addSection(sectionFor, name)).refused;
-    if (r) toast(REFUSED);
-    fresh.clear(); screens()?.pop();
-  };
-  sectionName.addEventListener('input', () => { sectionDone.disabled = !sectionName.value.trim(); });
-  $('section-form').addEventListener('submit', e => { e.preventDefault(); void saveSection(); });
-  sectionDone.addEventListener('click', () => { void saveSection(); });
+  const openSectionPage = pid => { void lazy.withMod('section', m => m.openSectionPage(ctx, pid, () => fresh.clear(), () => screens())); };
   const focusNaming = () => requestAnimationFrame(() => /** @type {HTMLInputElement | null} */ (document.querySelector(`#${top} .td-name-field input`))?.focus());
   // (the page is drawn again on every change, synced ones too: the open field is the same element each time, so what
   // was typed stays; the browser blurs a focused element it takes out, so that blur is not the person leaving it)
