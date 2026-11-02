@@ -2,7 +2,7 @@
 // what matches shows as Tasks, Projects, Labels and Filters; a search left with Enter is kept as recent on this
 // device, a tap runs it again and Clear forgets them. Passes axe.
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, db, openSearch } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, db, openSearch, openSettings, openTab } from './fixtures.mjs';
 
 const now = () => ({ createdAt: Date.now(), updatedAt: Date.now() });
 
@@ -42,4 +42,29 @@ test('results in groups, accents ignored, recent searches kept and cleared', asy
   await field.fill('');
   await page.getByRole('button', { name: 'Clear recent searches' }).click();
   await expect(page.locator('#search .td-search-h').filter({ hasText: 'Recent searches' })).toHaveCount(0);
+});
+
+// Search is a page pushed from Browse (Back returns to Browse); Settings > Navigation bar can also put it on the bar, where it is a
+// tab (no Back). Both routes open the same page.
+test('Search can be switched onto the tab bar, and Browse still pushes it', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const tab = page.locator('.ui-tabbar [data-tab-id="search"]');
+  await expect(tab).toHaveAttribute('data-off-bar', '');
+
+  await openSearch(page);
+  await expect(page.locator('.ui-bar-back')).toBeVisible();
+  await page.locator('.ui-bar-back').click();
+  await expect(page.locator('#browse-page')).toBeVisible();
+
+  await openSettings(page, 'Navigation bar');
+  await page.getByRole('switch', { name: 'On the tab bar: Search' }).click();
+  await expect(tab).not.toHaveAttribute('data-off-bar', '');
+  await openTab(page, 'search');
+  await expect(page.locator('#search-page')).toBeVisible();
+  await expect(page.locator('#search-text')).toBeFocused();
+  await expect(page.locator('.ui-bar-back')).toBeHidden();
+
+  await openSearch(page);
+  await expect(page.locator('.ui-bar-back')).toBeVisible();
 });

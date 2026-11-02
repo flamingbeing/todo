@@ -134,6 +134,12 @@ const letGo = els => { for (const e of els) { for (const a of e.getAnimations())
 
 /** the tasks for a gap's rows, in order @param {Ctx} ctx @param {string[]} ids */
 const tasksFor = (ctx, ids) => { const by = new Map(ctx.data().tasks.map(t => [t.id, t])); return ids.map(id => by.get(id)).filter(t => !!t); };
+/** the lines placeInTree reads: each task with its depth and how many subtasks it has @param {Ctx} ctx @param {Gap} g */
+const treeLines = (ctx, g) => {
+  const kids = new Map();
+  for (const t of ctx.data().tasks) if (t.parentId) kids.set(t.parentId, (kids.get(t.parentId) ?? 0) + 1);
+  return tasksFor(ctx, g.ids).map((task, i) => ({ task, depth: g.depths[i], kids: kids.get(task.id) ?? 0 }));
+};
 
 /**
  * Hold-to-move on a list host's rows.
@@ -250,7 +256,7 @@ export function dragRows(host, ctx, o) {
   };
   /** the depth a gap allows near the one wanted @param {Gap} g @param {number} want */
   const treeDepth = (g, want) => {
-    const lines = tasksFor(ctx, g.ids).map((task, i) => ({ task, depth: g.depths[i] }));
+    const lines = treeLines(ctx, g);
     try { return placeInTree(lines, g.at, want, height(), MAX_DEPTH).depth; } catch { return 0; }
   };
   const height = () => { const q = p; return q ? Math.max(0, ...q.kids.map(k => depthOf(k) - q.base)) : 0; };
@@ -368,7 +374,7 @@ async function dropInGroup(ctx, task, group, from, i0, g) {
 /** a task let go in a project's list @param {Ctx} ctx @param {Task} task @param {Gap} g @param {number} depth
  * @param {number} height @param {string} projectId @returns {Promise<string>} */
 async function dropInTree(ctx, task, g, depth, height, projectId) {
-  const lines = tasksFor(ctx, g.ids).map((t, i) => ({ task: t, depth: g.depths[i] }));
+  const lines = treeLines(ctx, g);
   const r = placeInTree(lines, g.at, depth, height, MAX_DEPTH);
   const same = (task.sectionId ?? null) === g.sectionId && (task.parentId ?? null) === r.parentId;
   const { order, renumber } = placeAt(/** @type {Task[]} */ (r.siblings), r.index);
@@ -495,7 +501,7 @@ export function dragFab(fab, ctx, o) {
       return;
     }
     if (o.kind() === 'tree') {
-      const lines = tasksFor(ctx, g.ids).map((t, i) => ({ task: t, depth: g.depths[i] }));
+      const lines = treeLines(ctx, g);
       const r = placeInTree(lines, g.at, g.at > 0 ? g.depths[g.at - 1] ?? 0 : 0, 0, MAX_DEPTH);
       const { order } = placeAt(/** @type {Task[]} */ (r.siblings), r.index);
       o.add({ projectId: pid, sectionId: g.sectionId, parentId: r.parentId, order });

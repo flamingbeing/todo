@@ -219,6 +219,8 @@ button.td-group-title { display: flex; align-items: center; gap: 6px; width: 100
 /* the Search page's field: a tall pill with a bigger magnifier */
 #search-page .td-search-box { gap: 10px; height: 56px; padding: 0 18px; border-radius: 28px; }
 #search-page .td-search-box .ui-icon { width: 24px; height: 24px; flex: none; }
+/* Search as a tab has no Back to Browse; pushed over Browse it does (views.js marks it is-pushed) */
+#search-page:not(.is-pushed) > .ui-back { display: none; }
 
 /* ---------- grouped grounds: Browse, Settings ---------- */
 .ui-screen.td-grouped { background: var(--td-grouped); }
@@ -568,7 +570,8 @@ body:has(dialog[open]) .ui-fab.td-fab { display: none; }
 .td-manage-row.dragging { z-index: 2; box-shadow: 0 6px 18px rgb(0 0 0 / .18); }
 
 /* ---------- done tasks shown by Display: greyed and struck through, at the end ---------- */
-.td-row.is-complete .td-title { color: var(--td-text-3); text-decoration: line-through; }
+/* (a step darker than --td-text-3 in light: #767676 is only 4.0:1 on the row card, AA needs 4.5) */
+.td-row.is-complete .td-title { color: light-dark(#6a6a6a, var(--td-text-3)); text-decoration: line-through; }
 .td-row.is-complete .td-meta, .td-row.is-complete .td-desc { opacity: .6; }
 
 /* ---------- Filters & Labels, and a label's or filter's page ---------- */

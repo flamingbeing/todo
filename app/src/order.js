@@ -1,6 +1,8 @@
 // Manual order: every project, section and task has a number, and a list shows them by it. A move or an insert takes
 // the midpoint of its neighbours, so only the moved record is saved; when two neighbours get too close to split, the
 // whole list is renumbered 1..n (a rare, larger save).
+import { isOpen } from './tree.js';
+
 const GAP = 1e-6;
 
 /**
@@ -41,12 +43,13 @@ export function placeAt(list, i) {
   return { order: orderBetween(a, b), renumber: [] };
 }
 
-/** @typedef {{ task: { id: string, order?: unknown, collapsed?: boolean | null }, depth: number }} TreeLine */
+/** @typedef {{ task: { id: string, order?: unknown, collapsed?: boolean | null }, depth: number, kids?: number }} TreeLine  kids: how many subtasks the task has, shown or not */
 
 /**
  * Where a dragged task lands in a list drawn as a tree (lines without the task and its subtasks; at: the gap it is
  * dropped in, 0..lines.length): the depth wanted (from how far it was pulled sideways) is kept within what the gap
- * allows (at most one deeper than the line above, at least as deep as the line below, no deeper than MAX_DEPTH with
+ * allows (at most one deeper than the line above, none deeper under a parent that shows folded (it has subtasks and is not
+ * open, the same rule as tree.js isOpen: a drop there would hide the task), at least as deep as the line below, no deeper than MAX_DEPTH with
  * its own subtasks); the parent is the nearest line above one level up; index is its place among that parent's lines.
  * @template {TreeLine} L @param {L[]} lines @param {number} at @param {number} want @param {number} [height] how deep
  * the moved task's own subtasks go @param {number} [maxDepth]
@@ -55,7 +58,7 @@ export function placeAt(list, i) {
 export function placeInTree(lines, at, want, height = 0, maxDepth = 4) {
   at = Math.max(0, Math.min(at, lines.length));
   const prev = lines[at - 1], next = lines[at];
-  const max = Math.max(0, Math.min(prev ? prev.depth + (prev.task.collapsed ? 0 : 1) : 0, maxDepth - height));
+  const max = Math.max(0, Math.min(prev ? prev.depth + (prev.kids && !isOpen(prev.task) ? 0 : 1) : 0, maxDepth - height));
   const min = Math.min(next ? next.depth : 0, max);
   const depth = Math.max(min, Math.min(max, Math.round(want)));
   let p = -1;

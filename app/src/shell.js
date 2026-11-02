@@ -33,8 +33,9 @@ const byGroup = sections => sections
   .map(s => (SETTINGS_GROUPS.includes(s.group ?? '') ? s : { ...s, group: 'More' }))
   .sort((a, b) => SETTINGS_GROUPS.indexOf(a.group ?? '') - SETTINGS_GROUPS.indexOf(b.group ?? '') || pageRank(a.title) - pageRank(b.title));
 
-// Browse always stays on the bar: Settings opens from it (the tabs off the bar are listed at the top of its menu)
-const TAB_RULES = { fixed: ['browse'] };
+// Browse always stays on the bar: Settings opens from it (the tabs off the bar are listed at the top of its menu). Search
+// starts off the bar (it is a page pushed from Browse) and can be switched on in Settings > Navigation bar
+const TAB_RULES = { fixed: ['browse'], offByDefault: ['search'] };
 
 /** @type {any} */
 let kit = null;

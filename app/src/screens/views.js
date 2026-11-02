@@ -172,20 +172,28 @@ export function views(app) {
       ?? (top === 'project-page' ? (projectId === INBOX ? 'inbox' : `project:${projectId}`) : top === 'place-page' && place.id ? `${place.kind}:${place.id}` : '');
     if (key) app.settings.set('recentPlaces', rememberPlace(/** @type {string[]} */ (app.settings.get('recentPlaces') ?? []), key));
   };
-  host.addEventListener('ui-tab', e => { tabPage = /** @type {CustomEvent} */ (e).detail.page.id; top = tabPage; lazy.loaded('filters')?.endManage(); onScreen(); visit(); });
+  // (Search is both: a tab when it is on the bar, else a page pushed over Browse, which has a Back button; `is-pushed` marks that)
+  const searchPage = $('search-page');
+  const askFocus = (/** @type {number} */ n) => {
+    const f = /** @type {HTMLInputElement} */ ($('search-text'));
+    f.focus({ preventScroll: true });
+    if (document.activeElement !== f && n > 0 && top === 'search-page') requestAnimationFrame(() => askFocus(n - 1));
+  };
+  host.addEventListener('ui-tab', e => {
+    tabPage = /** @type {CustomEvent} */ (e).detail.page.id; top = tabPage; lazy.loaded('filters')?.endManage(); onScreen(); visit();
+    if (top === 'search-page') requestAnimationFrame(() => askFocus(40));
+  });
   host.addEventListener('ui-screen', e => {
     const was = top;
     top = /** @type {CustomEvent} */ (e).detail.top.id;
-    // (Search is a page pushed over Browse: it opens with the keyboard up and empty, and Back leaves nothing typed)
-    if (was === 'search-page' && top !== 'search-page') { const f = /** @type {HTMLInputElement} */ ($('search-text')); if (f.value) { f.value = ''; fresh.delete('search-page'); } }
+    // (Search pushed over Browse opens with the keyboard up and empty, and Back leaves nothing typed; as a tab it keeps its text)
+    const pushed = searchPage.classList.contains('is-pushed');
+    if (was === 'search-page' && top !== 'search-page' && pushed) { const f = /** @type {HTMLInputElement} */ ($('search-text')); if (f.value) { f.value = ''; fresh.delete('search-page'); } }
+    searchPage.classList.toggle('is-pushed', top === 'search-page' && (screens()?.depth() ?? 0) > 0);
     if (top !== 'filters-page') lazy.loaded('filters')?.endManage();
     onScreen(); visit();
-    if (top === 'search-page') {
-      // (the kit moves the focus to the page's title right after this event: take it back on the next frame)
-      const f = /** @type {HTMLInputElement} */ ($('search-text'));
-      const ask = (/** @type {number} */ n) => { f.focus({ preventScroll: true }); if (document.activeElement !== f && n > 0 && top === 'search-page') requestAnimationFrame(() => ask(n - 1)); };
-      requestAnimationFrame(() => ask(40));
-    }
+    // (the kit moves the focus to the page's title right after this event: take it back on the next frame)
+    if (top === 'search-page' && searchPage.classList.contains('is-pushed')) requestAnimationFrame(() => askFocus(40));
   });
   for (const id of ['inbox-page', 'upcoming-page', 'search-page', 'browse-page', 'today-page']) $(id).addEventListener('draw-ahead', () => paint(id));
 
