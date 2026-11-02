@@ -7,9 +7,23 @@ import AxeBuilder from './axe.mjs';
 const open = (page, title = 'Tasks') => openSettings(page, title);
 const big = page => page.getByRole('switch', { name: /Larger rows/ });
 const count = page => page.getByRole('switch', { name: /Show task counts/ });
-// the Inbox row's count on Browse (drawn once Browse has opened; it follows the option from then on)
-const shown = page => page.locator('#browse .td-browse-row', { hasText: 'Inbox' }).locator('.td-browse-count');
-const browse = async page => { await page.evaluate(() => window.starter.add('counted')); await openTab(page, 'browse'); };
+// a project row's count on Browse (drawn once Browse has opened; it follows the option from then on)
+const shown = page => page.locator('#browse .td-browse-row', { hasText: 'Counted' }).locator('.td-browse-count');
+// (a project "Counted" with a task in it; the other phone, signed into the same account, finds both)
+const browse = async page => {
+  await openTab(page, 'browse');
+  if (!await page.locator('#browse .td-browse-row', { hasText: 'Counted' }).count()) {
+    await page.locator('#browse .td-browse-add').click();
+    await page.fill('#project-sheet .td-project-name', 'Counted');
+    await page.press('#project-sheet .td-project-name', 'Enter');
+    await expect(page.locator('#project-title')).toHaveText('Counted');
+    await page.locator('#fab').click();
+    await page.fill('#add-sheet .td-add-title', 'counted #Counted');
+    await page.press('#add-sheet .td-add-title', 'Enter');
+    await page.keyboard.press('Escape');
+    await openTab(page, 'browse');
+  }
+};
 const note = page => page.locator('.ui-settings-status');
 
 test('device values stay on this device: Larger rows and the counts do not reach the account\'s other phone', async ({ phone }) => {

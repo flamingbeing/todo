@@ -1024,3 +1024,20 @@ body:has(.ui-screen.td-grouped:not([hidden])) .ui-bar { background: var(--td-bar
 .td-menu-sheet .td-menu-icon { order: -1; width: 22px !important; height: 22px !important; }
 .td-menu-sheet hr { margin: 4px 0; border: 0; border-top: .5px solid var(--td-hair); }
 .td-menu-sheet .ui-menu-item { justify-content: flex-start; text-align: start; }
+
+/* Browse: flat rows on a solid card, no chevrons; the top is the person with a bell and the gear, plain */
+.td-bar-browse-end { display: inline-flex; align-items: center; gap: 4px; }
+.td-bar-browse .td-pill { height: 44px; padding: 0 8px 0 0; background: none; font-size: 20px; font-weight: 500; }
+.td-bar-browse .td-avatar { width: 30px; height: 30px; }
+.td-bar-browse .td-round { width: 40px; height: 40px; min-height: 40px; background: none; color: var(--td-text); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.td-browse-card { margin: 0 10px; border-radius: 10px; }
+.td-browse-row { min-height: 62px; }
+.td-browse-card > li:not(:last-child) > .td-browse-row::after { display: none; }
+.td-browse-card .td-browse-row { padding-inline-start: calc(24px + var(--depth, 0) * 20px); font-size: 16px; }
+.td-browse-card .td-browse-icon { width: 20px !important; height: 20px !important; margin-inline-end: 26px; }
+.td-browse-card .td-browse-label { font-size: 16px; }
+.td-browse-head { margin: 18px 10px 4px; padding: 0 4px 0 14px; font-size: 16px; font-weight: 400; }
+.td-browse-fold { font-weight: 400; gap: 8px; }
+.td-browse-chip { padding: 2px 6px; border-radius: 4px; background: color-mix(in srgb, var(--td-text) 14%, transparent); color: var(--td-text-2); font-size: 11px; font-weight: 600; letter-spacing: .04em; }
+.td-browse-head-end { display: inline-flex; align-items: center; gap: 2px; }
+.td-browse-card .is-manage .td-browse-label { color: var(--td-text-2); font-size: 15px; }

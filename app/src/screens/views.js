@@ -199,7 +199,7 @@ export function views(app) {
     void lazy.withMod('display', d => d.openDisplay(ctx, viewOf(), own));
   });
   const onScreen = () => {
-    fab.hidden = !canWrite || !lists.includes(top);
+    fab.hidden = !canWrite || ![...lists, 'browse-page'].includes(top);
     more.hidden = !canWrite || ![...lists, 'place-page'].includes(top);
     display.hidden = more.hidden;
     $('section-done').hidden = top !== 'section-page';

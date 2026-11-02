@@ -13,7 +13,7 @@ test('counts, the 7-day chart and the streak; a goal shows a bar', async ({ phon
   await put(b, { title: b, done: true, doneAt: Date.now() });
   await synced(page);
   await openTab(page, 'browse');
-  await page.locator('#browse').getByRole('button', { name: 'Productivity' }).click();
+  await page.locator('#browse').getByRole('button', { name: 'Reporting' }).click();
   const host = page.locator('#productivity');
   await expect(host.locator('.td-stat').first().locator('.td-stat-cap')).toHaveText('Done today');
   await expect.poll(async () => +(await host.locator('.td-stat-n').first().textContent())).toBeGreaterThanOrEqual(2);
@@ -33,7 +33,7 @@ test('counts, the 7-day chart and the streak; a goal shows a bar', async ({ phon
   });
   await settingsBack(page);
   await openTab(page, 'browse');
-  await page.locator('#browse').getByRole('button', { name: 'Productivity' }).click();
+  await page.locator('#browse').getByRole('button', { name: 'Reporting' }).click();
   await expect(host.locator('.td-stat-bar')).toHaveCount(1);
   await expect(host.locator('svg.td-chart .td-chart-goal')).toHaveCount(1);
 });
