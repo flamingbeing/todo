@@ -28,12 +28,12 @@ test('add, edit and delete a comment; the row counts them', async ({ phone }) =>
   await page.getByLabel('Edit comment').fill('Moved to Monday');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(one.locator('.td-comment-text')).toHaveText('Moved to Monday');
-  await page.locator(`${sheet} .td-sheet-x`).click();
+  await page.keyboard.press('Escape');
   await expect(row.locator('.td-comments-count')).toHaveText('1');
   await clickOpens(row.locator('.td-row-main'), page.locator(sheet));
   await page.getByRole('button', { name: 'Delete comment' }).click();
   await expect(page.locator(`${sheet} .td-comment`)).toHaveCount(0);
-  await page.locator(`${sheet} .td-sheet-x`).click();
+  await page.keyboard.press('Escape');
   await expect(row.locator('.td-comments-count')).toHaveCount(0);
 });
 

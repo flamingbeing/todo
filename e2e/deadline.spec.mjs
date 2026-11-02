@@ -31,7 +31,7 @@ test('the sheet\'s Deadline row sets a day only; the row shows it; No deadline c
   await expect(page.locator(sheet)).toBeHidden();
   await expect.poll(() => deadlineOf(t), { timeout: 15_000 }).toBe(day(3));
   await expect(attr).toHaveAttribute('aria-label', 'Deadline: in 3 days');
-  await page.locator('#task-sheet .td-sheet-x').click();
+  await page.keyboard.press('Escape');
   const meta = row.locator('.td-deadline');
   await expect(meta).toHaveText('in 3 days');
   await expect(meta).toHaveAttribute('data-tone', 'deadline');
@@ -40,7 +40,7 @@ test('the sheet\'s Deadline row sets a day only; the row shows it; No deadline c
   await attr.click();
   await page.locator(`${sheet} .td-sched-row`).filter({ hasText: 'No deadline' }).click();
   await expect.poll(() => deadlineOf(t), { timeout: 15_000 }).toBe(null);
-  await page.locator('#task-sheet .td-sheet-x').click();
+  await page.keyboard.press('Escape');
   await expect(row.locator('.td-deadline')).toHaveCount(0);
 });
 

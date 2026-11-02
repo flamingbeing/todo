@@ -9,6 +9,7 @@ import { MORE } from '../icons-more.js';
 import { REFUSED } from '../items.js';
 import { taskLink, priorityOf, placeText, projectOf, labelsOf } from '../tasks.js';
 import { dueLine, deadlineLine, dayKey, minutesText } from '../dates.js';
+import { when } from './comments.js';
 import { colorHex } from '../colors.js';
 import { flatten, descendants, canNest } from '../tree.js';
 import { byOrder } from '../order.js';
@@ -30,12 +31,17 @@ const d = () => /** @type {HTMLDialogElement} */ (document.getElementById('task-
 let showing = '';
 /** @type {((ctx: Ctx) => void) | null} */
 let refresh = null;
+/** sub-tasks that are done are hidden (the menu's toggle; per opening) */
+let hideDone = false;
+/** the Sub-tasks list is folded away */
+let folded = false;
 
 /** the task as last heard @param {Ctx} ctx */
 const current = ctx => ctx.data().tasks.find(t => t.id === showing) ?? null;
 
 /** @param {Ctx} ctx @param {Task} task */
 export function openTask(ctx, task) {
+  if (!d().open) { hideDone = false; folded = false; }
   showing = task.id;
   draw(ctx);
   const sheet = d();
@@ -48,7 +54,7 @@ export function openTask(ctx, task) {
 /** the data changed: bring the sheet up to date (a field being typed in keeps its text) @param {Ctx} ctx */
 export function redraw(ctx) { if (showing && d().open) refresh?.(ctx); }
 
-/** a row of the sheet: an icon at 16, the words at 56 @param {import('app-ui/icons/lucide.js').IconNodes} ic @param {string} label @param {Node[]} value */
+/** a row of the sheet (or, when nothing is set, a chip in the row under it): an icon at 16, the words at 56 @param {import('app-ui/icons/lucide.js').IconNodes} ic @param {string} label @param {Node[]} value */
 function attrRow(ic, label, value) {
   const b = /** @type {HTMLButtonElement} */ (el('button', 'td-attr'));
   b.type = 'button';
@@ -68,33 +74,47 @@ function draw(ctx) {
   };
   const writable = ctx.canWrite();
 
-  // head: close, the parent's name (a subtask), "…"
+  // head: the project (opens the place picker) or, in a sub-task, its parent; "⋮" at the right (swipe down to close)
   const head = el('div', 'td-sheet-head');
-  const x = /** @type {HTMLButtonElement} */ (el('button', 'td-round td-sheet-x'));
-  x.type = 'button'; x.setAttribute('aria-label', 'Close'); x.append(icon(MORE.x));
-  x.addEventListener('click', () => d().close());
   const parent = t.parentId ? ctx.data().tasks.find(p => p.id === t.parentId) : null;
-  const up = el(parent ? 'button' : 'span', 'td-sheet-parent');
+  const up = /** @type {HTMLButtonElement} */ (el('button', 'td-sheet-parent'));
+  up.type = 'button';
   if (parent) {
-    /** @type {HTMLButtonElement} */ (up).type = 'button';
     up.append(icon(MORE.chevronLeft), el('span', '', parent.title));
     up.setAttribute('aria-label', `Back to ${parent.title}`);
     up.addEventListener('click', () => { showing = parent.id; draw(ctx); });
   }
-  const more = /** @type {HTMLButtonElement} */ (el('button', 'td-round td-sheet-more'));
-  more.type = 'button'; more.setAttribute('aria-label', 'More'); more.setAttribute('aria-haspopup', 'menu'); more.append(icon(ICONS.ellipsis));
+  const more = /** @type {HTMLButtonElement} */ (el('button', 'td-sheet-more'));
+  more.type = 'button'; more.setAttribute('aria-label', 'More'); more.setAttribute('aria-haspopup', 'menu'); more.append(icon(MORE.ellipsisVertical));
   // (Copy link: this page's address with #task=<id>, which opens this task's sheet on load; a viewer can copy it too)
-  const copyLink = { label: 'Copy link', icon: MORE.link, run: async () => {
+  const copyLink = { label: 'Copy link to task', icon: MORE.link, run: async () => {
     try { await navigator.clipboard.writeText(taskLink(t.id)); ctx.toast('Link copied'); } catch { ctx.toast('Could not copy the link'); }
   } };
-  more.addEventListener('click', () => openMenu(more, writable ? [
-    { label: 'Duplicate', icon: MORE.copy, run: async () => { const now = current(ctx); if (now && await ctx.app.duplicateTask(now)) ctx.toast(REFUSED); else ctx.toast('Duplicated'); } },
-    { label: 'Move to…', icon: ICONS.folderInput, run: () => move() },
-    copyLink,
-    null,
-    { label: 'Delete', icon: MORE.trash2, danger: true, run: () => remove() },
-  ] : [copyLink], { label: 'Task' }));
-  head.append(x, up, more);
+  more.addEventListener('click', () => {
+    const now = current(ctx);
+    if (!now) return;
+    const made = when(now.createdAt);
+    const email = { label: 'Email this task', icon: MORE.mail, run: () => {
+      const body = [String(now.description ?? ''), taskLink(now.id)].filter(Boolean).join('\n\n');
+      location.href = `mailto:?subject=${encodeURIComponent(now.title)}&body=${encodeURIComponent(body)}`;
+    } };
+    const activity = { label: 'View activity', icon: MORE.activity, run: () => {
+      const done = now.done && now.doneAt ? `, done ${when(now.doneAt)}` : '';
+      ctx.toast(`${made ? `Added ${made}` : 'Added earlier'}${done}`);
+    } };
+    openMenu(more, writable ? [
+      { label: 'Edit task', icon: MORE.pencil, run: () => { title.focus(); title.setSelectionRange(title.value.length, title.value.length); } },
+      { label: 'Duplicate task', icon: MORE.copy, run: async () => { const at = current(ctx); if (at && await ctx.app.duplicateTask(at)) ctx.toast(REFUSED); else ctx.toast('Duplicated'); } },
+      copyLink,
+      { label: hideDone ? 'Show completed sub-tasks' : 'Hide completed sub-tasks', icon: hideDone ? MORE.eye : MORE.circleSlash, run: () => { hideDone = !hideDone; refresh?.(ctx); } },
+      activity,
+      email,
+      { label: 'Move to…', icon: ICONS.folderInput, run: () => move() },
+      null,
+      { label: 'Delete task', icon: MORE.trash2, danger: true, run: () => remove() },
+    ] : [copyLink, activity, email], { label: 'Task', sheet: true, note: made ? `Added on ${made}` : '' });
+  });
+  head.append(up, more);
 
   // the card: box, title, description
   const card = el('div', 'td-card td-task-card');
@@ -145,10 +165,14 @@ function draw(ctx) {
 
   // the rows: project, date, priority, labels
   const rows = el('div', 'td-card td-attrs');
-  const place = attrRow(ICONS.hash, 'Project', []), date = attrRow(ICONS.calendar, 'Date', []), prio = attrRow(MORE.flag, 'Priority', []);
+  const scroll = el('div', 'td-sheet-scroll');
+  const place = /** @type {HTMLButtonElement} */ (up), date = attrRow(ICONS.calendar, 'Date', []), prio = attrRow(MORE.flag, 'Priority', []);
   const labels = attrRow(ICONS.tag, 'Labels', []), deadline = attrRow(ICONS.target, 'Deadline', []);
   const remind = attrRow(MORE.bell, 'Reminders', []);
   for (const b of [place, date, deadline, remind, prio, labels]) b.disabled = !writable;
+  const descChip = attrRow(MORE.textAlignStart, 'Add description', [el('span', 'td-attr-text td-attr-empty', 'Description')]);
+  descChip.disabled = !writable;
+  descChip.addEventListener('click', () => { desc.hidden = false; desc.focus(); });
   const move = () => { const now = current(ctx); if (now) pickPlace(ctx.data(), { projectId: projectOf(now), sectionId: now.sectionId }, async to => {
     const at = current(ctx);
     if (at && await ctx.app.moveTask(at, { ...to, parentId: null })) ctx.toast(REFUSED);
@@ -170,7 +194,9 @@ function draw(ctx) {
     openMenu(remind, LEADS.map(([lead, label]) => ({ label, icon: MORE.bell, checked: has.includes(lead),
       run: () => save({ reminders: has.includes(lead) ? has.filter(x => x !== lead) : [...has, lead] }) })), { label: 'Reminders' });
   });
-  rows.append(place, date, deadline, remind, prio, labels);
+  const chipRow = el('div', 'td-attr-chips');
+  /** the unset ones are chips in a row that scrolls sideways; set ones (and the date) are rows */
+  const sort = (/** @type {HTMLButtonElement} */ b, /** @type {boolean} */ set) => { b.classList.toggle('is-chip', !set); (set ? rows : chipRow).append(b); };
 
   // subtasks
   const subs = el('section', 'td-subtasks');
@@ -195,14 +221,16 @@ function draw(ctx) {
     box.setAttribute('aria-checked', String(!!now.done));
     box.setAttribute('aria-label', `${now.done ? 'Not done' : 'Complete'}: ${now.title}`);
     if (document.activeElement !== title) { title.value = now.title; grow(title); }
-    if (document.activeElement !== desc) { desc.value = String(now.description ?? ''); grow(desc); }
+    if (document.activeElement !== desc) { desc.value = String(now.description ?? ''); desc.hidden = !desc.value; grow(desc); }
     marks(title, views[0]); marks(desc, views[1]);
     const data = c.data(), pid = projectOf(now), proj = data.projects.find(x => x.id === pid);
-    const hash = icon(pid === 'inbox' ? ICONS.inbox : ICONS.hash, { class: 'td-attr-icon' });
-    hash.style.color = pid === 'inbox' ? 'var(--td-text-2)' : colorHex(proj?.color);
+    const hash = icon(pid === 'inbox' ? ICONS.inbox : ICONS.hash, { class: 'td-crumb-icon' });
+    hash.style.color = colorHex(proj?.color ?? 'charcoal');
     const where = placeText(now, data.projects, data.sections);
-    place.replaceChildren(hash, el('span', 'td-attr-text', where));
-    place.setAttribute('aria-label', `Project: ${where}`);
+    if (!parent) {
+      place.replaceChildren(hash, el('span', '', where), icon(ICONS.chevronRight, { class: 'td-crumb-go' }));
+      place.setAttribute('aria-label', `Project: ${where}`);
+    }
     const due = dueLine(now.due, dayKey(), { dur: now.duration });
     // the duration: in the time's range when there is one, else after the day ("Tomorrow · 45 min")
     const long = due && now.duration && !now.due?.time ? ` · ${minutesText(now.duration)}` : '';
@@ -221,7 +249,7 @@ function draw(ctx) {
     remind.setAttribute('aria-label', remText ? `Reminders: ${remText}` : 'Reminders');
     const flag = icon(MORE.flag, { class: `td-attr-icon td-flag${p < 4 ? ' is-filled' : ''}` });
     flag.style.color = PRIORITY_COLOR[p];
-    prio.replaceChildren(flag, el('span', 'td-attr-text', `Priority ${p}`));
+    prio.replaceChildren(flag, el('span', 'td-attr-text', p < 4 ? `Priority ${p}` : 'Priority'));
     prio.setAttribute('aria-label', `Priority ${p}`);
     const mine = labelsOf(now, data.labels);
     const chips = mine.map(l => {
@@ -231,13 +259,44 @@ function draw(ctx) {
     });
     labels.replaceChildren(icon(ICONS.tag, { class: 'td-attr-icon' }), ...(chips.length ? chips : [el('span', 'td-attr-text td-attr-empty', 'Labels')]));
     labels.setAttribute('aria-label', mine.length ? `Labels: ${mine.map(l => l.name).join(', ')}` : 'Labels');
+    // what is set is a row; what is not is a chip (Description first, then Date, Priority, Reminders, Labels, Deadline)
+    const isSet = new Map(/** @type {[HTMLButtonElement, boolean][]} */ ([[date, !!due], [deadline, !!dl], [remind, !!remText], [prio, p < 4], [labels, !!mine.length]]));
+    for (const [b, set] of isSet) b.classList.toggle('is-chip', !set);
+    descChip.classList.add('is-chip');
+    rows.replaceChildren(...[date, deadline, remind, prio, labels].filter(b => isSet.get(b)));
+    chipRow.replaceChildren(...[...(desc.value || desc === document.activeElement ? [] : [descChip]), ...[date, prio, remind, labels, deadline].filter(b => !isSet.get(b))]);
+    rows.hidden = !rows.children.length;
+    chipRow.hidden = !chipRow.children.length;
 
-    // its subtasks, open and done (a done one shows ticked)
-    const kids = byOrder(data.tasks.filter(k => k.parentId === now.id));
+    // its subtasks, open and done (a done one shows ticked); the header counts them, "+" adds one, the chevron folds the list
+    const all = byOrder(data.tasks.filter(k => k.parentId === now.id));
+    const kids = hideDone ? all.filter(k => !k.done) : all;
     const lines = flatten(kids, data.tasks, { open: () => false });
-    const head2 = el('h3', 'td-subtasks-title', 'Sub-tasks');
-    const parts = [head2];
-    if (lines.length) {
+    const parts = [];
+    /** @type {HTMLInputElement | null} */
+    let keep = null;
+    const depthOk = canNest(/** @type {Task} */ ({ ...now, id: '_new', parentId: null }), now, data.tasks);
+    const form = /** @type {HTMLFormElement} */ (el('form', 'td-add-sub'));
+    if (all.length) {
+      const bar = el('div', 'td-subtasks-head');
+      const h = el('h3', 'td-subtasks-title', 'Sub-tasks');
+      const count = el('span', 'td-subtasks-count', `${all.filter(k => k.done).length}/${all.length}`);
+      h.append(count);
+      bar.append(h);
+      if (c.canWrite() && depthOk) {
+        const plus = /** @type {HTMLButtonElement} */ (el('button', 'td-subtasks-btn'));
+        plus.type = 'button'; plus.setAttribute('aria-label', 'Add sub-task here'); plus.append(icon(ICONS.plus));
+        plus.addEventListener('click', () => { folded = false; fill(c); /** @type {HTMLInputElement | null} */ (subs.querySelector('.td-add-sub input'))?.focus(); });
+        bar.append(plus);
+      }
+      const fold = /** @type {HTMLButtonElement} */ (el('button', 'td-subtasks-btn'));
+      fold.type = 'button'; fold.setAttribute('aria-expanded', String(!folded)); fold.setAttribute('aria-label', folded ? 'Show sub-tasks' : 'Hide sub-tasks');
+      fold.append(icon(folded ? ICONS.chevronDown : MORE.chevronUp));
+      fold.addEventListener('click', () => { folded = !folded; fill(c); });
+      bar.append(fold);
+      parts.push(bar);
+    }
+    if (lines.length && !folded) {
       const list = rowList(lines, { ...c.rows(), place: false, onOpen: k => { showing = k.id; draw(c); },
         onComplete: async (k, row) => {
           if (k.done) { if (await c.app.untick([k])) c.toast(REFUSED); return; }
@@ -247,11 +306,7 @@ function draw(ctx) {
         } }, 'Sub-tasks');
       parts.push(list);
     }
-    /** @type {HTMLInputElement | null} */
-    let keep = null;
-    const depthOk = canNest(/** @type {Task} */ ({ ...now, id: '_new', parentId: null }), now, data.tasks);
-    if (c.canWrite() && depthOk) {
-      const form = /** @type {HTMLFormElement} */ (el('form', 'td-add-sub'));
+    if (c.canWrite() && depthOk && !(folded && all.length)) {
       const add = /** @type {HTMLInputElement} */ (el('input', ''));
       add.placeholder = 'Add sub-task'; add.maxLength = 500; add.setAttribute('aria-label', 'Add sub-task');
       form.append(icon(ICONS.plus, { class: 'td-add-icon' }), add);
@@ -277,5 +332,6 @@ function draw(ctx) {
   };
   refresh = fill;
   fill(ctx);
-  body.replaceChildren(head, card, rows, subs, talk.root);
+  scroll.append(card, rows, chipRow, subs, talk.root);
+  body.replaceChildren(head, scroll, talk.bar);
 }

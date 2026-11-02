@@ -29,7 +29,7 @@ export const when = at => at ? new Date(at).toLocaleString(undefined, { day: 'nu
 /**
  * The section for one open task sheet. fill(ctx, taskId) draws (again) whenever the data changes; what is being typed
  * (a new comment or an edit) stays.
- * @returns {{ root: HTMLElement, fill: (ctx: Ctx, taskId: string) => void }}
+ * @returns {{ root: HTMLElement, bar: HTMLElement, fill: (ctx: Ctx, taskId: string) => void }}
  */
 export function commentsSection() {
   const root = el('section', 'td-comments');
@@ -44,6 +44,8 @@ export function commentsSection() {
   list.setAttribute('role', 'list');
   const title = el('h3', 'td-subtasks-title');
   root.append(title, list);
+  /** the box to write in, kept at the sheet's bottom edge by the sheet (task-sheet.js) */
+  const bar = el('div', 'td-comment-bar');
 
   /** @param {Ctx} ctx */
   const form = ctx => {
@@ -54,9 +56,12 @@ export function commentsSection() {
     draft = box;
     const send = /** @type {HTMLButtonElement} */ (el('button', 'td-round td-comment-send'));
     send.type = 'submit'; send.setAttribute('aria-label', 'Send comment'); send.append(icon(MORE.arrowUp));
-    const grow = () => { box.style.height = 'auto'; box.style.height = `${Math.min(box.scrollHeight, 160)}px`; send.disabled = !cleanComment(box.value); };
+    // (empty: a paperclip as the box's mark; typed: the send button)
+    const clip = el('span', 'td-comment-clip');
+    clip.setAttribute('aria-hidden', 'true'); clip.append(icon(MORE.paperclip));
+    const grow = () => { box.style.height = 'auto'; box.style.height = `${Math.min(box.scrollHeight, 160)}px`; const on = !!cleanComment(box.value); send.disabled = !on; send.hidden = !on; clip.hidden = on; };
     box.addEventListener('input', grow);
-    f.append(box, send);
+    f.append(box, clip, send);
     f.addEventListener('submit', async e => {
       e.preventDefault();
       const text = cleanComment(box.value);
@@ -121,16 +126,17 @@ export function commentsSection() {
     return li;
   };
 
-  /** @type {{ root: HTMLElement, fill: (ctx: Ctx, taskId: string) => void }} */
-  const api = { root, fill(ctx, taskId) {
+  /** @type {{ root: HTMLElement, bar: HTMLElement, fill: (ctx: Ctx, taskId: string) => void }} */
+  const api = { root, bar, fill(ctx, taskId) {
     last = { ctx, taskId };
     const all = commentsOf(ctx.data().comments, taskId);
     title.textContent = all.length ? `Comments ${all.length}` : 'Comments';
+    title.hidden = !all.length;
     // what is being typed stays: the form is kept while it has focus or text
-    const keep = root.querySelector('.td-add-comment');
+    const keep = bar.querySelector('.td-add-comment');
     list.replaceChildren(...all.map(c => item(ctx, c)));
     if (!ctx.canWrite()) { keep?.remove(); draft = null; return; }
-    if (!keep) root.append(form(ctx));
+    if (!keep) bar.append(form(ctx));
   } };
   return api;
 }

@@ -246,10 +246,12 @@ button.td-group-title { display: flex; align-items: center; gap: 6px; width: 100
 .td-sheet-spacer { flex: none; width: 44px; }
 .td-sheet-done { flex: none; min-width: 44px; height: 44px; padding: 0 14px; border: 0; border-radius: 22px; background: var(--td-fill); color: #fff; font-weight: 600; cursor: pointer; }
 .td-sheet-done:disabled { opacity: .4; cursor: default; }
-.td-sheet-parent { flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 2px; border: 0; background: none;
-  color: var(--td-text-2); font-size: 15px; overflow: hidden; white-space: nowrap; cursor: pointer; }
-span.td-sheet-parent { cursor: default; }
+.td-sheet-parent { flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: flex-start; gap: 6px; min-height: 40px; padding: 0; border: 0; background: none;
+  color: var(--td-text); font-size: 16px; overflow: hidden; white-space: nowrap; cursor: pointer; }
 .td-sheet-parent > span { overflow: hidden; text-overflow: ellipsis; }
+.td-sheet-parent .td-crumb-icon { width: 20px; height: 20px; flex: none; }
+.td-sheet-parent .td-crumb-go { width: 16px; height: 16px; flex: none; color: var(--td-text-2); }
+.td-sheet-more { flex: none; display: grid; place-items: center; width: 40px; height: 40px; margin-inline-end: -8px; border: 0; border-radius: 20px; background: none; color: var(--td-text); cursor: pointer; }
 .td-sheet-parent .ui-icon { width: 16px; height: 16px; flex: none; }
 .td-sheet .td-card { margin-bottom: 12px; background: light-dark(#fff, #323232); }
 
@@ -678,7 +680,7 @@ html[data-board-swipe] .td-board .td-row { touch-action: pan-y; }
 .td-import-done-title .ui-icon { width: 22px; height: 22px; }
 
 /* sheets: the round close and "…" buttons are plain cards (white, #282828 dark) with a hairline of shadow, as on the grouped ground */
-.td-sheet-x, .td-sheet-more { background: light-dark(var(--td-card), #3a3a3a); color: var(--td-text); box-shadow: 0 1px 3px rgb(0 0 0 / .08), 0 0 0 .5px var(--td-hair); }
+.td-sheet-x { background: light-dark(var(--td-card), #3a3a3a); color: var(--td-text); box-shadow: 0 1px 3px rgb(0 0 0 / .08), 0 0 0 .5px var(--td-hair); }
 
 /* the calendar layout (screens/calendar.js): a row over it, a sticky head of days and an all-day row, then the hours at
    48 px (blocks filled by priority, label or project; the time now in red), or a month of days with chips */
@@ -946,3 +948,57 @@ body:has(.ui-screen.td-grouped:not([hidden])) .ui-bar { background: var(--td-bar
 .td-empty-big .td-empty-hint { max-width: 280px; font-size: 15px; line-height: 1.45; }
 /* the bar's Back: a bare arrow, as the reference's */
 .ui-bar .ui-bar-back { width: 48px; min-width: 48px; height: 48px; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; color: var(--td-text); margin-inline-start: -12px; }
+
+/* the task sheet (screens/task-sheet.js): full height, a dark ground with slim cards, the project at the top left and "⋮" at
+   the right, the unset attributes as chips in a row that scrolls sideways, the sub-tasks under them, the comment box fixed at the bottom */
+#task-sheet.td-sheet { background: light-dark(#f6f3ee, #202020); border-radius: 16px 16px 0 0; }
+@media (max-width: 839.98px) { #task-sheet.td-sheet { height: calc(100dvh - 12px); } }
+#task-sheet .td-sheet-body { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0; }
+#task-sheet .td-sheet-head { flex: none; padding: 2px 16px 6px; }
+.td-sheet-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 0 0 16px; }
+#task-sheet .td-card { margin-bottom: 4px; border-radius: 10px; background: light-dark(#fff, #272727); }
+#task-sheet .td-task-card { padding: 4px 16px 4px 0; }
+#task-sheet .td-task-title { font-size: 19px; font-weight: 500; line-height: 26px; padding-top: 10px; padding-bottom: 6px; }
+#task-sheet .td-task-desc { padding-bottom: 8px; }
+#task-sheet .td-task-desc[hidden] { display: none; }
+#task-sheet .td-attr { min-height: 52px; }
+#task-sheet .td-attr [data-tone] { color: var(--td-text); }
+#task-sheet .td-attr-chips { display: flex; gap: 8px; margin: 10px 0 6px; padding: 0 16px; overflow-x: auto; scrollbar-width: none; }
+#task-sheet .td-attr-chips::-webkit-scrollbar { display: none; }
+#task-sheet .td-attr.is-chip { position: static; flex: none; width: auto; min-height: 36px; gap: 6px; padding: 0 12px; border-radius: 8px; flex-wrap: nowrap;
+  background: light-dark(#fff, #2f2f2f); color: var(--td-text-2); font-size: 14px; white-space: nowrap; }
+#task-sheet .td-attr.is-chip::after { display: none; }
+#task-sheet .td-attr.is-chip .td-attr-icon { position: static; translate: none; width: 18px !important; height: 18px !important; }
+#task-sheet .td-attr.is-chip .td-attr-text { flex: none; }
+.td-subtasks { margin: 8px 0 0; }
+.td-subtasks-head { display: flex; align-items: center; gap: 4px; margin: 4px 16px 4px; }
+.td-subtasks-head .td-subtasks-title { flex: 1; margin: 0; font-size: 15px; font-weight: 600; color: var(--td-text); }
+.td-subtasks-count { margin-inline-start: 8px; font-weight: 400; color: var(--td-text-2); }
+.td-subtasks-btn { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 18px; background: none; color: var(--td-text); cursor: pointer; }
+.td-subtasks-btn .ui-icon { width: 20px; height: 20px; }
+#task-sheet .td-subtasks .td-rows { margin: 0; border-radius: 0; background: none; }
+#task-sheet .td-add-sub { justify-content: center; margin: 4px 16px; padding: 0 16px; border-radius: 10px; background: light-dark(#fff, #272727); }
+#task-sheet .td-add-sub input { flex: 0 1 auto; width: 9em; text-align: start; color: var(--td-accent-text); }
+#task-sheet .td-add-sub input::placeholder { color: var(--td-accent-text); opacity: 1; }
+#task-sheet .td-add-sub .td-add-icon { width: 20px; height: 20px; }
+#task-sheet .td-comments { margin: 12px 0 0; }
+#task-sheet .td-comment-list { margin: 0 16px; border-radius: 10px; background: light-dark(#fff, #272727); }
+.td-comment-bar { flex: none; padding: 8px 12px calc(10px + env(safe-area-inset-bottom, 0px)); background: light-dark(#f6f3ee, #202020); }
+.td-comment-bar:empty { display: none; }
+#task-sheet .td-add-comment { position: relative; align-items: center; margin: 0; padding: 4px 4px 4px 18px; border-radius: 24px; background: light-dark(#fff, #303030); }
+#task-sheet .td-add-comment textarea { padding: 10px 0; }
+#task-sheet .td-add-comment textarea::placeholder { color: var(--td-text-2); }
+.td-comment-clip { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 20px; background: light-dark(#eee, #3a3a3a); color: var(--td-text-2); }
+.td-comment-clip .ui-icon { width: 20px; height: 20px; }
+.td-comment-clip[hidden], .td-comment-send[hidden] { display: none; }
+#task-sheet .td-comment-send { width: 40px; height: 40px; }
+
+/* the "⋮" menu as a bottom panel: a line of when it was added, then icon and words, the danger row last */
+.td-menu.td-menu-sheet { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; max-width: 40rem; margin: 0 auto; border-radius: 16px 16px 0 0;
+  padding: 0 0 calc(8px + env(safe-area-inset-bottom, 0px)); background: light-dark(#fff, #202020); transform-origin: 50% 100%; }
+.td-menu-grab { width: 36px; height: 5px; margin: 8px auto 4px; border-radius: 3px; background: var(--td-hair); }
+.td-menu-note { padding: 12px 20px; font-size: 14px; color: var(--td-text-2); border-bottom: .5px solid var(--td-hair); }
+.td-menu-sheet .ui-menu-item { gap: 18px; min-height: 52px; padding: 0 20px; }
+.td-menu-sheet .td-menu-icon { order: -1; width: 22px !important; height: 22px !important; }
+.td-menu-sheet hr { margin: 4px 0; border: 0; border-top: .5px solid var(--td-hair); }
+.td-menu-sheet .ui-menu-item { justify-content: flex-start; text-align: start; }

@@ -101,7 +101,7 @@ for (const [name, pick] of MODES) test(`the sample in ${name}: axe on the bar, a
   await settled(page);
   expect(await AxeBuilder(page), `${name}: the item sheet`).toEqual([]);
   await byTool(page, () => page.screenshot({ path: info.outputPath(`glass-${name}-sheet.png`) }));
-  await page.locator('#task-sheet').getByRole('button', { name: 'Close' }).click();
+  await page.keyboard.press('Escape');
   await expect(page.locator('#task-sheet')).toBeHidden();
 });
 
