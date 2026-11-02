@@ -8,7 +8,7 @@ test('a tab taken off the bar is one tap away in Settings and stays off', async 
   const search = page.locator('.ui-tabbar [data-tab-id="upcoming"]');
   await expect(search).toBeVisible();
 
-  await openSettings(page, 'Tab bar');
+  await openSettings(page, 'Navigation bar');
   await expect(page.getByRole('switch', { name: 'On the tab bar: Browse' })).toBeDisabled();   // Browse (and Settings in it) stays
   await page.getByRole('switch', { name: 'On the tab bar: Upcoming' }).click();
   await expect(search).toHaveAttribute('data-off-bar', '');

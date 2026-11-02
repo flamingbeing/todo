@@ -237,6 +237,24 @@ button.td-group-title { display: flex; align-items: center; gap: 6px; width: 100
 #browse { padding-bottom: 96px; }
 #settings-page #account { margin: 0 16px 16px; }
 
+/* ---------- Settings menu: a flat list, headings in the accent, no cards or chevrons ---------- */
+#settings-host .ui-settings-menu-groups { padding-bottom: 24px; }
+#settings-host .ui-settings-menu-groups > .ui-list { margin: 0; padding: 0; background: none; border-radius: 0; box-shadow: none; }
+#settings-host .ui-settings-menu-groups > .ui-list > li { border: 0; }
+#settings-host .ui-settings-menu-groups > .ui-settings-title { margin: 0; padding: 14px 20px 6px; border-top: .5px solid var(--td-hair);
+  font-size: 15px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--td-accent); }
+#settings-host .ui-settings-menu-groups > .ui-list:first-child { margin-top: 8px; }
+#settings-host .ui-settings-menu-groups .ui-settings-go { display: flex; align-items: center; gap: 24px; box-sizing: border-box; width: 100%; min-height: 56px;
+  padding: 0 20px; border: 0; background: none; color: var(--td-text); font-size: 17px; text-align: start; }
+#settings-host .ui-settings-menu-groups .ui-settings-go .ui-row-main { flex: 1; min-width: 0; font-size: 17px; font-weight: 400; }
+#settings-host .ui-settings-menu-groups .ui-settings-go .ui-row-sub { display: none; }
+#settings-host .ui-settings-menu-groups .ui-settings-go > .ui-row-main:first-child { margin-inline-start: 46px; }
+#settings-host .ui-settings-menu-groups .ui-settings-go .ui-settings-icon { width: 22px; height: 22px; color: var(--td-text-2); }
+#settings-host .ui-settings-menu-groups .ui-settings-go .ui-chev { display: none; }
+#settings-host .ui-settings-menu-groups .ui-settings-go:active { background: var(--td-selected); }
+/* a page's rows: flat, 56 px, title over a grey value */
+#settings-host .ui-settings-group > .ui-list { background: none; border-radius: 0; box-shadow: none; }
+
 /* ---------- sheets: warm ground, round corners, the kit's grabber and detents ---------- */
 .ui-sheet.td-sheet { background: var(--td-sheet); color: var(--td-text); border-radius: 30px 30px 0 0; }
 .ui-sheet.td-sheet::backdrop { background: rgb(0 0 0 / .35); }
@@ -1041,3 +1059,11 @@ body:has(.ui-screen.td-grouped:not([hidden])) .ui-bar { background: var(--td-bar
 .td-browse-chip { padding: 2px 6px; border-radius: 4px; background: color-mix(in srgb, var(--td-text) 14%, transparent); color: var(--td-text-2); font-size: 11px; font-weight: 600; letter-spacing: .04em; }
 .td-browse-head-end { display: inline-flex; align-items: center; gap: 2px; }
 .td-browse-card .is-manage .td-browse-label { color: var(--td-text-2); font-size: 15px; }
+
+/* Settings pages: flat rows on the ground (no card), 20 px sides, title over a grey sub, the control at the end */
+#settings-host .ui-settings-group .ui-list,
+#settings-host .ui-settings-group .theme-switch { margin-inline: 0; border-radius: 0; background: none; box-shadow: none; }
+#settings-host .ui-settings-group .ui-setting { min-height: 56px; padding: 8px 20px; border-radius: 0; background: none; }
+#settings-host .ui-settings-group .ui-setting .ui-row-main { font-size: 17px; }
+#settings-host .ui-settings-group .ui-setting .ui-row-sub { margin-top: 1px; font-size: 14px; color: var(--td-text-3); }
+#settings-host .ui-settings-group .theme-switch > * { padding-inline: 20px; }

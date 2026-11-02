@@ -41,7 +41,7 @@ const scrollStill = page => page.locator('#project.td-board').evaluate(el => new
 const centre = async (page, sel) => { const r = await boxOf(page, sel); return [r.x + r.width / 2, r.y + r.height / 2]; };
 const swipesOff = async page => {
   await openSettings(page, 'General');
-  for (const name of ['Swipe right', 'Swipe left']) {
+  for (const name of ['Swipe to right', 'Swipe to left']) {
     const sel = page.locator('#settings-host select').filter({ has: page.locator('option', { hasText: 'None' }) })
       .and(page.getByLabel(name, { exact: false }));
     await sel.selectOption({ label: 'None' });

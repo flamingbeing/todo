@@ -17,16 +17,19 @@ import { modules } from './modules.js';
  * @typedef {(o: { app: import('./items.js').ItemsApp }) => import('app-ui/ui/settings-screen.js').SettingSection | null} SettingsSlot
  */
 
-// The Settings menu's headings, in this order; a page whose group is not listed goes under 'Other' (last), so a new
+// The Settings menu's headings, in this order; a page whose group is not listed goes under 'More' (last), so a new
 // page is never left out and a recipe never edits this list
-const SETTINGS_GROUPS = ['Tasks', 'Look', 'Sharing', 'Data', 'Advanced', 'Other'];
+const SETTINGS_GROUPS = ['', 'Personalization', 'Productivity', 'More'];
 // (a page whose visible() is false now is left out: the kit keeps a group's heading even when all its pages are hidden,
 // so an Advanced with no features showed an empty heading; a key-gated page stays, as it can turn on live)
+// the order of the pages within a group (the rest keep theirs, after these)
+const PAGE_ORDER = ['Account', 'General', 'Theme', 'Navigation bar', 'Navigation menu', 'Quick Add', 'Productivity', 'Reminders'];
+const pageRank = (/** @type {string} */ t) => (PAGE_ORDER.includes(t) ? PAGE_ORDER.indexOf(t) : PAGE_ORDER.length);
 /** @param {import('app-ui/ui/settings-screen.js').SettingSection[]} sections */
 const byGroup = sections => sections
   .filter(s => typeof s.visible !== 'function' || s.visible())
-  .map(s => (SETTINGS_GROUPS.includes(s.group ?? '') ? s : { ...s, group: 'Other' }))
-  .sort((a, b) => SETTINGS_GROUPS.indexOf(a.group ?? '') - SETTINGS_GROUPS.indexOf(b.group ?? ''));
+  .map(s => (SETTINGS_GROUPS.includes(s.group ?? '') ? s : { ...s, group: 'More' }))
+  .sort((a, b) => SETTINGS_GROUPS.indexOf(a.group ?? '') - SETTINGS_GROUPS.indexOf(b.group ?? '') || pageRank(a.title) - pageRank(b.title));
 
 // Browse always stays on the bar: Settings opens from it (the tabs off the bar are listed at the top of its menu)
 const TAB_RULES = { fixed: ['browse'] };
@@ -189,19 +192,24 @@ export function settingsPage(app) {
 
   settingsScreen($('settings-host'), {
     settings,
-    menu: { steps, top: offBar, onPage },
+    menu: { steps, top: offBar, onPage, search: false },
+    labels: { appGroup: 'More' },
     sections: byGroup([
       ...SETTING_SECTIONS,
-      { title: 'Tab bar', icon: ICONS.menu, sub: 'Order, and which tabs show', group: 'Look', find: 'arrange tabs', mount: host => {
+      // the account block (index.html #account, cloud app only) lives on its own page, as the first row of the menu
+      ...(document.getElementById('account') ? [{ title: 'Account', icon: ICONS.circleUser, group: '', find: 'sign out email profile',
+        mount: /** @param {HTMLElement} host */ host => { const acc = /** @type {HTMLElement} */ (document.getElementById('account')); host.append(acc); } }] : []),
+      { title: 'Theme', icon: ICONS.palette, group: 'Personalization', find: 'look colour dark light density glass',
+        mount: host => { themeSwitch(host, { name: APP.title || APP.name }); } },
+      { title: 'Navigation bar', icon: ICONS.smartphone, group: 'Personalization', find: 'arrange tabs order tab bar', mount: host => {
         let stop = () => {};
         const draw = () => { stop(); stop = tabArranger(host, { tabs: barTabs(), get: () => settings.get('tabs'), set: v => settings.set('tabs', v), rules: TAB_RULES }); };
         repaints.add(draw);
         draw();
         return () => { repaints.delete(draw); stop(); };
       } },
-      { title: 'Import from Todoist', icon: ICONS.folderInput, sub: 'Bring your projects and tasks over', group: 'Data', find: 'migrate move api token tasks',
+      { title: 'Import from Todoist', icon: ICONS.folderInput, sub: 'Bring your projects and tasks over', group: 'More', find: 'migrate move api token tasks',
         mount: host => onShow(host, async h => (await import('./screens/import.js')).importScreen(h, { app, openInbox: () => tabButton('inbox')?.click() })) },
-      { title: 'Look', icon: ICONS.smartphone, sub: 'Theme, colour and density', group: 'Look', mount: host => { themeSwitch(host, { name: APP.title || APP.name }); } },
       // the recipes' own pages (an empty slot adds none)
       ...Object.values(modules.settingsPages ?? {}).flatMap(slot => { const section = slot?.({ app }); return section ? [section] : []; }),
     ]),

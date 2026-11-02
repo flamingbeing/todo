@@ -25,8 +25,8 @@ test('counts, the 7-day chart and the streak; a goal shows a bar', async ({ phon
   await expect(host.locator('.td-stat-bar')).toHaveCount(0);   // goals are off until set
   expect(await AxeBuilder(page)).toEqual([]);
 
-  // a daily goal in Settings > General shows a bar on the page
-  await openSettings(page, 'General');
+  // a daily goal in Settings > Productivity shows a bar on the page
+  await openSettings(page, 'Productivity');
   await page.getByRole('combobox', { name: /Daily goal/ }).selectOption({ label: '3' }).catch(async () => {
     await page.locator('#settings-host').getByText('Daily goal', { exact: true }).click();
     await page.getByRole('option', { name: '3', exact: true }).click();

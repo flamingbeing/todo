@@ -4,7 +4,8 @@
 import { test, expect, signIn, signInAgain, synced, openSettings, openToday, openTab } from './fixtures.mjs';
 import AxeBuilder from './axe.mjs';
 
-const open = (page, title = 'Tasks') => openSettings(page, title);
+const open = (page, title = 'General') => openSettings(page, title);
+const openCounts = page => openSettings(page, 'Navigation menu');
 const big = page => page.getByRole('switch', { name: /Larger rows/ });
 const count = page => page.getByRole('switch', { name: /Show task counts/ });
 // a project row's count on Browse (drawn once Browse has opened; it follows the option from then on)
@@ -31,10 +32,11 @@ test('device values stay on this device: Larger rows and the counts do not reach
   const { email } = await signIn(a, 'member');
   await synced(a);
   await browse(a);
-  await open(a);
+  await openCounts(a);
   await expect(a.locator('#settings-host')).toContainText('Show task counts in Browse');
-  await big(a).check();
   await count(a).check();
+  await open(a);
+  await big(a).check();
   await openToday(a);
   await expect(a.locator('.ui-screens')).toHaveClass(/big/);
   await expect(shown(a)).toHaveCount(1);
@@ -47,6 +49,7 @@ test('device values stay on this device: Larger rows and the counts do not reach
   await expect(shown(b)).toHaveCount(0);
   await open(b);
   await expect(big(b)).not.toBeChecked();
+  await openCounts(b);
   await expect(count(b)).not.toBeChecked();
 });
 
@@ -55,7 +58,7 @@ test('the device value survives sign-out and a reload', async ({ phone }) => {
   const { email } = await signIn(a, 'member');
   await open(a);
   await big(a).check();
-  await openSettings(a);
+  await openSettings(a, 'Account');
   await a.click('#sign-out');
   await openToday(a);
   await expect(a.locator('#signed-out')).toBeVisible();
@@ -70,7 +73,7 @@ test('a settings file: exported, imported on another account, bad keys dropped',
   const a = await phone();
   await signIn(a, 'member');
   await synced(a);
-  await open(a);
+  await openCounts(a);
   await count(a).check();
   await open(a, 'Settings file');
   const [download] = await Promise.all([a.waitForEvent('download'), a.getByRole('button', { name: 'Export' }).click()]);
@@ -108,7 +111,7 @@ test('a direct switch from one account to another shows the new account\'s own o
   await signIn(a, 'member');                      // account A
   await synced(a);
   await browse(a);
-  await open(a);
+  await openCounts(a);
   await count(a).check();
   await openToday(a);
   // straight from A to B, no sign-out in between
@@ -118,7 +121,7 @@ test('a direct switch from one account to another shows the new account\'s own o
   await expect.poll(() => a.evaluate(() => window.starter.ready)).toBe(true);
   await a.reload({ waitUntil: 'domcontentloaded' });
   await expect(a.locator('#list-view')).toBeVisible();
-  await open(a);
+  await openCounts(a);
   await expect(count(a)).not.toBeChecked();
 });
 

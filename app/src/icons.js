@@ -25,5 +25,9 @@ export const ICONS = {
   listChecks: [['path', { d: 'm3 17 2 2 4-4' }], ['path', { d: 'm3 7 2 2 4-4' }], ['path', { d: 'M13 6h8' }], ['path', { d: 'M13 12h8' }], ['path', { d: 'M13 18h8' }]],
   menu: [['line', { 'x1': '4', 'x2': '20', 'y1': '12', 'y2': '12' }], ['line', { 'x1': '4', 'x2': '20', 'y1': '6', 'y2': '6' }], ['line', { 'x1': '4', 'x2': '20', 'y1': '18', 'y2': '18' }]],
   smartphone: [['rect', { width: '14', height: '20', x: '5', y: '2', rx: '2', ry: '2' }], ['path', { d: 'M12 18h.01' }]],
+  circleUser: [['circle', { cx: '12', cy: '12', r: '10' }], ['circle', { cx: '12', cy: '10', r: '3' }], ['path', { d: 'M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662' }]],
+  palette: [['path', { d: 'M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z' }], ['circle', { cx: '13.5', cy: '6.5', r: '.5', fill: 'currentColor' }], ['circle', { cx: '17.5', cy: '10.5', r: '.5', fill: 'currentColor' }], ['circle', { cx: '6.5', cy: '12.5', r: '.5', fill: 'currentColor' }], ['circle', { cx: '8.5', cy: '7.5', r: '.5', fill: 'currentColor' }]],
+  alarmClock: [['circle', { cx: '12', cy: '13', r: '8' }], ['path', { d: 'M12 9v4l2 2' }], ['path', { d: 'M5 3 2 6' }], ['path', { d: 'm22 6-3-3' }], ['path', { d: 'M6.38 18.7 4 21' }], ['path', { d: 'M17.64 18.67 20 21' }]],
+  gauge: [['path', { d: 'm12 14 4-4' }], ['path', { d: 'M3.34 19a10 10 0 1 1 17.32 0' }]],
   target: [['circle', { cx: '12', cy: '12', r: '10' }], ['circle', { cx: '12', cy: '12', r: '6' }], ['circle', { cx: '12', cy: '12', r: '2' }]],
 };
