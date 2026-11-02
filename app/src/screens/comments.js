@@ -1,0 +1,136 @@
+// The task sheet's Comments section, loaded with the sheet (task-sheet.js, itself lazy). A comment is plain text with the
+// small markdown marks (markdown.js), up to 2000 characters, kept in its own collection (items.js COMMENTS) with the
+// task's id. Everyone with a role reads them; members add; the author edits or deletes their own (the rules say the
+// same). Every change saves through the write queue (app.writeRecord / app.removeComment). No attachments.
+import { icon } from '@core/ui';
+import { ICONS } from '../icons.js';
+import { MORE } from '../icons-more.js';
+import { COMMENTS, REFUSED } from '../items.js';
+import { showMarks } from '../markdown.js';
+
+/** @typedef {import('../items.js').Comment} Comment */
+/** @typedef {import('./views.js').Ctx} Ctx */
+
+/** the most a comment may hold (the rules' limit) */
+export const MAX = 2000;
+
+/** @param {string} tag @param {string} [cls] @param {string} [text] */
+const el = (tag, cls = '', text = '') => { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; };
+
+/** a comment's text as it is saved: trimmed, up to MAX; '' when there is nothing @param {unknown} text */
+export const cleanComment = text => String(text ?? '').trim().slice(0, MAX);
+
+/** a task's comments, oldest first @param {Comment[] | undefined} all @param {string} taskId */
+export const commentsOf = (all, taskId) => (all ?? []).filter(c => c.taskId === taskId).sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
+
+/** "2 Nov, 14:05" @param {number | undefined} at */
+export const when = at => at ? new Date(at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '';
+
+/**
+ * The section for one open task sheet. fill(ctx, taskId) draws (again) whenever the data changes; what is being typed
+ * (a new comment or an edit) stays.
+ * @returns {{ root: HTMLElement, fill: (ctx: Ctx, taskId: string) => void }}
+ */
+export function commentsSection() {
+  const root = el('section', 'td-comments');
+  /** the comment being edited, if any */
+  let editing = '';
+  /** @type {HTMLTextAreaElement | null} */
+  let draft = null;
+  /** what fill last drew, for a redraw of this section alone (an edit opened or closed) @type {{ ctx: Ctx, taskId: string } | null} */
+  let last = null;
+  const again = () => { if (last) api.fill(last.ctx, last.taskId); };
+  const list = el('div', 'td-comment-list');
+  list.setAttribute('role', 'list');
+  const title = el('h3', 'td-subtasks-title');
+  root.append(title, list);
+
+  /** @param {Ctx} ctx */
+  const form = ctx => {
+    const f = /** @type {HTMLFormElement} */ (el('form', 'td-add-comment'));
+    const box = /** @type {HTMLTextAreaElement} */ (el('textarea'));
+    box.rows = 1; box.maxLength = MAX; box.placeholder = 'Add a comment'; box.setAttribute('aria-label', 'Add a comment');
+    if (draft) box.value = draft.value;
+    draft = box;
+    const send = /** @type {HTMLButtonElement} */ (el('button', 'td-round td-comment-send'));
+    send.type = 'submit'; send.setAttribute('aria-label', 'Send comment'); send.append(icon(MORE.arrowUp));
+    const grow = () => { box.style.height = 'auto'; box.style.height = `${Math.min(box.scrollHeight, 160)}px`; send.disabled = !cleanComment(box.value); };
+    box.addEventListener('input', grow);
+    f.append(box, send);
+    f.addEventListener('submit', async e => {
+      e.preventDefault();
+      const text = cleanComment(box.value);
+      if (!text || !last) return;
+      const u = ctx.user();
+      box.value = ''; grow();
+      const rec = { id: crypto.randomUUID().replace(/-/g, ''), taskId: last?.taskId ?? '', text, uid: u?.uid ?? '', ...(u?.name || u?.email ? { name: u.name || u.email } : {}), createdAt: Date.now() };
+      if (await ctx.app.writeRecord(COMMENTS, rec, null)) ctx.toast(REFUSED);
+    });
+    // Enter sends on a keyboard; Shift+Enter is a new line
+    box.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && matchMedia('(hover: hover)').matches) { e.preventDefault(); f.requestSubmit(); } });
+    requestAnimationFrame(grow);
+    return f;
+  };
+
+  /** @param {Ctx} ctx @param {Comment} c */
+  const item = (ctx, c) => {
+    const mine = !!c.uid && c.uid === ctx.user()?.uid;
+    const li = el('div', 'td-comment');
+    li.setAttribute('role', 'listitem');
+    li.dataset.id = c.id;
+    const head = el('div', 'td-comment-head');
+    head.append(el('span', 'td-comment-by', c.name || (mine ? 'You' : 'Someone')), el('time', 'td-comment-time', when(c.createdAt)));
+    li.append(head);
+    if (editing === c.id) {
+      const box = /** @type {HTMLTextAreaElement} */ (el('textarea', 'td-comment-edit'));
+      const prev = /** @type {HTMLTextAreaElement | null} */ (list.querySelector('.td-comment-edit'));   // (a change arriving keeps the typing)
+      box.maxLength = MAX; box.value = prev?.value ?? c.text; box.setAttribute('aria-label', 'Edit comment');
+      const row = el('div', 'td-comment-actions');
+      const cancel = /** @type {HTMLButtonElement} */ (el('button', 'td-comment-btn', 'Cancel'));
+      const save = /** @type {HTMLButtonElement} */ (el('button', 'td-comment-btn is-primary', 'Save'));
+      cancel.type = save.type = 'button';
+      cancel.addEventListener('click', () => { editing = ''; again(); });
+      save.addEventListener('click', async () => {
+        const text = cleanComment(box.value);
+        if (!text) return;
+        editing = '';
+        const now = ctx.data().comments?.find(x => x.id === c.id) ?? c;
+        if (text !== now.text && await ctx.app.writeRecord(COMMENTS, { ...now, text }, now)) ctx.toast(REFUSED);
+        again();
+      });
+      row.append(cancel, save);
+      li.append(box, row);
+      if (!prev) requestAnimationFrame(() => { box.focus(); box.setSelectionRange(box.value.length, box.value.length); });
+      return li;
+    }
+    const body = el('div', 'td-comment-text', c.text);
+    showMarks(body, c.text);
+    li.append(body);
+    if (mine && ctx.canWrite()) {
+      const act = el('div', 'td-comment-icons');
+      const mk = (/** @type {import('app-ui/icons/lucide.js').IconNodes} */ ic, /** @type {string} */ label, /** @type {() => void} */ run) => {
+        const b = /** @type {HTMLButtonElement} */ (el('button', 'td-comment-icon'));
+        b.type = 'button'; b.setAttribute('aria-label', label); b.append(icon(ic)); b.addEventListener('click', run);
+        return b;
+      };
+      act.append(
+        mk(MORE.pencil, 'Edit comment', () => { editing = c.id; again(); }),
+        mk(MORE.trash2, 'Delete comment', async () => { if (await ctx.app.removeComment(c)) ctx.toast(REFUSED); }));
+      li.append(act);
+    }
+    return li;
+  };
+
+  /** @type {{ root: HTMLElement, fill: (ctx: Ctx, taskId: string) => void }} */
+  const api = { root, fill(ctx, taskId) {
+    last = { ctx, taskId };
+    const all = commentsOf(ctx.data().comments, taskId);
+    title.textContent = all.length ? `Comments ${all.length}` : 'Comments';
+    // what is being typed stays: the form is kept while it has focus or text
+    const keep = root.querySelector('.td-add-comment');
+    list.replaceChildren(...all.map(c => item(ctx, c)));
+    if (!ctx.canWrite()) { keep?.remove(); draft = null; return; }
+    if (!keep) root.append(form(ctx));
+  } };
+  return api;
+}

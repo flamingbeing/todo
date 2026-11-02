@@ -5,6 +5,8 @@ export const PROJECTS = 'projects';
 export const SECTIONS = 'sections';
 export const LABELS = 'labels';
 export const FILTERS = 'filters';
+/** a task's comments (their own collection: synced like the records, but not in RECORDS: not binned, not restored) */
+export const COMMENTS = 'comments';
 /** every collection of the app's own records (each goes to the bin when deleted) */
 export const RECORDS = [COLL, PROJECTS, SECTIONS, LABELS, FILTERS];
 /** the Inbox: the project with this id (made once, never deleted); a task with no project is in it */
@@ -27,12 +29,13 @@ export const REFUSED = 'The server refused that. A copy is kept in the refused l
  *   extId?: string | null, createdAt?: number, updatedAt?: unknown, _deleted?: boolean } & Record<string, unknown>} Task
  */
 /** @typedef {Task} Item */
+/** A comment on a task: plain text with the small markdown marks, up to 2000 characters; uid is its author's. @typedef {{ id: string, taskId: string, text: string, uid: string, name?: string | null, createdAt?: number, updatedAt?: unknown, _deleted?: boolean } & Record<string, unknown>} Comment */
 /** @typedef {{ id: string, name: string, color: string, parentId?: string | null, order: number, favorite?: boolean | null,
  *   view?: 'list' | 'board', inbox?: boolean, collapsed?: boolean | null, createdAt?: number, updatedAt?: unknown } & Record<string, unknown>} Project */
 /** @typedef {{ id: string, name: string, projectId: string, order: number, collapsed?: boolean | null, createdAt?: number, updatedAt?: unknown } & Record<string, unknown>} Section */
 /** @typedef {{ id: string, name: string, color: string, order: number, favorite?: boolean | null, createdAt?: number } & Record<string, unknown>} Label */
 /** @typedef {{ id: string, name: string, query: string, color: string, order: number, favorite?: boolean | null, createdAt?: number } & Record<string, unknown>} Filter */
-/** @typedef {{ tasks: Task[], projects: Project[], sections: Section[], labels: Label[], filters: Filter[] }} Data  everything, as last heard */
+/** @typedef {{ tasks: Task[], projects: Project[], sections: Section[], labels: Label[], filters: Filter[], comments?: Comment[] }} Data  everything, as last heard */
 /** @typedef {{ title?: string, description?: string | null, projectId?: string, sectionId?: string | null, parentId?: string | null,
  *   priority?: number, labels?: string[] | null, due?: Due | null, deadline?: string | null, duration?: number | null, order?: number, collapsed?: boolean }} Fields  what an add or edit sets */
 /** one entry of the bin: a deleted item's last version (the bin recipe; docId is its document in the bin) */

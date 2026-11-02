@@ -1,5 +1,5 @@
 // The task sheet (#task-sheet): the task's title and description in a card, then a row each for its project, date,
-// deadline, priority and labels, then its subtasks with "Add sub-task". Every change saves as it is made (on change or when a
+// deadline, priority and labels, then its subtasks with "Add sub-task" and its comments. Every change saves as it is made (on change or when a
 // field is left), through the write queue; there is no Save button, and closing keeps what was typed. The "…" has
 // Duplicate, Move to and Delete (with an undo). Opening a subtask shows it in the same sheet, with its parent's name
 // at the top to go back up.
@@ -18,6 +18,7 @@ import { el, pickPlace } from './pick.js';
 import { pickDate } from './scheduler.js';
 import { pickLabels, ticksOf, onIds } from './labels.js';
 import { hasMarks, showMarks } from '../markdown.js';
+import { commentsSection } from './comments.js';
 
 /** @typedef {import('../items.js').Task} Task */
 /** @typedef {import('./views.js').Ctx} Ctx */
@@ -173,6 +174,7 @@ function draw(ctx) {
     ctx.undo.show('Task deleted', async () => { for (const g of gone) if (await ctx.app.put(g)) { ctx.toast(REFUSED); return; } });
   };
 
+  const talk = commentsSection();
   const fill = (/** @type {Ctx} */ c) => {
     const now = current(c);
     // gone (deleted on another device: a delete here closes the sheet first)
@@ -256,8 +258,9 @@ function draw(ctx) {
     }
     subs.replaceChildren(...parts);
     keep?.focus();
+    talk.fill(c, now.id);
   };
   refresh = fill;
   fill(ctx);
-  body.replaceChildren(head, card, rows, subs);
+  body.replaceChildren(head, card, rows, subs, talk.root);
 }

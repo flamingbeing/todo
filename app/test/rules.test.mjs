@@ -19,6 +19,7 @@ const VALID = {
   projects: { name: 'Work', color: 'blue', order: 1, view: 'list', updatedAt: 1 },
   sections: { name: 'Admin', projectId: 'p1', order: 1, updatedAt: 1 },
   labels: { name: 'errand', color: 'green', order: 1, updatedAt: 1 },
+  comments: { taskId: 't1', text: 'Called the shop', uid: 'u-member', name: 'Sam', updatedAt: 1 },
   filters: { name: 'Urgent', query: 'p1 & today', color: 'red', order: 1, updatedAt: 1 },
 };
 
@@ -178,6 +179,38 @@ test('projects: a name, a known colour, a view; only the inbox doc is the Inbox,
   await emu.seed('spaces/_/projects/inbox', { name: 'Inbox', inbox: true, color: 'charcoal', order: 0, view: 'list', updatedAt: 1 });
   assert.equal((await as('member').delete('spaces/_/projects/inbox')).ok, false, 'the Inbox is never deleted');
   assert.equal((await as('admin').delete('spaces/_/projects/inbox')).ok, false);
+});
+
+test('comments: text of 1 to 2000, a task and an author; the author and the task never change; only the author or an admin edits or deletes', async () => {
+  await cases('comments', [
+    ['no name', drop('name'), true],
+    ['a null name', { name: null }, true],
+    ['a name over 120', { name: 'x'.repeat(121) }, false],
+    ['text of 2000', { text: 'x'.repeat(2000) }, true],
+    ['text of 2001', { text: 'x'.repeat(2001) }, false],
+    ['empty text', { text: '' }, false],
+    ['no text', drop('text'), false],
+    ['text that is not text', { text: 5 }, false],
+    ['no task', drop('taskId'), false],
+    ['a task id over 64', { taskId: 'x'.repeat(65) }, false],
+    ['no author', drop('uid'), false],
+    ['an author that is not the writer', { uid: 'u-other' }, false],
+    ['an attachment field', { file: 'a.png' }, false],
+  ]);
+  await emu.clear();
+  const path = 'spaces/_/comments/k', base = { ...VALID.comments, createdAt: 1 };
+  await emu.seed(path, base);
+  assert.equal((await as('member').set(path, { ...base, text: 'edited', updatedAt: 2 }, at)).ok, true, 'the author edits');
+  assert.equal((await emu.as('u-other', { g: { _: 'member' }, v: 1 }).set(path, { ...base, text: 'mine now', updatedAt: 2 }, at)).ok, false, 'another member cannot edit');
+  assert.equal((await as('admin').set(path, { ...base, text: 'moderated', updatedAt: 2 }, at)).ok, true, 'an admin can');
+  assert.equal((await as('member').set(path, { ...base, taskId: 't2', updatedAt: 3 }, at)).ok, false, 'it stays on its task');
+  assert.equal((await as('member').set(path, { ...base, uid: 'u-other', updatedAt: 3 }, at)).ok, false, 'it keeps its author');
+  assert.equal((await as('viewer').set(path, { ...base, text: 'x', updatedAt: 4 }, at)).ok, false, 'a viewer cannot edit');
+  assert.equal((await emu.as('u-other', { g: { _: 'member' }, v: 1 }).delete(path)).ok, false, 'another member cannot delete');
+  assert.equal((await as('viewer').delete(path)).ok, false, 'a viewer cannot delete');
+  assert.equal((await as('member').delete(path)).ok, true, 'the author deletes');
+  await emu.seed(path, base);
+  assert.equal((await as('admin').delete(path)).ok, true, 'an admin deletes');
 });
 
 test('sections: a name of 1 to 120 and a project', () => cases('sections', [

@@ -46,6 +46,7 @@ const SHELL = [
   'src/screens/board.js',
   'src/screens/browse.js',
   'src/screens/calendar.js',
+  'src/screens/comments.js',
   'src/screens/completed.js',
   'src/screens/display.js',
   'src/screens/filters.js',

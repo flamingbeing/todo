@@ -123,6 +123,26 @@ service cloud.firestore {
       allow delete: if can(g, ['admin', 'member']);
     }
 
+    // A comment on a task: plain text (up to 2000), by the person who wrote it (uid; name is for show). Members and admins
+    // add; only its author (or an admin) edits or deletes it, and a comment never moves to another task or author.
+    // Anyone with a role reads. Comments are not in the bin: a delete is final.
+    match /spaces/{g}/comments/{id} {
+      allow read: if can(g, ['admin', 'member', 'viewer']);
+      allow create: if writer(g)
+        && request.resource.data.keys().hasOnly(['taskId', 'text', 'uid', 'name', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
+        && text(request.resource.data, 'taskId', 64) && text(request.resource.data, 'text', 2000)
+        && text(request.resource.data, 'uid', 64) && optText(request.resource.data, 'name', 120)
+        && (request.resource.data.uid == request.auth.uid || can(g, ['admin']))
+        && synced(request.resource.data);
+      allow update: if writer(g)
+        && request.resource.data.keys().hasOnly(['taskId', 'text', 'uid', 'name', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
+        && text(request.resource.data, 'text', 2000) && optText(request.resource.data, 'name', 120)
+        && request.resource.data.taskId == resource.data.taskId && request.resource.data.uid == resource.data.uid
+        && (resource.data.uid == request.auth.uid || can(g, ['admin']))
+        && synced(request.resource.data);
+      allow delete: if can(g, ['admin', 'member']) && (resource.data.uid == request.auth.uid || can(g, ['admin']));
+    }
+
     // modules: rules{ written from app/rules/*.rules by node tools/modules.mjs; edit those, not this block
     // }modules
 

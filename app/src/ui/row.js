@@ -26,6 +26,15 @@ import { INBOX } from '../items.js';
  * @property {(span: HTMLElement, text: string) => void} [marks]  shows a title's markdown (markdown.js, loaded when a title has some)
  */
 
+/** the comments each task has, counted once per data (a new data object on every change) @type {WeakMap<object, Map<string, number>>} */
+const counted = new WeakMap();
+/** @param {import('../items.js').Data} data @param {string} id */
+const commentCount = (data, id) => {
+  let m = counted.get(data);
+  if (!m) { m = new Map(); for (const x of data.comments ?? []) m.set(x.taskId, (m.get(x.taskId) || 0) + 1); counted.set(data, m); }
+  return m.get(id) || 0;
+};
+
 /** a title starting "* " is a note in the list: no box to tick (shown without the "* ") @param {Task} t */
 export const plainRow = t => /^\* \S/.test(String(t.title));
 
@@ -56,6 +65,13 @@ function meta(line, c) {
     const n = el('span', 'td-count');
     n.append(icon(ICONS.listTree, { class: 'td-meta-icon' }), count);
     n.setAttribute('aria-label', `${line.doneKids} of ${line.kids} subtasks done`);
+    parts.push(n);
+  }
+  const talk = commentCount(c.data, t.id);
+  if (talk) {
+    const n = el('span', 'td-count td-comments-count');
+    n.append(icon(ICONS.messageSquare, { class: 'td-meta-icon' }), String(talk));
+    n.setAttribute('aria-label', `${talk} ${talk === 1 ? 'comment' : 'comments'}`);
     parts.push(n);
   }
   for (const known of labelsOf(t, c.data.labels)) {

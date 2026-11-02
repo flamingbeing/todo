@@ -2,6 +2,7 @@
 
 ## Now
 
+- Comments (2026-11-02, slice 2 of 4): the task sheet has a Comments section (add a plain-text comment, up to 2000 characters, shown with its time and the existing small markdown marks; the author edits or deletes their own); a row shows a small speech-bubble count when a task has comments. They sync as their own `comments` collection (members write, viewers read; only the author or an admin edits or deletes; not in the bin; deleting a task leaves its comments unseen, so Undo brings them back). Rules, rules tests and `e2e/comments.spec.mjs` added; no attachments.
 - Small gaps (2026-11-02, slice 1 of 4): a held row's menu now has Copy link (same address as the task sheet's). The rest of the list was already in place (Upcoming's + adds for the viewed day, Back goes to Home, board Add section, week-strip hold adds, applied sort/group line with Reset, label rules checks, Not done in Completed's select mode).
 - A task manager for one person's own tasks, on app-ui 1.0.0-rc.80's kit shell (2026-11-01). Done so far (part 1 of 4):
   the data model (tasks with projects, sections, subtasks, priority 1-4, due dates with time and repeat rules, labels,
