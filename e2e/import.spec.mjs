@@ -5,6 +5,10 @@ import fs from 'node:fs';
 import AxeBuilder from './axe.mjs';
 import { test, expect, signIn, synced, uniq, db, openSettings, settingsBack, openTab } from './fixtures.mjs';
 
+// every import writes the one shared Inbox (it learns the source's id), so two imports at once make each other's
+// second preview see a change: run this file's tests one after another
+test.describe.configure({ mode: 'serial' });
+
 const API = 'https://api.todoist.com/api/v1/sync';
 const TITLE = 'Import from Todoist';
 
