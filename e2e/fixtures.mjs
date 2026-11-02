@@ -249,6 +249,10 @@ const toTop = page => page.evaluate(() => { scrollTo(0, 0); document.querySelect
 export const openSettings = async (page, title) => {
   await toTop(page);
   if (!(await page.locator('#settings-host').isVisible())) {
+    for (let i = 0; i < 4 && !(await page.locator('.ui-tabbar').isVisible()); i++) {   // (a pushed page hides the tab bar: Back first)
+      await page.locator('.ui-bar-back:visible').first().click();
+      await page.waitForTimeout(450);
+    }
     await page.locator(tabLink('browse-page')).first().click();
     await page.locator('#browse-settings').click();
   }
