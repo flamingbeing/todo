@@ -222,6 +222,8 @@ export async function start({ canReload = null }) {
       return r.ok ? '' : (await r.json().catch(() => ({}))).error || `Refused (${r.status})`;
     } catch { return 'Offline: try again.'; }
   };
+  /** @type {Set<() => Promise<unknown>>} */
+  const outHooks = new Set();
   const id = () => (crypto.randomUUID?.() || String(Date.now()) + Math.random().toString(36).slice(2)).replace(/-/g, '');
   const { removeTask, removeProject, removeSection, put, ...ops } = taskOps({ save: (coll, record, base) => app.sync.save(coll, SPACE, record, base), id,
     data: () => latest, drop: (coll, ids) => { void app.sync.hub.drop(SPACE, coll, ids); } });
@@ -272,7 +274,14 @@ export async function start({ canReload = null }) {
       remove: uid => membersCall('DELETE', uid),
     },
     idToken: async () => (await fa.currentUser?.getIdToken().catch(() => '')) || undefined,
+    // parts that must act while the person is still signed in (Web Push's unsubscribe) -> remove
+    /** @param {() => Promise<unknown>} fn */
+    onSignOut: fn => { outHooks.add(fn); return () => { outHooks.delete(fn); }; },
     // Sign-out keeps this device's copy and unsent saves. -> how many are still unsent (they send at the next sign-in)
-    async signOut() { await app.auth.signOut(); return unsent; },
+    async signOut() {
+      await Promise.race([Promise.all([...outHooks].map(f => f().catch(() => {}))), new Promise(r => setTimeout(r, 4000))]);
+      await app.auth.signOut();
+      return unsent;
+    },
   };
 }

@@ -64,6 +64,7 @@ export const REFUSED = 'The server refused that. A copy is kept in the refused l
  * @property {() => Data} data  every record as last heard
  * @property {(task: Task) => Promise<string>} put  a whole task under its own id (a restore); '' or the reason
  * @property {BinApi} [bin]  the deleted items (the bin recipe; the cloud app only)
+ * @property {(fn: () => Promise<unknown>) => () => void} [onSignOut]  run fn (awaited, a few seconds at most) just before signing out -> remove
  * @property {() => Promise<string | undefined>} [idToken]  the signed-in person's ID token, for the Worker's /api/push/ routes
  * @property {() => boolean} serverCopyIn  whether the server's copy has arrived yet
  * @typedef {ItemsAppBase & Omit<Ops, 'removeTask' | 'removeProject' | 'removeSection' | 'put'>} ItemsApp

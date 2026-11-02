@@ -288,10 +288,13 @@ test('bin entries: writers stamp them; viewers only read', async () => {
 test('Web Push’s devices and queue are the Worker’s alone: no page reads or writes them', async () => {
   await emu.clear();
   await emu.seed('pushSubs/u-member/devices/d1', { endpoint: 'https://web.push.apple.com/x', p256dh: 'p', auth: 'a', createdAt: 1 });
+  await emu.seed('pushDevices/d1', { uid: 'u-member' });
   await emu.seed('pushQueue/u-member_1', { uid: 'u-member', key: 'k', at: 1, title: 't', body: 'b', taskId: 'x' });
   for (const role of ['admin', 'member', 'viewer']) {
     assert.equal((await as(role).get('pushSubs/u-member/devices/d1')).ok, false, `${role} reads a device`);
     assert.equal((await as(role).set(`pushSubs/u-${role}/devices/d2`, { endpoint: 'https://x', p256dh: 'p', auth: 'a', createdAt: 1 })).ok, false, `${role} writes a device`);
+    assert.equal((await as(role).get('pushDevices/d1')).ok, false, `${role} reads a device owner`);
+    assert.equal((await as(role).set('pushDevices/d2', { uid: `u-${role}` })).ok, false, `${role} writes a device owner`);
     assert.equal((await as(role).get('pushQueue/u-member_1')).ok, false, `${role} reads the queue`);
     assert.equal((await as(role).set(`pushQueue/u-${role}_2`, { uid: `u-${role}`, key: 'k', at: 1, title: 't', body: 'b', taskId: 'x' })).ok, false, `${role} writes the queue`);
     assert.equal((await as(role).delete('pushQueue/u-member_1')).ok, false, `${role} deletes from the queue`);

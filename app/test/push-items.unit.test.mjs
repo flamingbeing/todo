@@ -15,6 +15,15 @@ test('the reminders due in the next week, soonest first, with the local notifica
   assert.equal(items[0].taskId, 'a');
   assert.equal(items[0].title, 'Task a');
   assert.match(items[0].body, /^Due now, /);
+  assert.deepEqual([items[0].date, items[0].time, items[0].lead], ['2026-11-05', '14:00', 0]);
+  assert.equal(items[1].lead, 30);
+});
+
+test('nothing within a minute of now (the Worker sends that itself); a date with no time gives time ""', () => {
+  const now = at('2026-11-05', '10:00');
+  assert.deepEqual(pushItems([task('s', '2026-11-05', '10:01')], now), []);
+  assert.equal(pushItems([task('s', '2026-11-05', '10:02')], now).length, 1);
+  assert.equal(pushItems([{ ...task('d', '2026-11-06', undefined) }], now)[0].time, '');
 });
 
 test('past, done, deleted and reminder-less tasks give nothing; no title gives "Task"; sizes are capped', () => {

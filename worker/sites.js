@@ -5,16 +5,14 @@
 // Firebase's sign-in helper pages on to the project.
 // wrangler.jsonc: "run_worker_first" sends every request here; FIREBASE_PROJECT is a var there, the service account
 // (SA_EMAIL, SA_KEY) are Worker secrets.
-import { resolve, publicFile, SITES } from './routes.js';
+import { resolve, publicFile } from './routes.js';
 import { securityHeaders } from './headers.js';
 import { handleCspReport } from './csp-report.js';
-import { ROUTES } from './modules.js';
+import { ROUTES, SCHEDULED } from './modules.js';
 // cloud{ roles and members (a static app has neither: tools/flavour.mjs)
 import { handleClaims, verifyIdToken } from './claims.js';
 import { adminFor } from './admin.js';
 import { loadClaims, handleMembers } from './members.js';
-import { handlePush, runDue, firestoreStore } from './push.js';
-import { VAPID_PUBLIC_KEY } from '../app/src/vapid.js';
 // }cloud
 
 const NOINDEX = 'noindex, nofollow';
@@ -35,7 +33,6 @@ export default {
     for (const route of ROUTES) if (route.match(url)) return finish(await route.handle(request, env, { url, local, project }));
     // cloud{
     if (url.pathname.startsWith('/api/members/')) return finish(await members(request, env, url, local, project));
-    if (url.pathname.startsWith('/api/push/')) return finish(await push(request, env, url, local, project));
     // }cloud
     if (request.method !== 'GET' && request.method !== 'HEAD') return finish(new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } }));
     // cloud{ Firebase's sign-in helper pages, from the project's own Firebase address, so sign-in never leaves this one
@@ -70,15 +67,10 @@ export default {
     return finish(res);
   },
 
-  // cloud{ the once-a-minute job (wrangler.jsonc "triggers"): Web Push for the reminders that came due (push.js)
-  async scheduled(_event, env, ctx) {
-    const adm = env.FIREBASE_PROJECT && env.VAPID_PRIVATE_KEY ? adminFor(env, false, env.FIREBASE_PROJECT) : null;
-    if (!adm) return;
-    const vapid = { publicKey: VAPID_PUBLIC_KEY, privateKey: env.VAPID_PRIVATE_KEY, subject: env.VAPID_SUBJECT || `https://${Object.keys(SITES)[0]}` };
-    ctx.waitUntil(runDue({ store: firestoreStore(adm), vapid }).then(r => { if (r.sent || r.dropped || r.gone) console.log('push', JSON.stringify(r)); },
-      e => console.error('push run failed', e?.message)));
+  // the modules' once-a-minute jobs (worker/modules.js SCHEDULED; wrangler.jsonc "triggers")
+  async scheduled(event, env, ctx) {
+    for (const job of SCHEDULED) ctx.waitUntil(Promise.resolve(job(env, ctx)).catch(e => console.error('scheduled job failed', e?.message)));
   },
-  // }cloud
 };
 
 // cloud{
@@ -105,17 +97,6 @@ export async function settledClaims(ask, adm, tries = 3) {
   }
 }
 
-// }cloud
-
-// cloud{
-// Web Push (push.js): the same ID token check and revoked gate as the files route.
-function push(request, env, url, local, project) {
-  const emulator = !!(local && env.EMULATOR);
-  const adm = project ? adminFor(env, local, project) : null;
-  const verify = project ? (/** @type {string} */ idToken) => verifyIdToken(idToken, { project, emulator }) : null;
-  const store = adm ? firestoreStore(adm, emulator ? `http://${env.FIRESTORE_EMULATOR}` : undefined) : null;
-  return handlePush(request, { store, verify, revoked: adm ? async uid => !!(await adm.getDoc(`revoked/${uid}`)) : null, origin: url.origin });
-}
 // }cloud
 
 // cloud{

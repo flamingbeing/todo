@@ -18,12 +18,12 @@ export function wire(app) {
     if (busy) return;
     busy = true;
     try {
-      if (!app.settings.get('reminders')) { w?.stop(); w = null; void push().then(p => p.stop()); return; }
+      if (!app.settings.get('reminders')) { w?.stop(); w = null; void push().then(p => p.off()); return; }
       if (w) return;
       if (typeof Notification !== 'undefined' && Notification.permission === 'default' && await enable() !== 'granted') { await app.settings.set('reminders', false); return; }
       w = watchReminders();
       w.update(last);
-      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') void push().then(p => { p.update(last); return p.start(); });
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') void push().then(p => { p.update(last); p.on(); });
     } finally { busy = false; }
   };
   app.settings.watch('reminders', () => { void apply(); });

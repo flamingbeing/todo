@@ -3,23 +3,33 @@
 //   POST /api/push/subscribe    { subscription: { endpoint, keys: { p256dh, auth } } }  keeps this device's subscription
 //   POST /api/push/unsubscribe  { endpoint }                                            forgets it (no device left: the queue goes too)
 //   POST /api/push/schedule     { items: [{ key, at, title, body, taskId }] }          replaces this person's queued reminders
-//   scheduled (wrangler.jsonc "triggers"): sends what is due, then removes it.
+//   runDue (the once-a-minute job, worker/push-route.js): sends what is due.
 //
-// Firestore (the Worker's service account; the rules refuse every page): pushSubs/{uid}/devices/{sha256(endpoint)} and
-// pushQueue/{uid}_{sha256(key)} = { uid, key, at, title, body, taskId } (hashed so any task id makes a valid doc id).
+// Firestore (the Worker's service account; the rules refuse every page):
+//   pushSubs/{uid}/devices/{sha256(endpoint)}  = { endpoint, p256dh, auth, createdAt }
+//   pushDevices/{sha256(endpoint)}             = { uid }: who a device belongs to now (a shared browser moves to the latest person)
+//   pushQueue/{uid}_{sha256(key)[0..40]}       = { uid, key, at, title, body, taskId, date, time, lead, leaseUntil?, sentAt? }
+//     date, time and lead are the task's due day, due time ('' if none) and reminder lead the item was made from; the job sends
+//     only while the task still has them. leaseUntil: a run took it (no other run sends it until then). sentAt: sent; the doc
+//     stays until `at` + LATE_MS so a client's later /schedule cannot bring the same reminder back.
 // The same ID token check as /api/claims; a person needs a role (as the files route) and not be revoked.
 import { unb64, sendPush } from './webpush.js';
 import { fromValue, toValue } from './claims.js';
 
 export const MAX_ITEMS = 200, MAX_DEVICES = 10, MAX_BODY = 300_000;
+/** the task docs the job reads (cloud.js: one shared space) */
+const TASKS = 'spaces/_/tasks';
 export const AHEAD_MS = 8 * 24 * 3600 * 1000;
 /** a reminder later than this after its time is dropped (app/src/reminders.js LATE_MS) */
 export const LATE_MS = 15 * 60 * 1000;
 /** due within this much of now is sent now (the job runs on the minute) */
 export const SOON_MS = 30 * 1000;
-/** at most this many reminders per run: the Workers free plan allows 50 outgoing requests per run */
+/** at most this many reminders per run */
 export const PER_RUN = 10;
-const SKEW_MS = 60 * 1000;
+/** the Workers free plan allows 50 outgoing requests (subrequests) per run: a run counts its own and stops short of this */
+export const BUDGET = 45;
+/** a run holds the items it sends this long; a failed send is tried again after it */
+export const LEASE_MS = 2 * 60 * 1000;
 /** the push services (the only addresses the Worker will post to) */
 const SERVICES = /^https:\/\/([a-z0-9-]+\.)*(googleapis\.com|push\.services\.mozilla\.com|push\.apple\.com|notify\.windows\.com)\//;
 const ROLES = ['admin', 'member', 'viewer'];
@@ -41,18 +51,25 @@ export function cleanSubscription(s) {
   return { endpoint: s.endpoint, keys: { p256dh: s.keys.p256dh, auth: s.keys.auth } };
 }
 
-/** The items worth queueing: well-formed ones in range (others are dropped), at most MAX_ITEMS, soonest first. null: malformed.
+/** The items worth queueing: well-formed ones later than SOON_MS from now and within AHEAD_MS (others are dropped), at most MAX_ITEMS, soonest first. null: malformed.
  * @param {any} items @param {number} now */
 export function cleanItems(items, now) {
   if (!Array.isArray(items) || items.length > MAX_ITEMS) return null;
   const out = [];
   for (const i of items) {
-    if (!i || typeof i !== 'object' || !text(i.key, 300) || !i.key || !text(i.title, 200) || !text(i.body, 300) || !text(i.taskId, 128)) return null;
+    if (!i || typeof i !== 'object' || !text(i.key, 300) || !i.key || !text(i.title, 200) || !text(i.body, 300) || !text(i.taskId, 128) || !i.taskId || i.taskId.includes('/')) return null;
     if (!Number.isFinite(i.at)) return null;
-    if (i.at < now - SKEW_MS || i.at > now + AHEAD_MS) continue;
-    out.push({ key: i.key, at: Math.round(i.at), title: i.title || 'Task', body: i.body, taskId: i.taskId });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(i.date) || typeof i.time !== 'string' || (i.time && !/^\d{2}:\d{2}$/.test(i.time)) || !Number.isInteger(i.lead) || i.lead < 0 || i.lead > 40320) return null;
+    if (i.at <= now + SOON_MS || i.at > now + AHEAD_MS) continue;   // about to be sent (or sent) already: the job's, not the queue's
+    out.push({ key: i.key, at: Math.round(i.at), title: i.title || 'Task', body: i.body, taskId: i.taskId, date: i.date, time: i.time, lead: i.lead });
   }
   return out.sort((a, b) => a.at - b.at);
+}
+
+/** is the task still what the item was made from? @param {any} item @param {any} task */
+export function stillDue(item, task) {
+  return !!task && !task.done && !task._deleted && task.due?.date === item.date && (task.due?.time || '') === item.time
+    && Array.isArray(task.reminders) && task.reminders.includes(item.lead);
 }
 
 /**
@@ -88,24 +105,33 @@ export async function handlePush(request, { store, verify, revoked = null, origi
       const others = have.filter(d => d.id !== id);
       // a person's devices are few; past the cap the oldest go (a reinstall leaves a dead one behind)
       const drop = others.length >= MAX_DEVICES ? others.sort((a, b) => (a.data.createdAt || 0) - (b.data.createdAt || 0)).slice(0, others.length - MAX_DEVICES + 1) : [];
-      await store.write({ set: [[`pushSubs/${uid}/devices/${id}`, { endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth, createdAt: have.find(d => d.id === id)?.data.createdAt || now() }]],
-        del: drop.map(d => `pushSubs/${uid}/devices/${d.id}`) });
+      // a browser shared by two people has one endpoint: it belongs to whoever subscribed last
+      const owner = (await store.batchGet([`pushDevices/${id}`])).get(`pushDevices/${id}`)?.uid;
+      const del = drop.map(d => `pushSubs/${uid}/devices/${d.id}`);
+      if (owner && owner !== uid) del.push(`pushSubs/${owner}/devices/${id}`);
+      await store.write({ set: [[`pushSubs/${uid}/devices/${id}`, { endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth, createdAt: have.find(d => d.id === id)?.data.createdAt || now() }],
+        [`pushDevices/${id}`, { uid }]], del });
     } else if (m[1] === 'unsubscribe') {
       if (!text(body.endpoint, 1000) || !body.endpoint) return json({ error: 'endpoint: text.' }, 400);
       const id = await sha256(body.endpoint), left = (await store.devices(uid)).filter(d => d.id !== id);
       const del = [`pushSubs/${uid}/devices/${id}`];
-      if (!left.length) for (const q of await store.queueOf(uid)) del.push(`pushQueue/${q.id}`);
+      if ((await store.batchGet([`pushDevices/${id}`])).get(`pushDevices/${id}`)?.uid === uid) del.push(`pushDevices/${id}`);
+      if (!left.length) for (const q of await store.queueOf(uid)) if (!q.data.sentAt) del.push(`pushQueue/${q.id}`);
       await store.write({ del });
     } else {
       const items = cleanItems(body.items, now());
-      if (!items) return json({ error: `items: up to ${MAX_ITEMS}, each { key, at, title, body, taskId }.` }, 400);
+      if (!items) return json({ error: `items: up to ${MAX_ITEMS}, each { key, at, title, body, taskId, date, time, lead }.` }, 400);
       const want = new Map();
       for (const i of items) want.set(`${uid}_${(await sha256(i.key)).slice(0, 40)}`, { uid, ...i });
       const set = [], del = [];
       for (const q of await store.queueOf(uid)) {
         const w = want.get(q.id);
-        if (!w) del.push(`pushQueue/${q.id}`);
-        else if (['at', 'title', 'body', 'taskId', 'key'].every(k => q.data[k] === w[k])) want.delete(q.id);
+        if (q.data.sentAt) {   // sent: stays (so it is not queued again) until it is too late to send anyway
+          if (w) want.delete(q.id);
+          else if (now() > q.data.at + LATE_MS) del.push(`pushQueue/${q.id}`);
+        } else if (!w) del.push(`pushQueue/${q.id}`);
+        else if (['at', 'title', 'body', 'taskId', 'key', 'date', 'time', 'lead'].every(k => q.data[k] === w[k])) want.delete(q.id);
+        else if (q.data.leaseUntil) w.leaseUntil = q.data.leaseUntil;
       }
       for (const [id, data] of want) set.push([`pushQueue/${id}`, data]);
       if (set.length || del.length) await store.write({ set, del });
@@ -118,33 +144,77 @@ export async function handlePush(request, { store, verify, revoked = null, origi
 }
 
 /**
- * The once-a-minute job: send what is due (or due within SOON_MS) to each of its person's devices, then remove it. Late items are
- * dropped unsent; a device the push service says is gone (404, 410) is removed. -> { sent, dropped, gone } counts.
- * @param {{ store: any, vapid: { publicKey: string, privateKey: string, subject: string }, now?: number, send?: typeof sendPush }} o
+ * The once-a-minute job. Sends what is due (or due within SOON_MS) to each of its person's devices, in these steps, all
+ * within BUDGET outgoing requests (the free plan's 50 per run; what does not fit waits for the next minute):
+ *  1. the due items (one query); too-late ones (after LATE_MS), old sent ones, and those of a removed person or whose task
+ *     is done, deleted or no longer has that due time and reminder are dropped (one batched read of revoked/ and the tasks);
+ *  2. the rest are leased (a run in progress, or a slow one, will not send them too);
+ *  3. each one: its person's devices, a send to each, then one commit: a sent item stays as a tombstone (sentAt), a device the
+ *     push service says is gone (404, 410) is removed. A busy push service (429, 5xx) or a network error keeps the item, to be
+ *     tried again when its lease ends, while it is not too late; any other refusal is final.
+ * -> { sent, dropped, gone, retry, deferred } counts (deferred: left for the next minute for want of budget).
+ * @param {{ store: any, vapid: { publicKey: string, privateKey: string, subject: string }, now?: number, send?: typeof sendPush, budget?: number }} o
  */
-export async function runDue({ store, vapid, now = Date.now(), send = sendPush }) {
-  const due = await store.dueItems(now + SOON_MS, PER_RUN);
-  const out = { sent: 0, dropped: 0, gone: 0 };
+export async function runDue({ store, vapid, now = Date.now(), send = sendPush, budget = BUDGET }) {
+  const out = { sent: 0, dropped: 0, gone: 0, retry: 0, deferred: 0 };
+  let left = budget - 1;   // (the access token)
+  const spend = (/** @type {number} */ n, keep = 1) => left >= n + keep ? (left -= n, true) : false;   // keep: for the final release commit
+  if (!spend(1)) return out;
+  const rows = await store.dueItems(now + SOON_MS, PER_RUN * 4);
   const del = /** @type {string[]} */ ([]);
+  let ready = /** @type {{ id: string, data: any }[]} */ ([]);
+  for (const q of rows) {
+    const d = q.data, over = now - d.at > LATE_MS;
+    if (d.sentAt) { if (over) del.push(`pushQueue/${q.id}`); }   // (else it waits to be forgotten)
+    else if (over) { del.push(`pushQueue/${q.id}`); out.dropped++; }
+    else if (!(d.leaseUntil > now) && ready.length < PER_RUN) ready.push(q);
+  }
+  if (ready.length) {
+    if (!spend(1)) return out;
+    const paths = [...new Set(ready.flatMap(q => [`revoked/${q.data.uid}`, `${TASKS}/${q.data.taskId}`]))];
+    const docs = await store.batchGet(paths);
+    ready = ready.filter(q => {
+      if (!docs.get(`revoked/${q.data.uid}`) && stillDue(q.data, docs.get(`${TASKS}/${q.data.taskId}`))) return true;
+      del.push(`pushQueue/${q.id}`); out.dropped++;
+      return false;
+    });
+  }
+  if (ready.length || del.length) {
+    if (!spend(1, 0)) return out;
+    await store.write({ del, set: ready.map(q => [`pushQueue/${q.id}`, { ...q.data, leaseUntil: now + LEASE_MS }]) });
+  }
   /** @type {Map<string, any[]>} */
   const devices = new Map();
-  for (const q of due) {
-    const d = q.data;
-    del.push(`pushQueue/${q.id}`);
-    if (now - d.at > LATE_MS) { out.dropped++; continue; }
-    if (!devices.has(d.uid)) devices.set(d.uid, await store.devices(d.uid));
+  const todo = [...ready];
+  while (todo.length) {
+    const q = todo[0], d = q.data;
+    // (a lookup, a send each, the commit)
+    if (!devices.has(d.uid)) {
+      if (!spend(1, 2)) break;
+      try { devices.set(d.uid, await store.devices(d.uid)); } catch (e) { console.error('devices failed', e?.message); todo.shift(); out.retry++; continue; }
+    }
+    const devs = devices.get(d.uid).filter((/** @type {any} */ v) => !v.gone);
+    if (!spend(devs.length + 1)) break;
+    todo.shift();
     const payload = { title: d.title, body: d.body, taskId: d.taskId, tag: d.key };
-    for (const dev of devices.get(d.uid) ?? []) {
-      if (dev.gone) continue;
+    let again = false;
+    const gone = /** @type {string[]} */ ([]);
+    for (const dev of devs) {
       try {
         const r = await send({ subscription: { endpoint: dev.data.endpoint, keys: { p256dh: dev.data.p256dh, auth: dev.data.auth } }, payload, vapid, now });
-        if (r.status === 404 || r.status === 410) { dev.gone = true; out.gone++; del.push(`pushSubs/${d.uid}/devices/${dev.id}`); }
+        if (r.status === 404 || r.status === 410) { dev.gone = true; out.gone++; gone.push(`pushSubs/${d.uid}/devices/${dev.id}`); }
         else if (r.ok) out.sent++;
+        else if (r.status === 429 || r.status >= 500) again = true;
         else console.error('push refused', new URL(dev.data.endpoint).host, r.status);
-      } catch (e) { console.error('push failed', e?.message); }
+      } catch (e) { again = true; console.error('push failed', e?.message); }
     }
+    if (again) out.retry++;
+    if (!again || gone.length) await store.write({ del: gone, set: again ? [] : [[`pushQueue/${q.id}`, { ...d, leaseUntil: null, sentAt: now }]] });
   }
-  if (del.length) await store.write({ del });
+  if (todo.length) {   // no budget left for these: free them for the next minute
+    out.deferred = todo.length;
+    await store.write({ set: todo.map(q => [`pushQueue/${q.id}`, q.data]) });
+  }
   return out;
 }
 
@@ -157,14 +227,22 @@ export function firestoreStore(adm, base = 'https://firestore.googleapis.com') {
     if (!r.ok) throw new Error(`${path.split(':').pop()} ${r.status}`);
     return r.json();
   };
+  const plain = (/** @type {any} */ doc) => fromValue({ mapValue: { fields: doc.fields || {} } });
   const run = async (/** @type {string} */ parent, /** @type {any} */ q) =>
     (await call(`${root}${parent}:runQuery`, { structuredQuery: q })).filter((/** @type {any} */ r) => r.document)
-      .map((/** @type {any} */ r) => ({ id: r.document.name.split('/').pop(), data: fromValue({ mapValue: { fields: r.document.fields || {} } }) }));
+      .map((/** @type {any} */ r) => ({ id: r.document.name.split('/').pop(), data: plain(r.document) }));
   const field = (/** @type {string} */ f, /** @type {string} */ op, /** @type {any} */ v) => ({ fieldFilter: { field: { fieldPath: f }, op, value: toValue(v) } });
   return {
     devices: (/** @type {string} */ uid) => run(`/pushSubs/${encodeURIComponent(uid)}`, { from: [{ collectionId: 'devices' }], limit: 50 }),
-    queueOf: (/** @type {string} */ uid) => run('', { from: [{ collectionId: 'pushQueue' }], where: field('uid', 'EQUAL', uid), limit: MAX_ITEMS + 50 }),
+    queueOf: (/** @type {string} */ uid) => run('', { from: [{ collectionId: 'pushQueue' }], where: field('uid', 'EQUAL', uid), limit: MAX_ITEMS * 2 }),
     dueItems: (/** @type {number} */ until, /** @type {number} */ limit) => run('', { from: [{ collectionId: 'pushQueue' }], where: field('at', 'LESS_THAN_OR_EQUAL', until), orderBy: [{ field: { fieldPath: 'at' } }], limit }),
+    /** several docs in one request -> Map of path to its fields (null: not there) @param {string[]} paths @returns {Promise<Map<string, any>>} */
+    async batchGet(paths) {
+      const res = await call(`${root}:batchGet`, { documents: paths.map(p => `${root}/${p}`) });
+      const out = new Map(paths.map(p => [p, null]));
+      for (const r of res) if (r.found) out.set(r.found.name.slice(root.length + 1), plain(r.found));
+      return out;
+    },
     /** @param {{ set?: [string, any][], del?: string[] }} w one commit (a single request, up to 500 writes) */
     async write({ set = [], del = [] }) {
       const writes = [

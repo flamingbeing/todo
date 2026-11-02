@@ -1,7 +1,7 @@
 // worker/push.js with an in-memory store and a fake sender. Run: node --test 'worker/test/*.test.mjs'
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { handlePush, runDue, cleanItems, cleanSubscription, sha256, firestoreStore, MAX_ITEMS, PER_RUN } from '../push.js';
+import { handlePush, runDue, cleanItems, cleanSubscription, stillDue, sha256, firestoreStore, MAX_ITEMS, PER_RUN, LEASE_MS } from '../push.js';
 import { b64 } from '../webpush.js';
 
 const NOW = Date.UTC(2026, 10, 5, 3, 0, 0);
@@ -17,13 +17,17 @@ function memory() {
     devices: async uid => under(`pushSubs/${uid}/devices/`),
     queueOf: async uid => under('pushQueue/').filter(d => d.data.uid === uid),
     dueItems: async (until, limit) => under('pushQueue/').filter(d => d.data.at <= until).sort((a, b) => a.data.at - b.data.at).slice(0, limit),
+    batchGet: async paths => new Map(paths.map(p => [p, docs.get(p) ?? null])),
     write: async ({ set = [], del = [] }) => { for (const [p, d] of set) docs.set(p, d); for (const p of del) docs.delete(p); } };
 }
 const verify = async t => { if (t === 'bad') throw new Error('bad'); return { sub: t, g: { _: 'member' } }; };
 const call = (store, route, body, { token = 'u1', method = 'POST', extra = {}, revoked = null, verifyFn = verify } = {}) =>
   handlePush(new Request(`https://todo.test/api/push/${route}`, { method, headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra }, body: method === 'POST' ? JSON.stringify(body) : undefined }),
     { store, verify: verifyFn, revoked, origin: 'https://todo.test', now: () => NOW });
-const item = (n, over = {}) => ({ key: `t${n}|0|${n}`, at: NOW + n * 60000, title: `Task ${n}`, body: 'Due now', taskId: `t${n}`, ...over });
+const item = (n, over = {}) => ({ key: `t${n}|0|${n}`, at: NOW + (n + 1) * 60000, title: `Task ${n}`, body: 'Due now', taskId: `t${n}`, date: '2026-11-05', time: '14:00', lead: 0, ...over });
+/** the task doc an item was made from (what the job reads) */
+const taskOf = (it, over = {}) => ({ id: it.taskId, title: it.title, done: false, due: { date: it.date, time: it.time }, reminders: [it.lead], ...over });
+const seedTask = (s, it, over) => s.docs.set(`spaces/_/tasks/${it.taskId}`, taskOf(it, over));
 
 test('only a signed-in person with a role, from the app’s own origin, by POST', async () => {
   const s = memory();
@@ -43,7 +47,7 @@ test('subscribe keeps a device under the person, once per endpoint; bad or forei
   assert.equal((await call(s, 'subscribe', { subscription: sub(1) })).status, 200);
   assert.equal((await call(s, 'subscribe', { subscription: sub(1) })).status, 200);
   const id = await sha256(sub(1).endpoint);
-  assert.deepEqual([...s.docs.keys()], [`pushSubs/u1/devices/${id}`]);
+  assert.deepEqual([...s.docs.keys()].sort(), [`pushDevices/${id}`, `pushSubs/u1/devices/${id}`]);
   assert.deepEqual(s.docs.get(`pushSubs/u1/devices/${id}`), { endpoint: sub(1).endpoint, p256dh: P256DH, auth: AUTH, createdAt: NOW });
   for (const bad of [null, {}, sub(2, 'evil.example.com'), { endpoint: 'http://web.push.apple.com/x', keys: sub().keys }, { endpoint: sub().endpoint, keys: { p256dh: 'AAAA', auth: AUTH } },
     { endpoint: sub().endpoint, keys: { p256dh: P256DH, auth: 'AAAA' } }, { endpoint: 'https://web.push.apple.com.evil.test/x', keys: sub().keys }]) {
@@ -51,6 +55,20 @@ test('subscribe keeps a device under the person, once per endpoint; bad or forei
   }
   assert.equal(cleanSubscription(sub(3, 'fcm.googleapis.com'))?.endpoint, 'https://fcm.googleapis.com/3');
   assert.ok(cleanSubscription(sub(4, 'updates.push.services.mozilla.com')));
+});
+
+test('a browser shared by two people belongs to whoever subscribed last: the first loses it', async () => {
+  const s = memory();
+  await call(s, 'subscribe', { subscription: sub(1) }, { token: 'u1' });
+  await call(s, 'subscribe', { subscription: sub(2) }, { token: 'u1' });
+  await call(s, 'subscribe', { subscription: sub(1) }, { token: 'u2' });
+  assert.equal((await s.devices('u1')).length, 1);
+  assert.deepEqual((await s.devices('u2')).map(d => d.data.endpoint), [sub(1).endpoint]);
+  assert.equal(s.docs.get(`pushDevices/${await sha256(sub(1).endpoint)}`).uid, 'u2');
+  // the first person unsubscribing the shared endpoint later changes nothing for the second
+  await call(s, 'unsubscribe', { endpoint: sub(1).endpoint }, { token: 'u1' });
+  assert.equal((await s.devices('u2')).length, 1);
+  assert.equal(s.docs.get(`pushDevices/${await sha256(sub(1).endpoint)}`).uid, 'u2');
 });
 
 test('a person keeps at most 10 devices: the oldest go', async () => {
@@ -70,6 +88,7 @@ test('unsubscribe removes the device; the last one also empties the queue', asyn
   await call(s, 'unsubscribe', { endpoint: sub(1).endpoint });
   assert.equal((await s.devices('u1')).length, 1);
   assert.equal((await s.queueOf('u1')).length, 1);
+  assert.equal(s.docs.has(`pushDevices/${await sha256(sub(1).endpoint)}`), false);
   await call(s, 'unsubscribe', { endpoint: sub(2).endpoint });
   assert.equal((await s.devices('u1')).length, 0);
   assert.equal((await s.queueOf('u1')).length, 0);
@@ -91,14 +110,16 @@ test('schedule replaces the person’s queue: new in, changed updated, missing o
   assert.equal((await s.queueOf('u1')).length, 0);
 });
 
-test('schedule checks sizes and times: malformed is refused, out of range is skipped', async () => {
+test('schedule checks sizes and times: malformed is refused, out of range or about to be sent is skipped', async () => {
   const s = memory();
   const bad = [{ items: 'x' }, { items: [{ ...item(1), title: 'x'.repeat(201) }] }, { items: [{ ...item(1), body: 'x'.repeat(301) }] }, { items: [{ ...item(1), at: 'soon' }] },
-    { items: [{ ...item(1), key: '' }] }, { items: [{ ...item(1), taskId: 5 }] }, { items: Array.from({ length: MAX_ITEMS + 1 }, (_, i) => item(i + 1)) }, { items: [null] }];
+    { items: [{ ...item(1), key: '' }] }, { items: [{ ...item(1), taskId: 5 }] }, { items: [{ ...item(1), taskId: 'a/b' }] }, { items: [{ ...item(1), date: 'tomorrow' }] },
+    { items: [{ ...item(1), time: '2pm' }] }, { items: [{ ...item(1), lead: 1.5 }] }, { items: [{ ...item(1), lead: undefined }] },
+    { items: Array.from({ length: MAX_ITEMS + 1 }, (_, i) => item(i + 1)) }, { items: [null] }];
   for (const b of bad) assert.equal((await call(s, 'schedule', b)).status, 400, JSON.stringify(b).slice(0, 80));
   assert.equal((await call(s, 'schedule', { items: Array.from({ length: MAX_ITEMS }, (_, i) => item(i + 1)) })).status, 200);
   assert.equal((await s.queueOf('u1')).length, MAX_ITEMS);
-  assert.deepEqual(cleanItems([item(1, { at: NOW - 3600000 }), item(2, { at: NOW + 9 * 86400000 }), item(3), item(4, { at: NOW - 30000 })], NOW).map(i => i.taskId), ['t4', 't3']);
+  assert.deepEqual(cleanItems([item(1, { at: NOW - 3600000 }), item(2, { at: NOW + 9 * 86400000 }), item(3), item(4, { at: NOW + 20000 }), item(5, { at: NOW + 31000 })], NOW).map(i => i.taskId), ['t5', 't3']);
   const big = await handlePush(new Request('https://todo.test/api/push/schedule', { method: 'POST', headers: { Authorization: 'Bearer u1' }, body: 'x'.repeat(300_001) }), { store: s, verify, now: () => NOW });
   assert.equal(big.status, 413);
 });
@@ -110,53 +131,149 @@ async function setup(devices = 1) {
 }
 const vapid = { publicKey: 'k', privateKey: 'p', subject: 'https://todo.test' };
 const sender = (status = 201, log = []) => async o => { log.push(o); return new Response(null, { status: typeof status === 'function' ? status(o) : status }); };
+/** a due item with its task, straight in the queue (schedule refuses what is about to be sent) */
+const queue = (s, n, over = {}, task = {}) => {
+  const it = item(n, { at: NOW - 1000, key: `k${n}`, ...over });
+  s.docs.set(`pushQueue/u1_${n}`, { uid: 'u1', ...it });
+  if (task !== null) seedTask(s, it, task);
+  return it;
+};
+const ids = async s => (await s.queueOf('u1')).map(d => d.id).sort();
+const run = (s, o = {}) => runDue({ store: s, vapid, now: NOW, send: sender(), ...o });
 
-test('the job sends what is due to each device and removes it; later ones stay', async () => {
+test('the job sends what is due to each device; a sent item stays as a tombstone, later ones wait', async () => {
   const s = await setup(2);
-  await call(s, 'schedule', { items: [item(0, { at: NOW - 1000, key: 'a|0|1' }), item(1, { at: NOW + 20000, key: 'b|0|1' }), item(2, { at: NOW + 120000, key: 'c|0|1' })] });
+  queue(s, 1); queue(s, 2, { at: NOW + 20000 }); queue(s, 3, { at: NOW + 120000 });
   const log = [];
-  const r = await runDue({ store: s, vapid, now: NOW, send: sender(201, log) });
-  assert.deepEqual(r, { sent: 4, dropped: 0, gone: 0 });
-  assert.equal(log.length, 4);
-  assert.deepEqual(log[0].payload, { title: 'Task 0', body: 'Due now', taskId: 't0', tag: 'a|0|1' });
+  const r = await run(s, { send: sender(201, log) });
+  assert.deepEqual(r, { sent: 4, dropped: 0, gone: 0, retry: 0, deferred: 0 });
+  assert.deepEqual(log[0].payload, { title: 'Task 1', body: 'Due now', taskId: 't1', tag: 'k1' });
   assert.equal(log[0].subscription.keys.auth, AUTH);
-  assert.deepEqual((await s.queueOf('u1')).map(d => d.data.key), ['c|0|1']);
-  assert.deepEqual(await runDue({ store: s, vapid, now: NOW, send: sender() }), { sent: 0, dropped: 0, gone: 0 });
+  const q = Object.fromEntries((await s.queueOf('u1')).map(d => [d.data.key, d.data]));
+  assert.equal(q.k1.sentAt, NOW); assert.equal(q.k2.sentAt, NOW); assert.equal(q.k3.sentAt, undefined);
+  assert.deepEqual(await run(s), { sent: 0, dropped: 0, gone: 0, retry: 0, deferred: 0 }, 'sent ones are not sent again');
+});
+
+test('a sent reminder cannot be queued again by a later schedule, and goes once too late to matter', async () => {
+  const s = await setup();
+  const it = queue(s, 1);
+  await run(s);
+  await call(s, 'schedule', { items: [{ ...it, at: NOW + 40000 }, item(2)] });   // (its key and id as before; at must clear the early window)
+  assert.equal(s.docs.get('pushQueue/u1_1').sentAt, NOW, 'the tombstone is kept as it was');
+  await call(s, 'schedule', { items: [] });
+  assert.ok((await ids(s)).includes('u1_1'), 'kept while a late send could still happen');
+  const later = NOW + 16 * 60000;
+  await run(s, { now: later });
+  assert.ok(!(await ids(s)).includes('u1_1'), 'the job forgets it');
 });
 
 test('the job drops a reminder more than 15 minutes late, unsent', async () => {
   const s = await setup();
-  s.docs.set('pushQueue/u1_x', { uid: 'u1', key: 'k', at: NOW - 16 * 60000, title: 'Old', body: '', taskId: 't' });
-  s.docs.set('pushQueue/u1_y', { uid: 'u1', key: 'k2', at: NOW - 14 * 60000, title: 'Recent', body: '', taskId: 't' });
+  queue(s, 1, { at: NOW - 16 * 60000 }); queue(s, 2, { at: NOW - 14 * 60000 });
   const log = [];
-  assert.deepEqual(await runDue({ store: s, vapid, now: NOW, send: sender(201, log) }), { sent: 1, dropped: 1, gone: 0 });
-  assert.deepEqual(log.map(l => l.payload.title), ['Recent']);
-  assert.equal((await s.queueOf('u1')).length, 0);
+  assert.deepEqual(await run(s, { send: sender(201, log) }), { sent: 1, dropped: 1, gone: 0, retry: 0, deferred: 0 });
+  assert.deepEqual(log.map(l => l.payload.title), ['Task 2']);
+  assert.ok(!(await ids(s)).includes('u1_1'));
 });
 
-test('the job removes a device the push service says is gone (404, 410), keeps the others and on other errors', async () => {
+test('the job removes a device the push service says is gone (404, 410), keeps the others', async () => {
   const s = await setup(3);
-  await call(s, 'schedule', { items: [item(1, { at: NOW }), item(2, { at: NOW })] });
-  const id = d => d.data.endpoint.split('/').pop();
-  const r = await runDue({ store: s, vapid, now: NOW, send: sender(o => ({ 1: 410, 2: 404, 3: 500 })[o.subscription.endpoint.split('/').pop()]) });
-  assert.deepEqual(r, { sent: 0, dropped: 0, gone: 2 });
-  assert.deepEqual((await s.devices('u1')).map(id), ['3']);
-  assert.equal((await s.queueOf('u1')).length, 0);
+  queue(s, 1);
+  const end = o => o.subscription.endpoint.split('/').pop();
+  const r = await run(s, { send: sender(o => ({ 1: 410, 2: 404, 3: 400 })[end(o)]) });
+  assert.deepEqual(r, { sent: 0, dropped: 0, gone: 2, retry: 0, deferred: 0 });
+  assert.deepEqual((await s.devices('u1')).map(d => d.data.endpoint.split('/').pop()), ['3']);
+  assert.equal(s.docs.get('pushQueue/u1_1').sentAt, NOW, 'another refusal (400) is final: not tried again');
 });
 
-test('the job survives a failing send and does at most PER_RUN reminders a run', async () => {
+test('a busy push service (429, 5xx) or a network error keeps the item for a later run, not past 15 minutes late', async () => {
+  for (const fail of [429, 500, 503, 'throw']) {
+    const s = await setup(2);
+    queue(s, 1);
+    const calls = [];
+    const send = async o => { calls.push(o); if (fail === 'throw') throw new Error('network'); return new Response(null, { status: fail }); };
+    const r = await run(s, { send });
+    assert.equal(r.retry, 1, String(fail));
+    assert.equal(calls.length, 2, 'every device is tried');
+    assert.equal(s.docs.get('pushQueue/u1_1').sentAt, undefined, `${fail}: kept`);
+    assert.equal((await run(s, { now: NOW + 60000 })).sent, 0, 'leased: not retried at once');
+    const again = await run(s, { now: NOW + LEASE_MS + 1000 });
+    assert.equal(again.sent, 2, `${fail}: sent on the retry`);
+    assert.equal(s.docs.get('pushQueue/u1_1').sentAt, NOW + LEASE_MS + 1000);
+  }
   const s = await setup();
-  await call(s, 'schedule', { items: Array.from({ length: PER_RUN + 5 }, (_, i) => item(i, { at: NOW - 1000 + i })) });
-  let n = 0;
-  const r = await runDue({ store: s, vapid, now: NOW, send: async () => { if (++n === 1) throw new Error('network'); return new Response(null, { status: 201 }); } });
-  assert.equal(r.sent, PER_RUN - 1);
-  assert.equal((await s.queueOf('u1')).length, 5);
+  queue(s, 1);
+  await run(s, { send: sender(500) });
+  assert.equal((await run(s, { now: NOW + 16 * 60000, send: sender(500) })).dropped, 1);
+  assert.deepEqual(await ids(s), []);
+});
+
+test('a run in progress holds its items: a second run does not send them too', async () => {
+  const s = await setup();
+  queue(s, 1);
+  const log = [];
+  let second;
+  await run(s, { send: async o => { log.push(o); second ??= await run(s, { send: sender(201, log) }); return new Response(null, { status: 201 }); } });
+  assert.equal(log.length, 1);
+  assert.equal(second.sent, 0);
+});
+
+test('the job drops the reminders of a removed person, and of a task that is done, deleted, moved or without that reminder', async () => {
+  const s = await setup();
+  queue(s, 1, {}, { done: true });
+  queue(s, 2, {}, null);                                  // the task is gone
+  queue(s, 3, {}, { _deleted: true });
+  queue(s, 4, {}, { due: { date: '2026-11-06', time: '14:00' } });   // moved a day
+  queue(s, 5, {}, { due: { date: '2026-11-05', time: '15:00' } });   // moved an hour
+  queue(s, 6, {}, { reminders: [30] });                    // this lead was taken off
+  queue(s, 7);                                             // still right
+  queue(s, 8, { time: '' }, { due: { date: '2026-11-05' } });   // a day with no time stays right
+  const log = [];
+  assert.deepEqual(await run(s, { send: sender(201, log) }), { sent: 2, dropped: 6, gone: 0, retry: 0, deferred: 0 });
+  assert.deepEqual(log.map(l => l.payload.taskId).sort(), ['t7', 't8']);
+  assert.deepEqual(await ids(s), ['u1_7', 'u1_8']);
+  // a removed person
+  const r = await setup();
+  queue(r, 1);
+  r.docs.set('revoked/u1', { at: 1 });
+  const none = [];
+  assert.equal((await run(r, { send: sender(201, none) })).dropped, 1);
+  assert.equal(none.length, 0);
+  assert.deepEqual(await ids(r), []);
+  assert.equal(stillDue({ date: 'd', time: '', lead: 0 }, { due: { date: 'd' }, reminders: [0, 5] }), true);
+});
+
+test('the job counts its outgoing requests and stops short of the budget; what did not fit is freed for the next minute', async () => {
+  const s = await setup(2);
+  for (let n = 1; n <= PER_RUN; n++) queue(s, n, { at: NOW - 1000 - n });
+  const counted = [], real = globalThis.fetch;
+  // count what the store and the sender do (each store call is one request)
+  const store = Object.fromEntries(Object.entries(s).map(([k, v]) => [k, typeof v === 'function' ? (...a) => { counted.push(k); return v(...a); } : v]));
+  const r = await runDue({ store, vapid, now: NOW, budget: 20, send: async () => { counted.push('send'); return new Response(null, { status: 201 }); } });
+  globalThis.fetch = real;
+  assert.ok(counted.length + 1 <= 20, `${counted.length + 1} requests with the token`);
+  assert.ok(r.deferred > 0 && r.sent > 0 && r.sent < PER_RUN * 2);
+  assert.equal(r.sent / 2 + r.deferred, PER_RUN);
+  // those not done carry no lease, so the next run takes them
+  const next = await runDue({ store: s, vapid, now: NOW + 1000, send: sender(), budget: 45 });
+  assert.equal(next.deferred, 0);
+  assert.equal(next.sent / 2, PER_RUN - r.sent / 2);
+});
+
+test('a failing device lookup leaves the item for later; the run goes on', async () => {
+  const s = await setup();
+  queue(s, 1);
+  const store = { ...s, devices: async () => { throw new Error('firestore'); } };
+  const r = await runDue({ store, vapid, now: NOW, send: sender() });
+  assert.equal(r.retry, 1);
+  assert.equal(s.docs.get('pushQueue/u1_1').sentAt, undefined);
 });
 
 test('firestoreStore talks REST: queries by uid and by time, one commit for many writes', async () => {
   const calls = [], real = globalThis.fetch;
   globalThis.fetch = async (url, init) => {
     calls.push([url, JSON.parse(init.body)]);
+    if (url.endsWith(':batchGet')) return new Response(JSON.stringify([{ found: { name: 'projects/p/databases/(default)/documents/revoked/u1', fields: { uid: { stringValue: 'u1' } } } }, { missing: 'x' }]), { status: 200 });
     return new Response(JSON.stringify([{ readTime: 'x' }, { document: { name: 'projects/p/databases/(default)/documents/pushQueue/u1_a', fields: { at: { integerValue: '5' }, uid: { stringValue: 'u1' } } } }]), { status: 200 });
   };
   try {
@@ -164,13 +281,15 @@ test('firestoreStore talks REST: queries by uid and by time, one commit for many
     assert.deepEqual(await st.queueOf('u1'), [{ id: 'u1_a', data: { at: 5, uid: 'u1' } }]);
     await st.dueItems(99, 10);
     await st.devices('u1');
+    assert.deepEqual([...(await st.batchGet(['revoked/u1', 'x/y'])).entries()], [['revoked/u1', { uid: 'u1' }], ['x/y', null]]);
     await st.write({ set: [['pushQueue/u1_a', { uid: 'u1', at: 7 }]], del: ['pushQueue/u1_b'] });
   } finally { globalThis.fetch = real; }
   assert.equal(calls[0][0], 'https://firestore.googleapis.com/v1/projects/p/databases/(default)/documents:runQuery');
   assert.deepEqual(calls[0][1].structuredQuery.where.fieldFilter, { field: { fieldPath: 'uid' }, op: 'EQUAL', value: { stringValue: 'u1' } });
   assert.equal(calls[1][1].structuredQuery.where.fieldFilter.op, 'LESS_THAN_OR_EQUAL');
   assert.equal(calls[2][0], 'https://firestore.googleapis.com/v1/projects/p/databases/(default)/documents/pushSubs/u1:runQuery');
-  assert.equal(calls[3][0], 'https://firestore.googleapis.com/v1/projects/p/databases/(default)/documents:commit');
-  assert.deepEqual(calls[3][1].writes, [{ update: { name: 'projects/p/databases/(default)/documents/pushQueue/u1_a', fields: { uid: { stringValue: 'u1' }, at: { integerValue: '7' } } } },
+  assert.equal(calls[3][0], 'https://firestore.googleapis.com/v1/projects/p/databases/(default)/documents:batchGet');
+  assert.equal(calls[4][0], 'https://firestore.googleapis.com/v1/projects/p/databases/(default)/documents:commit');
+  assert.deepEqual(calls[4][1].writes, [{ update: { name: 'projects/p/databases/(default)/documents/pushQueue/u1_a', fields: { uid: { stringValue: 'u1' }, at: { integerValue: '7' } } } },
     { delete: 'projects/p/databases/(default)/documents/pushQueue/u1_b' }]);
 });
