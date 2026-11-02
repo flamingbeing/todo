@@ -4,7 +4,7 @@
 // Kept out of views.js so the first screen loads less.
 import { confirmModal, plural } from '@core/ui';
 import { INBOX, REFUSED } from '../items.js';
-import { isTask, projectCascade } from '../tasks.js';
+import { isTask, projectCascade, projectLink } from '../tasks.js';
 import { openMenu } from '../ui/menu.js';
 import { ICONS } from '../icons.js';
 import { MORE } from '../icons-more.js';
@@ -25,11 +25,12 @@ export function pageMenu(ctx, more, o) {
   const data = ctx.data(), p = data.projects.find(x => x.id === o.pid), own = o.tree && o.pid !== INBOX && p ? p : null;
   const place = o.place, named = place ? /** @type {any[]} */ (data[place.kind]).find(x => x.id === place.id) : null, word = place?.kind === 'labels' ? 'label' : 'filter';
   openMenu(more, [
-    { label: 'Display', icon: MORE.slidersHorizontal, run: () => o.display(o.view, own) },
-    null,
     ...(own ? [{ label: 'Edit project', icon: MORE.pencil, run: () => ctx.openProjectSheet({ project: own }) }] : []),
     ...(o.tree ? [{ label: 'Add section', icon: MORE.circlePlus, run: () => o.newSection(o.pid) }] : []),
     ...(named && place ? [{ label: `Edit ${word}`, icon: MORE.pencil, run: () => o.named(m => m.openNamedSheet(ctx, place.kind, named)) }] : []),
+    ...(o.tree ? [{ label: `Copy link to ${own?.name ?? 'Inbox'}`, icon: MORE.link, run: async () => {
+      try { await navigator.clipboard.writeText(projectLink(o.pid)); ctx.toast('Link copied'); } catch { ctx.toast('Could not copy the link'); }
+    } }] : []),
     { label: 'Select tasks', icon: MORE.squareCheck, run: () => o.select(o.host) },
     ...(own ? [null, { label: 'Delete project', icon: MORE.trash2, danger: true, run: () => { void ctx.removeProject(own); } }] : []),
     ...(named && place ? [null, { label: `Delete ${word}`, icon: MORE.trash2, danger: true, run: () => o.named(async m => { if (await m.removeNamed(ctx, place.kind, named)) o.pop(); }) }] : []),

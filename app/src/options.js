@@ -14,7 +14,7 @@ const goal = max => ({ scope: /** @type {const} */ ('device'), default: 0, clean
 const goals = (...n) => n.map(x => [x, x ? String(x) : 'No goal']);
 
 /** @type {[unknown, string][]} the tabs Home can be */
-const HOMES = [['inbox', 'Inbox'], ['today', 'Today'], ['upcoming', 'Upcoming'], ['search', 'Search'], ['browse', 'Browse']];
+const HOMES = [['inbox', 'Inbox'], ['today', 'Today'], ['upcoming', 'Upcoming'], ['browse', 'Browse']];
 
 /** @type {Record<string, import('app-ui/settings/types').OptionSpec>} */
 export const OPTIONS = {

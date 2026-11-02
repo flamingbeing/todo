@@ -1,4 +1,4 @@
-// The page's shell (index.html: .ui-shell, the kit's bar, the five tabs, side bar and drawer) and the Settings page: the
+// The page's shell (index.html: .ui-shell, the kit's bar, the four tabs, side bar and drawer) and the Settings page: the
 // kit's settingsScreen with the options (options.js) and its About rows, and what the options do to the tabs.
 // Settings is a screen pushed from Browse (its gear). It opens on a menu: a search box, the tabs taken off the bar (one
 // tap away), then a row per page; Back closes a page. The Tab bar page arranges the tabs (the kit's tabArranger; the
@@ -90,6 +90,11 @@ export function startShell() {
 
 /** @type {(page: HTMLElement) => void} set by startShell */
 let goTo = () => {};
+/** a tab page by its id, from a row in Browse (a page that is not on the bar, like Search) @param {string} id */
+export function showPage(id) {
+  const page = document.getElementById(id);
+  if (page) goTo(page);
+}
 /** Today's page, whatever Home is: it holds sign-in, access and set-up, so a signed-out start must land there */
 export function showToday() {
   const page = document.getElementById('today-page');

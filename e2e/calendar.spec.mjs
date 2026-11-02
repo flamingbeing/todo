@@ -19,8 +19,7 @@ async function project(page, name) {
 }
 /** Display > Calendar (and a kind: Week, Month, Agenda), then Done */
 async function calendar(page, kind = '') {
-  await page.locator('#more-btn').click();
-  await page.getByRole('menuitem', { name: 'Display' }).click();
+  await page.locator('#display-btn').click();
   const sheet = page.locator('#display-sheet');
   await expect(sheet).toBeVisible();
   await sheet.getByRole('radio', { name: 'Calendar' }).click();

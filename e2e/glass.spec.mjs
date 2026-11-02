@@ -26,8 +26,7 @@ test('glass by default; Solid in the switch takes it off, kept on reload and bef
   const root = page.locator('html');
   await expect(root).toHaveClass(/\bglass\b/);
   await collapsed(page);
-  expect(await style(page, '.ui-bar', 'backdrop-filter')).toContain('blur');
-  await expect.poll(() => style(page, '.ui-bar', 'background-color')).toMatch(/(color\(srgb|oklab\(|rgba\().* \/ 0\.\d+\)/);   // see-through (the bar fades to it)
+  expect(await style(page, '.ui-bar', 'backdrop-filter')).toBe('none');   // (the top bar is always solid in this app)
 
   await page.getByLabel('Bars and sheets').selectOption('solid');
   await expect(root).not.toHaveClass(/\bglass\b/);

@@ -9,8 +9,7 @@ const get = id => db.get(`spaces/_/tasks/${id}`);
 const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { title: id, projectId: 'inbox', priority: 4, done: false, ...now(), ...fields });
 
 async function display(page) {
-  await page.locator('#more-btn').click();
-  await page.getByRole('menuitem', { name: 'Display' }).click();
+  await page.locator('#display-btn').click();
   const sheet = page.locator('#display-sheet');
   await expect(sheet).toBeVisible();
   return sheet;

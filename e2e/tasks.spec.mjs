@@ -141,9 +141,11 @@ test('a new project from Browse opens on its page; a section and a task in it', 
   await expect(page.locator('#project-page')).toBeVisible();
   await expect(page.locator('#project-title')).toHaveText(name);
 
-  await page.locator('#project .td-add-section').click();
-  await page.fill('#project .td-name-field input', sec);
-  await page.press('#project .td-name-field input', 'Enter');
+  await page.locator('#more-btn').click();
+  await page.getByRole('menuitem', { name: 'Add section' }).click();
+  await page.fill('#section-name', sec);
+  await page.press('#section-name', 'Enter');
+  await expect(page.locator('#project-page')).toBeVisible();
   const section = page.locator('#project .td-section', { hasText: sec });
   await expect(section).toBeVisible();
   await section.locator('.td-add-row').click();

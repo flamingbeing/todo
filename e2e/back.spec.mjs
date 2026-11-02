@@ -1,6 +1,6 @@
 // Back with tabs: switching tabs adds at most one Back step; Back on another tab goes to the Home view (Today unless set
 // in Settings > General), Back there asks once, then leaves the app.
-import { test, expect, signIn, openTab, openSettings, APP } from './fixtures.mjs';
+import { test, expect, signIn, openTab, openSearch, openSettings, APP } from './fixtures.mjs';
 
 test('tabs A -> B -> C add at most one Back step; Back goes Home, then (asked once) out of the app', async ({ phone }) => {
   const page = await phone();
@@ -10,7 +10,7 @@ test('tabs A -> B -> C add at most one Back step; Back goes Home, then (asked on
   const appUrl = page.url();
 
   await openTab(page, 'upcoming');
-  await openTab(page, 'search');
+  await openSearch(page);
   await openTab(page, 'browse');
   expect(await page.evaluate(() => history.length)).toBeLessThanOrEqual(start + 1);
 
@@ -25,10 +25,10 @@ test('tabs A -> B -> C add at most one Back step; Back goes Home, then (asked on
   await expect.poll(() => page.url()).not.toBe(appUrl);
 });
 
-test('Back from Inbox, Upcoming, Search and Browse each goes Home (Today)', async ({ phone }) => {
+test('Back from Inbox, Upcoming and Browse each goes Home (Today)', async ({ phone }) => {
   const page = await phone();
   await signIn(page, 'member');
-  for (const name of ['inbox', 'upcoming', 'search', 'browse']) {
+  for (const name of ['inbox', 'upcoming', 'browse']) {
     await openTab(page, name);
     await page.goBack();
     await expect(page.locator('#today-page')).toBeVisible();

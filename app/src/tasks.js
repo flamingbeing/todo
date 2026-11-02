@@ -187,3 +187,6 @@ export const plainDisplay = (d, view) => JSON.stringify(d) === JSON.stringify(cl
 
 /** the address that opens a task's sheet on load (this page with #task=<id>) @param {string} id */
 export const taskLink = id => `${location.origin}${location.pathname}${location.search}#task=${encodeURIComponent(id)}`;
+
+/** the address that opens a project's page on load (this page with #project=<id>; the Inbox is "inbox") @param {string} id */
+export const projectLink = id => `${location.origin}${location.pathname}${location.search}#project=${encodeURIComponent(id)}`;

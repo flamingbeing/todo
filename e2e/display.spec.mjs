@@ -12,8 +12,7 @@ async function openProject(page, name) {
   await expect(page.locator('#project-page')).toBeVisible();
 }
 async function display(page) {
-  await page.locator('#more-btn').click();
-  await page.getByRole('menuitem', { name: 'Display' }).click();
+  await page.locator('#display-btn').click();
   const sheet = page.locator('#display-sheet');
   await expect(sheet).toBeVisible();
   return sheet;

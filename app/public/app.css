@@ -880,3 +880,62 @@ textarea.has-md { color: transparent; }
 .td-template-del { flex: none; margin-inline-end: 8px; color: var(--td-text-2); }
 .td-import-history { display: flex; align-items: flex-start; gap: 8px; margin: 12px 0 0; font-size: 14px; line-height: 1.4; color: var(--td-text-2); }
 .td-import-history input { flex: none; width: 20px; height: 20px; margin: 0; accent-color: var(--td-accent); }
+
+/* ---------- navigation chrome, as the reference's phone layout (owner 2 Nov 2026): solid bars, a slim top bar with the
+   name at the start, a count under it and the page's buttons at the end; four tabs with a pill behind the lit one;
+   a rounded-square add button ---------- */
+:root { --td-bar-ground: light-dark(#ffffff, #202020); --td-tabbar-ground: light-dark(#f6f5f4, #262626); }
+/* solid, whatever the Look choice says: no blur, no see-through */
+html.glass .ui-bar, html.glass .ui-bar.is-collapsed, .ui-bar, .ui-bar.is-collapsed { background: var(--td-bar-ground); border-bottom-color: transparent; box-shadow: none;
+  -webkit-backdrop-filter: none; backdrop-filter: none; }
+body:has(.ui-screen.td-grouped:not([hidden])) .ui-bar { background: var(--td-bar-ground); }
+.ui-shell.td > .ui-bar { min-height: 64px; box-sizing: border-box; padding: calc(env(safe-area-inset-top, 0px) + 4px) 8px 4px 20px; gap: 4px; }
+.ui-shell.td > .ui-bar > .ui-bar-side:not(.ui-bar-end) { flex: none; }
+.ui-shell.td > .ui-bar > .ui-bar-side:first-child:empty { display: none; }
+.ui-shell.td > .ui-bar > .ui-bar-title { order: 0; flex: 1; text-align: start; padding: 0; font-size: 20px; font-weight: 500; line-height: 1.2; color: var(--td-text); }
+.ui-bar-title[data-sub]::after { content: attr(data-sub); display: block; margin-top: 1px; font-size: 12px; font-weight: 400; line-height: 1.2; color: var(--td-text-2); }
+.ui-shell.td > .ui-bar > .ui-bar-end { flex: none; order: 1; gap: 0; }
+.ui-bar .ui-bar-back { margin-inline-start: -12px; }
+/* the bar's buttons: bare icons, 48 px to tap */
+.ui-bar .td-bar-btn { display: inline-grid; place-items: center; box-sizing: border-box; width: 48px; height: 48px; min-height: 48px; padding: 0 !important; border: 0;
+  border-radius: 50%; background: none !important; color: var(--td-text-2); cursor: pointer; }
+.ui-bar .td-bar-btn[hidden] { display: none; }
+.td-bar-btn:disabled { opacity: .4; cursor: default; }
+.td-bar-btn:not(:disabled):active { background: var(--td-selected) !important; }
+.td-bar-btn .ui-icon { width: 24px; height: 24px; }
+#section-done:not(:disabled), .ui-bar #section-done:not(:disabled) { color: var(--td-accent-text); }
+/* Add section's screen */
+.td-section-form { padding: 8px 16px; }
+.td-section-name { box-sizing: border-box; width: 100%; min-height: 52px; padding: 0 16px; border: 0; border-radius: 12px; background: var(--td-card); color: var(--td-text); font-size: 16px; }
+.td-section-name::placeholder { color: var(--td-text-3, var(--td-text-2)); }
+.td-section-name:focus { outline: none; }
+
+/* the tab bar: solid, four tabs, a pill behind the icon of the lit one */
+:root { --td-tabbar-h: 80px; }
+.ui-tabbar.td-tabbar { border-top: 0; background: var(--td-tabbar-ground); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 -1px 6px rgb(0 0 0 / .18); }
+.td-tabbar .ui-tab { max-width: none; justify-content: center; gap: 4px; padding: 8px 0 12px; font-size: 13px; font-weight: 400; color: var(--td-text-2); }
+.td-tabbar .ui-tab[aria-current="page"] { font-weight: 500; }
+.td-tabbar .ui-tab-icon { display: grid; place-items: center; width: 68px; height: 34px; border-radius: 17px; }
+.td-tabbar .ui-tab-icon > .ui-icon { width: 24px; height: 24px; }
+.td-tabbar .ui-tab[aria-current="page"] .ui-tab-icon { background: light-dark(#fbe3e1, #4a2224); color: var(--td-accent-text); }
+.td-today-icon .today-num { top: 13px; }
+
+/* the add button: a rounded square, 68 px, 16 px above the bar and 20 px in from the edge */
+.ui-fab.td-fab { width: 68px; min-width: 68px; height: 68px; border-radius: 20px; background: light-dark(var(--td-fill), #ce4248);
+  inset-inline-end: calc(20px + env(safe-area-inset-right, 0px)); bottom: calc(max(var(--ui-tabbar-room, 0px), env(safe-area-inset-bottom, 0px)) + 16px);
+  box-shadow: 0 4px 10px rgb(0 0 0 / .3); }
+.ui-fab.td-fab > svg { width: 30px; height: 30px; stroke-width: 2; }
+/* the slim bar on every look: the bar always shows the screen's name; the page's own large title stays for screen readers
+   (the kit's data-header="slim" rules, set here because a look can change that mark) */
+.ui-shell.td .ui-bar-title { opacity: 1; }
+.ui-shell.td .ui-screens .ui-large-title { position: absolute; width: 1px; height: 1px; margin: 0; padding-block: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ui-shell.td .ui-screens .ui-large-title + * { margin-top: 8px; }
+.ui-large-title + .td-list > .td-group:first-child > .td-group-head { margin-top: 0; }
+
+/* an empty page's drawing, title and hint, in the middle of the space above the bar */
+.td-empty-big { min-height: calc(100dvh - 64px - var(--td-tabbar-h) - 40px); align-content: center; padding: 0 40px 72px; gap: 8px; }
+.td-empty-big .td-empty-svg { width: 220px; height: 170px; margin-bottom: 20px; color: var(--td-text); }
+.td-empty-big .td-empty-title { font-size: 17px; font-weight: 500; }
+.td-empty-big .td-empty-hint { max-width: 280px; font-size: 15px; line-height: 1.45; }
+/* the bar's Back: a bare arrow, as the reference's */
+.ui-bar .ui-bar-back { width: 48px; min-width: 48px; height: 48px; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; color: var(--td-text); margin-inline-start: -12px; }

@@ -18,7 +18,8 @@ import { modules } from '../modules.js';
 // a task's link (#task=<id>, the sheet's "Copy link"): read before the tabs take the address over, opened once it is there
 // (the address loses it at once, so the tabs start as on any load and a later Back does not open it again)
 let linked = /^#task=([\w-]{1,64})$/.exec(location.hash)?.[1] ?? '';
-if (linked) history.replaceState(history.state, '', location.pathname + location.search);
+let linkedProject = /^#project=([\w-]{1,64})$/.exec(location.hash)?.[1] ?? '';
+if (linked || linkedProject) history.replaceState(history.state, '', location.pathname + location.search);
 
 /** @typedef {import('../items.js').Task} Task */
 /** @typedef {import('../items.js').Item} Item */
@@ -182,9 +183,27 @@ export function views(app) {
   fab.addEventListener('click', () => { if (canWrite) { const hold = holdKeyboard(); void lazy.withMod('add', m => m.openQuickAdd(ctx, addContext(), hold)); } });
   more.addEventListener('click', () => pageMenu());
   const lists = ['inbox-page', 'today-page', 'upcoming-page', 'project-page'];
+  /** the bar's second line under the screen's name ("3 tasks": the open ones the list holds; nothing when none or not a list) */
+  const subtitle = () => {
+    const bar = document.querySelector('.ui-bar-title');
+    if (!bar) return;
+    const today = dayKey(), open = data.tasks.filter(t => isTask(t) && !t.done);
+    const n = top === 'inbox-page' ? open.filter(t => projectOf(t) === INBOX).length
+      : top === 'today-page' ? open.filter(t => t.due?.date && t.due.date <= today).length
+      : top === 'project-page' ? open.filter(t => projectOf(t) === projectId).length : 0;
+    if (n > 0) /** @type {HTMLElement} */ (bar).dataset.sub = plural(n, 'task'); else delete /** @type {HTMLElement} */ (bar).dataset.sub;
+  };
+  const display = $('display-btn');
+  display.addEventListener('click', () => {
+    const own = top === 'project-page' && projectId !== INBOX ? data.projects.find(x => x.id === projectId) ?? null : null;
+    void lazy.withMod('display', d => d.openDisplay(ctx, viewOf(), own));
+  });
   const onScreen = () => {
     fab.hidden = !canWrite || !lists.includes(top);
     more.hidden = !canWrite || ![...lists, 'place-page'].includes(top);
+    display.hidden = more.hidden;
+    $('section-done').hidden = top !== 'section-page';
+    subtitle();
     $('browse-top').hidden = top !== 'browse-page';
     paint(top);
   };
@@ -205,7 +224,30 @@ export function views(app) {
    * @type {{ projectId: string, sectionId: string, after?: string, order?: number } | null} */
   let naming = null;
   /** @param {string} pid @param {string} [after] @param {number} [order] */
-  const newSection = (pid, after, order) => { naming = { projectId: pid, sectionId: '', after, order }; fresh.clear(); paint(top); focusNaming(); };
+  const newSection = (pid, after, order) => {
+    if (after === undefined && order === undefined) { openSectionPage(pid); return; }
+    naming = { projectId: pid, sectionId: '', after, order }; fresh.clear(); paint(top); focusNaming();
+  };
+  // a new section at the end of a list: its own screen (a name and the tick), as the page menu's Add section opens it
+  const sectionName = /** @type {HTMLInputElement} */ ($('section-name')), sectionDone = /** @type {HTMLButtonElement} */ ($('section-done'));
+  let sectionFor = INBOX;
+  /** @param {string} pid */
+  const openSectionPage = pid => {
+    sectionFor = pid; sectionName.value = ''; sectionDone.disabled = true;
+    screens()?.push('#section-page');
+    setTimeout(() => sectionName.focus(), 120);
+  };
+  const saveSection = async () => {
+    const name = sectionName.value.trim();
+    if (!name || !canWrite) return;
+    sectionDone.disabled = true;
+    const r = (await app.addSection(sectionFor, name)).refused;
+    if (r) toast(REFUSED);
+    fresh.clear(); screens()?.pop();
+  };
+  sectionName.addEventListener('input', () => { sectionDone.disabled = !sectionName.value.trim(); });
+  $('section-form').addEventListener('submit', e => { e.preventDefault(); void saveSection(); });
+  sectionDone.addEventListener('click', () => { void saveSection(); });
   const focusNaming = () => requestAnimationFrame(() => /** @type {HTMLInputElement | null} */ (document.querySelector(`#${top} .td-name-field input`))?.focus());
   // (the page is drawn again on every change, synced ones too: the open field is the same element each time, so what
   // was typed stays; the browser blurs a focused element it takes out, so that blur is not the person leaving it)
@@ -296,23 +338,17 @@ export function views(app) {
       if (naming && !naming.sectionId && naming.after === s.id) parts.push(nameField('', null, pid));
     }
     if (naming && !naming.sectionId && !naming.after && naming.projectId === pid) parts.push(nameField('', null, pid));
-    else if (canWrite) {
-      const b = document.createElement('button');
-      b.type = 'button'; b.className = 'td-add-section'; b.textContent = 'Add section';
-      b.addEventListener('click', () => newSection(pid));
-      parts.push(b);
-    }
     into.replaceChildren(...parts);
     const none = !v.loose.length && v.sections.every(x => !x.lines.length);
-    empty.replaceChildren(...(none && !v.sections.length && canWrite ? [emptyNote('Nothing here yet', 'Tap + to add a task')] : []));
+    empty.replaceChildren(...(none && !v.sections.length && canWrite ? [pid === INBOX ? emptyNote('Nothing waiting', 'Jot things down as they come to mind, then sort them when you have a moment.', 'inbox') : emptyNote('Nothing here yet', 'Tap + to add a task')] : []));
   };
 
   /** a flat list in Display's groups (board.js draws them); none: the empty note's words when no task shows
    * @param {HTMLElement} into @param {HTMLElement} empty @param {Task[]} tasks @param {import('../tasks.js').Display} d
-   * @param {import('../ui/row.js').RowContext} c @param {AddContext} base @param {[string, string]} none */
+   * @param {import('../ui/row.js').RowContext} c @param {AddContext} base @param {[string, string, ('inbox' | 'day')?]} none */
   const groups = (into, empty, tasks, d, c, base, none) => {
     into.dataset.grouped = d.group;
-    void lazy.withMod('board', m => { empty.replaceChildren(...(!m.drawGroups(ctx, { into, tasks, d, c, base, resched }) && canWrite ? [emptyNote(...none)] : [])); });
+    void lazy.withMod('board', m => { empty.replaceChildren(...(!m.drawGroups(ctx, { into, tasks, d, c, base, resched }) && canWrite ? [emptyNote(none[0], none[1], none[2])] : [])); });
   };
   /** Overdue's Reschedule: every task in it to one day @param {HTMLElement} sec @param {Task[]} tasks */
   const resched = (sec, tasks) => {
@@ -336,7 +372,7 @@ export function views(app) {
     host.toggleAttribute('data-sorted', d.sort !== 'manual');
     if (d.layout === 'board') { groupBoard(host, $('today-empty'), ts, d, d.group, base, 'Today'); return; }
     host.classList.remove('td-board'); host.removeAttribute('data-swipe-own');
-    if (!plainDisplay(d, 'today')) { groups(host, $('today-empty'), ts, d, rowCtx({ place: true }), base, ['All clear for today', 'Tap + to add a task for today']); return; }
+    if (!plainDisplay(d, 'today')) { groups(host, $('today-empty'), ts, d, rowCtx({ place: true }), base, ['A clear day', 'Tasks due today collect here. Tap + to add one.', 'day']); return; }
     delete host.dataset.grouped;
     const v = todayView(filtered(), today);
     const parts = [];
@@ -353,7 +389,7 @@ export function views(app) {
       parts.push(g);
     }
     host.replaceChildren(...parts);
-    $('today-empty').replaceChildren(...(!v.today.length && !v.overdue.length && canWrite ? [emptyNote('All clear for today', 'Tap + to add a task for today')] : []));
+    $('today-empty').replaceChildren(...(!v.today.length && !v.overdue.length && canWrite ? [emptyNote('A clear day', 'Tasks due today collect here. Tap + to add one.', 'day')] : []));
     shownToday = [...v.overdue, ...v.today].map(l => l.task);
   };
   /** @type {Task[]} */
@@ -409,6 +445,7 @@ export function views(app) {
   };
   const redraw = () => {
     fresh.clear();
+    subtitle();
     paint('today-page');
     if (top !== 'today-page') paint(top);
     if (tabPage !== top) paint(tabPage);
@@ -429,6 +466,12 @@ export function views(app) {
   const openLinked = () => {
     const want = linked && user && data.tasks.find(t => t.id === linked);
     if (want) { linked = ''; ctx.openTask(want); }
+    else if (linkedProject && user && data.projects.length) {
+      const id = linkedProject; linkedProject = '';
+      const goal = id === INBOX ? document.getElementById('inbox-page') : null;
+      if (goal) document.querySelector('.ui-tabbar [data-tab-id="inbox"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      else if (data.projects.some(p => p.id === id)) ctx.openProject(id);
+    }
   };
   const screen = sectionScreen('list-view', s => {
     const could = canWrite;

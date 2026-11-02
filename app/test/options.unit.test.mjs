@@ -14,7 +14,7 @@ test('home: a tab id of the bar, else Today', () => {
   const { clean, default: d, scope } = OPTIONS.home;
   assert.equal(scope, 'device');
   assert.equal(d, 'today');
-  for (const id of ['inbox', 'today', 'upcoming', 'search', 'browse']) assert.equal(clean?.(id), id);
+  for (const id of ['inbox', 'today', 'upcoming', 'browse']) assert.equal(clean?.(id), id);
   for (const bad of ['', 'nope', 'Today', 3, null, undefined, {}, ['today']]) assert.equal(clean?.(bad), 'today');
 });
 
@@ -28,5 +28,5 @@ test('Settings > General has the Home view row', () => {
   const rows = SETTING_SECTIONS.find(s => s.title === 'General')?.rows ?? [];
   const home = rows.find(r => r.key === 'home');
   assert.equal(home?.label, 'Home view');
-  assert.deepEqual(home?.choices?.map(([id]) => id), ['inbox', 'today', 'upcoming', 'search', 'browse']);
+  assert.deepEqual(home?.choices?.map(([id]) => id), ['inbox', 'today', 'upcoming', 'browse']);
 });
