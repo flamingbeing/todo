@@ -942,7 +942,6 @@ body:has(.ui-screen.td-grouped:not([hidden])) .ui-bar { background: var(--td-bar
 .ui-shell.td > .ui-bar > .ui-bar-side:not(.ui-bar-end) { flex: none; }
 .ui-shell.td > .ui-bar > .ui-bar-side:first-child:empty { display: none; }
 .ui-shell.td > .ui-bar > .ui-bar-title { order: 0; flex: 1; text-align: start; padding: 0; font-size: 20px; font-weight: 500; line-height: 1.2; color: var(--td-text); }
-.ui-bar-title[data-sub]::after { content: attr(data-sub); display: block; margin-top: 1px; font-size: 12px; font-weight: 400; line-height: 1.2; color: var(--td-text-2); }
 .ui-shell.td > .ui-bar > .ui-bar-end { flex: none; order: 1; gap: 0; }
 .ui-bar .ui-bar-back { margin-inline-start: -12px; }
 /* the bar's buttons: bare icons, 48 px to tap */
@@ -974,11 +973,6 @@ body:has(.ui-screen.td-grouped:not([hidden])) .ui-bar { background: var(--td-bar
   inset-inline-end: calc(20px + env(safe-area-inset-right, 0px)); bottom: calc(max(var(--ui-tabbar-room, 0px), env(safe-area-inset-bottom, 0px)) + 16px);
   box-shadow: 0 4px 10px rgb(0 0 0 / .3); }
 .ui-fab.td-fab > svg { width: 30px; height: 30px; stroke-width: 2; }
-/* the slim bar on every look: the bar always shows the screen's name; the page's own large title stays for screen readers
-   (the kit's data-header="slim" rules, set here because a look can change that mark) */
-.ui-shell.td .ui-bar-title { opacity: 1; }
-.ui-shell.td .ui-screens .ui-large-title { position: absolute; width: 1px; height: 1px; margin: 0; padding-block: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.ui-shell.td .ui-screens .ui-large-title + * { margin-top: 8px; }
 .ui-large-title + .td-list > .td-group:first-child > .td-group-head { margin-top: 0; }
 
 /* an empty page's drawing, title and hint, in the middle of the space above the bar */
@@ -1034,14 +1028,14 @@ body:has(.ui-screen.td-grouped:not([hidden])) .ui-bar { background: var(--td-bar
 #task-sheet .td-comment-send { width: 40px; height: 40px; }
 
 /* the "⋮" menu as a bottom panel: a line of when it was added, then icon and words, the danger row last */
-.td-menu.td-menu-sheet { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; max-width: 40rem; margin: 0 auto; border-radius: 16px 16px 0 0;
+.td-menu.ui-menu-panel { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; max-width: 40rem; margin: 0 auto; border-radius: 16px 16px 0 0;
   padding: 0 0 calc(8px + env(safe-area-inset-bottom, 0px)); background: light-dark(#fff, #202020); transform-origin: 50% 100%; }
-.td-menu-grab { width: 36px; height: 5px; margin: 8px auto 4px; border-radius: 3px; background: var(--td-hair); }
-.td-menu-note { padding: 12px 20px; font-size: 14px; color: var(--td-text-2); border-bottom: .5px solid var(--td-hair); }
-.td-menu-sheet .ui-menu-item { gap: 18px; min-height: 52px; padding: 0 20px; }
-.td-menu-sheet .td-menu-icon { order: -1; width: 22px !important; height: 22px !important; }
-.td-menu-sheet hr { margin: 4px 0; border: 0; border-top: .5px solid var(--td-hair); }
-.td-menu-sheet .ui-menu-item { justify-content: flex-start; text-align: start; }
+.ui-menu-grab { width: 36px; height: 5px; margin: 8px auto 4px; border-radius: 3px; background: var(--td-hair); }
+.ui-menu-note { padding: 12px 20px; font-size: 14px; color: var(--td-text-2); border-bottom: .5px solid var(--td-hair); }
+.ui-menu-panel .ui-menu-item { gap: 18px; min-height: 52px; padding: 0 20px; }
+.ui-menu-panel .td-menu-icon { order: -1; width: 22px !important; height: 22px !important; }
+.ui-menu-panel hr { margin: 4px 0; border: 0; border-top: .5px solid var(--td-hair); }
+.ui-menu-panel .ui-menu-item { justify-content: flex-start; text-align: start; }
 
 /* Browse: flat rows on a solid card, no chevrons; the top is the person with a bell and the gear, plain */
 .td-bar-browse-end { display: inline-flex; align-items: center; gap: 4px; }
