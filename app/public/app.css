@@ -12,6 +12,8 @@ body {
   --td-grouped: light-dark(#f9f5f2, #1e1e1e);
   --td-sheet: light-dark(#f6f3ee, #282828);
   --td-card: light-dark(#fff, #282828);
+  /* a task row's card on the page ground: a step lighter than the ground in dark, a step darker in light */
+  --td-row-bg: light-dark(#f6f3ef, #282828);
   --td-peach: light-dark(#fde7d9, rgb(220 76 62 / .28));
   --td-selected: light-dark(#f0f0f0, #333);
   --td-accent: var(--accent, #dc4c3e);
@@ -133,15 +135,21 @@ body:has(.ui-screen.td-grouped:not([hidden])) .ui-bar { background: color-mix(in
 .td-list { padding-bottom: 96px; }
 .td-rows { list-style: none; margin: 0; padding: 0; }
 .td-group { margin: 0; }
-.td-group-head { display: flex; align-items: center; gap: 4px; min-height: 44px; margin: 16px 0 0; padding: 0 8px 0 16px; border-bottom: .5px solid var(--td-hair); }
+.td-group-head { display: flex; align-items: center; gap: 4px; min-height: 44px; margin: 16px 0 0; padding: 0 8px 0 16px; }
 .td-group-title, .td-group-h { flex: 1; min-width: 0; margin: 0; font-size: 16px; font-weight: 600; color: var(--td-text); }
 button.td-group-title { display: flex; align-items: center; gap: 6px; width: 100%; padding: 10px 0; border: 0; background: none; text-align: start; cursor: pointer; }
+.td-group-head.is-plain { border-bottom: 0; }
+.td-group-head.is-plain .td-group-title { font-weight: 400; color: var(--td-text-2); }
 .td-group-chevron { width: 18px !important; height: 18px !important; color: var(--td-text-3); margin-inline-start: -2px; }
 .td-group-more { color: var(--td-text-3); }
 
 /* a task row: the box at 16, the words at 50, the hairline from 50 */
-.td-row { position: relative; display: flex; align-items: flex-start; min-height: 52px; padding-inline-start: calc(var(--depth, 0) * 24px); }
-.td-row::after { content: ""; position: absolute; left: calc(50px + var(--depth, 0) * 24px); right: 0; bottom: 0; border-bottom: .5px solid var(--td-hair); }
+/* (a task row is a card: 12 px corners, a step off the ground, 12 px from the sides, 6 px between, no divider lines; a sub-task
+   row steps in 24 px per level. In the task sheet's Sub-tasks, which has a card of its own, a row is flat with the hairline) */
+.td-row { position: relative; display: flex; align-items: flex-start; min-height: 52px; margin: 0 12px 6px calc(12px + var(--depth, 0) * 24px);
+  border-radius: 12px; background: var(--td-row-bg); }
+#task-sheet .td-row { margin: 0; padding-inline-start: calc(var(--depth, 0) * 24px); border-radius: 0; background: none; }
+#task-sheet .td-row::after { content: ""; position: absolute; left: calc(50px + var(--depth, 0) * 24px); right: 0; bottom: 0; border-bottom: .5px solid var(--td-hair); }
 .td-check { --ring: var(--td-p4); --tint: transparent; flex: none; position: relative; display: grid; place-items: center; box-sizing: border-box;
   width: 22px; height: 22px; min-width: 0; min-height: 0; margin: 13.7px 12px 0 16px; padding: 0; border: 1.5px solid var(--ring); border-radius: 50%;
   background: var(--tint); color: var(--ring); cursor: pointer; transition: background-color 150ms ease, opacity 150ms ease; }
@@ -199,6 +207,7 @@ button.td-group-title { display: flex; align-items: center; gap: 6px; width: 100
 .td-empty { display: grid; justify-items: center; gap: 4px; padding: 56px 32px; text-align: center; }
 .td-empty-art { display: grid; place-items: center; width: 96px; height: 96px; margin-bottom: 12px; border-radius: 50%; background: var(--td-peach); color: var(--td-accent); }
 .td-empty-art .ui-icon { width: 44px; height: 44px; }
+.td-empty-hint + .td-empty-hint { margin-top: 8px; }
 .td-empty-title { margin: 0; font-size: 17px; font-weight: 600; color: var(--td-text); }
 .td-empty-hint { margin: 0; font-size: 14px; color: var(--td-text-2); }
 
@@ -309,8 +318,7 @@ button.td-group-title { display: flex; align-items: center; gap: 6px; width: 100
 .td-subtasks { margin: 4px 0 0; }
 .td-subtasks-title { margin: 8px 16px 4px; font-size: 15px; font-weight: 600; color: var(--td-text-2); }
 .td-subtasks .td-rows { margin: 0 16px; border-radius: 14px; background: light-dark(#fff, #323232); overflow: hidden; }
-.td-add-sub { display: flex; align-items: center; gap: 12px; margin: 8px 16px; padding: 0 16px; min-height: 44px; border-radius: 14px; background: light-dark(#fff, #323232); }
-.td-add-sub input { flex: 1; min-width: 0; height: 44px; padding: 0; border: 0; outline: 0; background: none; font-size: 16px; }
+.td-add-sub { display: flex; align-items: center; gap: 12px; width: calc(100% - 32px); margin: 8px 16px; padding: 0 16px; min-height: 44px; border: 0; border-radius: 14px; background: light-dark(#fff, #323232); color: var(--td-text); font-size: 16px; cursor: pointer; }
 .td-add-sub .td-add-icon { width: 22px; height: 22px; color: var(--td-accent); }
 
 /* chips (quick add, labels) */
@@ -502,7 +510,7 @@ body:has(dialog[open]) .ui-fab.td-fab { display: none; }
 .td-row.is-swiping { overflow: hidden; }
 .td-row.is-swiping > :not(.td-swipe-band, .td-fold) { position: relative; z-index: 1; }
 .td-row.is-swiping > .td-fold { z-index: 1; }
-.td-swipe-band { position: absolute; inset: 0; z-index: 0; display: flex; align-items: center; color: #fff; pointer-events: none; }
+.td-swipe-band { position: absolute; inset: 0; border-radius: inherit; z-index: 0; display: flex; align-items: center; color: #fff; pointer-events: none; }
 .td-swipe-band[data-side="right"] { justify-content: flex-end; padding-inline-end: 20px; }
 .td-swipe-band[data-side="left"] { justify-content: flex-start; padding-inline-start: 20px; }
 .td-swipe-icon { width: 24px; height: 24px; stroke-width: 2.5; opacity: 0; transition: transform .15s ease-out; }
@@ -619,9 +627,8 @@ html[data-board-swipe] .td-board .td-row { touch-action: pan-y; }
 .td-col-title { min-width: 0; margin: 0; font-size: 15px; font-weight: 600; color: var(--td-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .td-col-count { flex: 1; font-size: 14px; color: var(--td-text-3); }
 .td-board .td-rows { display: flex; flex-direction: column; gap: 8px; min-height: 8px; margin: 0; padding: 0; list-style: none; }
-.td-board .td-row { min-height: 0; padding: 0; border: 1px solid var(--td-card-edge); border-radius: 8px; background: var(--td-card); box-shadow: 0 1px 2px rgb(0 0 0 / .05); }
+.td-board .td-row { min-height: 0; margin: 0; padding: 0; border: 1px solid var(--td-card-edge); border-radius: 8px; background: var(--td-card); box-shadow: 0 1px 2px rgb(0 0 0 / .05); }
 .td-board .td-meta-icon { width: 12px !important; height: 12px !important; }
-.td-board .td-row::after { display: none; }
 .td-board .td-row .td-check { margin: 11px 10px 0 12px; }
 .td-board .td-row-main { padding: 10px 12px 10px 0; }
 .td-board .td-title + .td-meta { margin-top: 0; }
@@ -1044,9 +1051,7 @@ body:has(.ui-screen.td-grouped:not([hidden])) .ui-bar { background: var(--td-bar
 .td-subtasks-btn { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 18px; background: none; color: var(--td-text); cursor: pointer; }
 .td-subtasks-btn .ui-icon { width: 20px; height: 20px; }
 #task-sheet .td-subtasks .td-rows { margin: 0; border-radius: 0; background: none; }
-#task-sheet .td-add-sub { justify-content: center; margin: 4px 16px; padding: 0 16px; border-radius: 10px; background: light-dark(#fff, #272727); }
-#task-sheet .td-add-sub input { flex: 0 1 auto; width: 9em; text-align: start; color: var(--td-accent-text); }
-#task-sheet .td-add-sub input::placeholder { color: var(--td-accent-text); opacity: 1; }
+#task-sheet .td-add-sub { justify-content: center; margin: 4px 16px; padding: 0 16px; border-radius: 10px; background: light-dark(#fff, #272727); color: var(--td-accent-text); }
 #task-sheet .td-add-sub .td-add-icon { width: 20px; height: 20px; }
 #task-sheet .td-comments { margin: 12px 0 0; }
 #task-sheet .td-comment-list { margin: 0 16px; border-radius: 10px; background: light-dark(#fff, #272727); }
@@ -1065,7 +1070,7 @@ body:has(.ui-screen.td-grouped:not([hidden])) .ui-bar { background: var(--td-bar
   padding: 0 0 calc(8px + env(safe-area-inset-bottom, 0px)); background: light-dark(#fff, #202020); transform-origin: 50% 100%; }
 .ui-menu-grab { width: 36px; height: 5px; margin: 8px auto 4px; border-radius: 3px; background: var(--td-hair); }
 .ui-menu-note { padding: 12px 20px; font-size: 14px; color: var(--td-text-2); border-bottom: .5px solid var(--td-hair); }
-.ui-menu-panel .ui-menu-item { gap: 18px; min-height: 52px; padding: 0 20px; }
+.ui-menu-panel .ui-menu-item { gap: 16px; min-height: 46px; padding: 0 32px 0 20px; }
 .ui-menu-panel .td-menu-icon { order: -1; width: 22px !important; height: 22px !important; }
 .ui-menu-panel hr { margin: 4px 0; border: 0; border-top: .5px solid var(--td-hair); }
 .ui-menu-panel .ui-menu-item { justify-content: flex-start; text-align: start; }
@@ -1095,3 +1100,13 @@ body:has(.ui-screen.td-grouped:not([hidden])) .ui-bar { background: var(--td-bar
 #settings-host .ui-settings-group .ui-setting .ui-row-sub { margin-top: 1px; font-size: 14px; color: var(--td-text-2); }
 #settings-host .ui-settings-group .theme-switch > * { padding-inline: 20px; }
 .td-sched-more .td-choice-side { color: var(--td-text-2); }
+
+/* the Edit task page: the card with the name and its circle, the description card with its lines icon */
+#edit-task-sheet.td-sheet { background: var(--td-sheet); }
+#edit-task-sheet .td-edit-head { padding: 8px 16px 12px; }
+#edit-task-sheet .td-sheet-done:disabled { background: light-dark(#d6d3cf, #4a4a4a); color: light-dark(#8a8a8a, #9a9a9a); opacity: 1; }
+#edit-task-sheet .td-edit-card { padding: 6px 16px 6px 0; }
+#edit-task-sheet .td-task-title { padding: 10px 0 8px; font-size: 19px; font-weight: 500; }
+.td-edit-desc { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; }
+.td-edit-lines { flex: none; width: 20px !important; height: 20px !important; margin-top: 1px; color: var(--td-text-3); }
+.td-edit-desc .td-task-desc { flex: 1; min-width: 0; padding: 0; }

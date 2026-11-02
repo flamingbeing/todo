@@ -1,12 +1,13 @@
 // A task row: the round checkbox in the priority's colour, the title, one line of description, and the meta line (the
-// due date in its tone, a repeat mark, the subtask count, labels, and on day lists the project at the right). Subtasks
-// sit 24 px further in per level; a parent has a fold chevron at the right. A tap on the row opens the task; a tap on
+// due date in its tone, a repeat mark, the subtask count, labels, and on day lists the project at the right). A parent
+// starts folded (only its "1/4" count and a chevron at the right show); the chevron opens its subtasks, which sit 24 px
+// further in per level. A tap on the row opens the task; a tap on
 // the box completes it (the row then fades out and the list shows the undo toast). A title starting "* " is a note:
 // no box and no swipe to complete (plainRow).
 import { icon } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { dueLine, deadlineLine } from '../dates.js';
-import { countText } from '../tree.js';
+import { countText, isOpen } from '../tree.js';
 import { colorHex } from '../colors.js';
 import { priorityOf, projectOf, labelsOf } from '../tasks.js';
 import { INBOX } from '../items.js';
@@ -138,9 +139,10 @@ export function taskRow(line, c) {
   if (line.kids && c.onFold) {
     const fold = /** @type {HTMLButtonElement} */ (el('button', 'td-fold'));
     fold.type = 'button';
-    fold.setAttribute('aria-expanded', String(!t.collapsed));
-    fold.setAttribute('aria-label', `${t.collapsed ? 'Show' : 'Hide'} the subtasks of ${t.title}`);
-    fold.append(icon(t.collapsed ? ICONS.chevronRight : ICONS.chevronDown));
+    const shown = isOpen(t);
+    fold.setAttribute('aria-expanded', String(shown));
+    fold.setAttribute('aria-label', `${shown ? 'Hide' : 'Show'} the subtasks of ${t.title}`);
+    fold.append(icon(shown ? ICONS.chevronDown : ICONS.chevronRight));
     fold.disabled = !c.canWrite;
     fold.addEventListener('click', () => c.onFold?.(t));
     li.append(fold);
@@ -165,10 +167,11 @@ export function addRow(label, onClick) {
   return b;
 }
 
-/** a group's header (a section, a day): its title, and optionally a fold chevron, a "+" (add a task there) and a "…" button
- * @param {string} title @param {{ id?: string, collapsed?: boolean, onFold?: () => void, onMore?: (b: HTMLElement) => void, onAdd?: () => void, label?: string }} [o] */
-export function groupHead(title, { id, collapsed, onFold, onMore, onAdd, label } = {}) {
-  const h = el('div', 'td-group-head');
+/** a group's header (a section, a day): its title, and optionally a fold chevron, a "+" (add a task there) and a "…" button;
+ * plain: the title in normal weight (the one day heading over Today's list)
+ * @param {string} title @param {{ id?: string, collapsed?: boolean, plain?: boolean, onFold?: () => void, onMore?: (b: HTMLElement) => void, onAdd?: () => void, label?: string }} [o] */
+export function groupHead(title, { id, collapsed, plain, onFold, onMore, onAdd, label } = {}) {
+  const h = el('div', plain ? 'td-group-head is-plain' : 'td-group-head');
   const name = el(onFold ? 'button' : 'h2', 'td-group-title');
   if (id) name.id = id;
   if (onFold) {
@@ -200,18 +203,18 @@ export function groupHead(title, { id, collapsed, onFold, onMore, onAdd, label }
   return h;
 }
 
-/** the list's own empty state: a drawing (or a soft circle with a check), a title and a hint
+/** the list's own empty state: a drawing (or a soft circle with a check), a title and a hint (a new line in the hint starts a second paragraph)
  * @param {string} title @param {string} hint @param {'inbox' | 'day'} [kind] */
 export function emptyNote(title, hint, kind) {
   const box = el('div', 'td-empty');
   if (kind) {
     box.classList.add('td-empty-big');
-    box.append(el('p', 'td-empty-title', title), el('p', 'td-empty-hint', hint));
+    box.append(el('p', 'td-empty-title', title), ...hint.split('\n').map(h => el('p', 'td-empty-hint', h)));
     void import('./empty-art.js').then(m => box.prepend(m.emptyArt(kind)));
     return box;
   }
   const art = el('span', 'td-empty-art');
   art.append(icon(ICONS.circleCheck));
-  box.append(art, el('p', 'td-empty-title', title), el('p', 'td-empty-hint', hint));
+  box.append(art, el('p', 'td-empty-title', title), ...hint.split('\n').map(h => el('p', 'td-empty-hint', h)));
   return box;
 }

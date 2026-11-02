@@ -8,10 +8,11 @@ import { conflictSheet, refusedList, toaster, undoToast, loadState, lazyModules,
 import { ICONS } from '../icons.js';
 import { COLL, REFUSED, INBOX, itemText } from '../items.js';
 import { projectView, todayView, isTask, placeText, projectOf, priorityOf, cleanDisplay, plainDisplay } from '../tasks.js';
-import { dayKey, dayTitle, dueLine, minutesText } from '../dates.js';
+import { dayKey, dayTitle, dayHeading, dueLine } from '../dates.js';
 import { colorHex } from '../colors.js';
 import { $, sectionScreen } from '../dom.js';
 import { rowList, addRow, groupHead, emptyNote } from '../ui/row.js';
+import { isOpen } from '../tree.js';
 import { screens } from '../shell.js';
 import { modules } from '../modules.js';
 
@@ -48,7 +49,7 @@ if (linked || linkedProject) history.replaceState(history.state, '', location.pa
  * @property {{ show: (message: string, undo: () => unknown) => void }} undo
  * @property {(t: Task) => void} openTask
  * @property {(id: string) => void} openProject
- * @property {(o?: AddContext) => void} openQuickAdd
+ * @property {(o?: AddContext, hold?: { handTo: (f: HTMLElement) => void } | null) => void} openQuickAdd  hold: the keyboard held by the tap (holdKeyboard)
  * @property {(o?: { project?: import('../items.js').Project, parentId?: string }) => void} openProjectSheet
  * @property {(t: Task, row?: HTMLElement | null) => void} complete
  * @property {(p: import('../items.js').Project) => Promise<boolean>} removeProject  asks first; true once asked and said yes
@@ -118,7 +119,7 @@ export function views(app) {
   const ctx = {
     app, data: () => data, canWrite: () => canWrite, toast, undo, files, user: () => user,
     openTask: t => { void lazy.withMod('sheet', m => m.openTask(ctx, t)); },
-    openQuickAdd: o => { if (canWrite) void lazy.withMod('add', m => m.openQuickAdd(ctx, o ?? addContext())); },
+    openQuickAdd: (o, hold = null) => { if (canWrite) void lazy.withMod('add', m => m.openQuickAdd(ctx, o ?? addContext(), hold)); },
     openProjectSheet: o => { if (canWrite) void lazy.withMod('projectSheet', m => m.openProjectSheet(ctx, o)); },
     openProject: id => {
       projectId = id;
@@ -135,7 +136,7 @@ export function views(app) {
 
   /** @param {Partial<import('../ui/row.js').RowContext>} o @returns {import('../ui/row.js').RowContext} */
   const rowCtx = o => ({ today: dayKey(), data, canWrite, changed, onOpen: ctx.openTask, onComplete: (t, row) => (t.done ? void app.untick([t]).then(r => r && toast(REFUSED)) : complete(t, row)),
-    onFold: t => { void app.editTask(t, { collapsed: !t.collapsed }).then(r => r && toast(REFUSED)); },
+    onFold: t => { void app.editTask(t, { collapsed: isOpen(t) }).then(r => r && toast(REFUSED)); },
     marks: (span, text) => { void lazy.withMod('marks', m => m.showMarks(span, text, { links: false })); }, ...o });
 
   /** done: the box fills, the row fades out, then the save and the undo toast @param {Task} t @param {HTMLElement | null} [row] */
@@ -324,7 +325,7 @@ export function views(app) {
     if (naming && !naming.sectionId && !naming.after && naming.projectId === pid) parts.push(nameField('', null, pid));
     into.replaceChildren(...parts);
     const none = !v.loose.length && v.sections.every(x => !x.lines.length);
-    empty.replaceChildren(...(none && !v.sections.length && canWrite ? [pid === INBOX ? emptyNote('Nothing waiting', 'Jot things down as they come to mind, then sort them when you have a moment.', 'inbox') : emptyNote('Nothing here yet', 'Tap + to add a task')] : []));
+    empty.replaceChildren(...(none && !v.sections.length && canWrite ? [pid === INBOX ? emptyNote('Capture now, plan later', 'The Inbox is where new tasks wait until you know where they belong.\nClear your mind now, organize when you are ready.', 'inbox') : emptyNote('Nothing here yet', 'Tap + to add a task')] : []));
   };
 
   /** a flat list in Display's groups (board.js draws them); none: the empty note's words when no task shows
@@ -348,15 +349,15 @@ export function views(app) {
 
   const paintToday = () => {
     const today = drawnDay = dayKey(), d = disp('today');
-    // under the title: how many tasks are open for today (overdue too) and, when some have one, their planned time
-    const open = filtered().filter(t => isTask(t) && !t.done && !!t.due?.date && t.due.date <= today), mins = open.reduce((n, t) => n + (t.duration || 0), 0);
-    $('today-sum').replaceChildren(...(open.length ? [icon(ICONS.circleCheck), [plural(open.length, 'task'), mins && minutesText(mins)].filter(Boolean).join(' · ')] : []));
+    // under the title: how many tasks are open for today (overdue too)
+    const open = filtered().filter(t => isTask(t) && !t.done && !!t.due?.date && t.due.date <= today);
+    $('today-sum').replaceChildren(...(open.length ? [icon(ICONS.circleCheck), plural(open.length, 'task')] : []));
     if (inCal('today')) { shownToday = []; drawCal('today', $('today'), $('today-empty'), filtered().filter(t => !!t.due?.date), { projectId: INBOX }); return; }
     const host = $('today'), base = { projectId: INBOX, due: { date: today } }, ts = filtered().filter(t => { const k = t.due?.date; return !!k && (t.done ? k === today : k <= today); });
     host.toggleAttribute('data-sorted', d.sort !== 'manual');
     if (d.layout === 'board') { groupBoard(host, $('today-empty'), ts, d, d.group, base, 'Today'); return; }
     host.classList.remove('td-board'); host.removeAttribute('data-swipe-own');
-    if (!plainDisplay(d, 'today')) { groups(host, $('today-empty'), ts, d, rowCtx({ place: true }), base, ['A clear day', 'Tasks due today collect here. Tap + to add one.', 'day']); return; }
+    if (!plainDisplay(d, 'today')) { groups(host, $('today-empty'), ts, d, rowCtx({ place: true }), base, ['What do you need to get done today?', 'By default, tasks added here will be scheduled for today.\nTap + to add a task.', 'day']); return; }
     delete host.dataset.grouped;
     const v = todayView(filtered(), today);
     const parts = [];
@@ -369,11 +370,11 @@ export function views(app) {
     if (v.today.length || v.overdue.length) {
       const g = document.createElement('section'); g.className = 'td-group';
       g.dataset.day = today;
-      g.append(groupHead(dayTitle(today, today)), rowList(v.today, rowCtx({ place: true, own: today }), 'Today'));
+      g.append(v.overdue.length ? groupHead(dayTitle(today, today)) : groupHead(dayHeading(today, today), { plain: true }), rowList(v.today, rowCtx({ place: true, own: today }), 'Today'));
       parts.push(g);
     }
     host.replaceChildren(...parts);
-    $('today-empty').replaceChildren(...(!v.today.length && !v.overdue.length && canWrite ? [emptyNote('A clear day', 'Tasks due today collect here. Tap + to add one.', 'day')] : []));
+    $('today-empty').replaceChildren(...(!v.today.length && !v.overdue.length && canWrite ? [emptyNote('What do you need to get done today?', 'By default, tasks added here will be scheduled for today.\nTap + to add a task.', 'day')] : []));
     shownToday = [...v.overdue, ...v.today].map(l => l.task);
   };
   /** @type {Task[]} */

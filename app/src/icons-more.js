@@ -37,6 +37,7 @@ export const MORE = {
   slidersHorizontal: [['path', { d: 'M21 4h-7' }], ['path', { d: 'M10 4H3' }], ['path', { d: 'M21 12h-9' }], ['path', { d: 'M8 12H3' }],
     ['path', { d: 'M21 20h-5' }], ['path', { d: 'M12 20H3' }], ['path', { d: 'M14 2v4' }], ['path', { d: 'M8 10v4' }], ['path', { d: 'M16 18v4' }]],
   chevronLeft: [['path', { d: 'm15 18-6-6 6-6' }]],
+  arrowLeft: [['path', { d: 'm12 19-7-7 7-7' }], ['path', { d: 'M19 12H5' }]],
   flag: [['path', { d: 'M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z' }], ['line', { 'x1': '4', 'x2': '4', 'y1': '22', 'y2': '15' }]],
   x: [['path', { d: 'M18 6 6 18' }], ['path', { d: 'm6 6 12 12' }]],
   arrowUp: [['path', { d: 'm5 12 7-7 7 7' }], ['path', { d: 'M12 19V5' }]],

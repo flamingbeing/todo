@@ -8,7 +8,8 @@
 // The "+" chip's menu stacks upward: Priority, Reminders, Labels, Deadline, Duration. Typing # opens a floating card of
 // "My Projects" (Inbox first) above the sheet; the Inbox chip opens the same card; /, @ and % suggest inline. The
 // placeholder is a different example each time the sheet opens. It starts with what the page shown
-// suggests and stays open after each add, cleared, for the next task; an unsent name is kept as a draft. Pasting two or
+// suggests and stays open after each add, cleared, for the next task (opened for a sub-task, from the task sheet's "Add sub-task", it closes
+// after the one add); an unsent name is kept as a draft. Pasting two or
 // more lines offers to add one task per line.
 import { APP } from '../config.js';
 import { icon, draftSlot, confirmModal, plural } from '@core/ui';
@@ -400,6 +401,7 @@ export function openQuickAdd(ctx, start, hold = null) {
     title.focus();
     const refused = await addOne(p, v, about);
     if (refused) ctx.toast(refused === 'A task needs a title' ? refused : REFUSED);
+    else if (start.parentId && sheet.open) sheet.close();   // (a sub-task: one add, back to the task sheet behind)
   });
   title.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); form.requestSubmit(); return; }

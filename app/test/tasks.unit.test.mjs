@@ -16,7 +16,7 @@ const ids = lines => lines.map(l => l.task.id);
 test('a project page: loose tasks first, then each section in order; subtasks under their parent; done ones hidden', () => {
   const sections = [{ id: 's2', name: 'Later', projectId: 'p', order: 2 }, { id: 's1', name: 'Now', projectId: 'p', order: 1 },
     { id: 'sx', name: 'Elsewhere', projectId: 'q', order: 1 }];
-  const tasks = [t('a', { projectId: 'p' }), t('b', { projectId: 'p', sectionId: 's1' }), t('c', { projectId: 'p', sectionId: 's2' }),
+  const tasks = [t('a', { projectId: 'p', collapsed: false }), t('b', { projectId: 'p', sectionId: 's1' }), t('c', { projectId: 'p', sectionId: 's2' }),
     t('a1', { projectId: 'p', parentId: 'a' }), t('a2', { projectId: 'p', parentId: 'a', done: true }), t('d', { projectId: 'p', done: true }),
     t('e', { projectId: 'p', sectionId: 'gone' }), t('orphan', { projectId: 'p', parentId: 'missing' }), t('x', { projectId: 'q' }),
     { id: 'old', text: 'an older record' }];
@@ -26,6 +26,7 @@ test('a project page: loose tasks first, then each section in order; subtasks un
   assert.deepEqual([v.loose[0].kids, v.loose[0].doneKids], [2, 1], '"1/2"');
   assert.deepEqual(v.sections.map(s => s.section.id), ['s1', 's2']);
   assert.deepEqual(v.sections.map(s => ids(s.lines)), [['b'], ['c']]);
+  assert.deepEqual(ids(projectView(tasks.map(x => (x.id === 'a' ? { ...x, collapsed: null } : x)), sections, 'p').loose), ['a', 'e', 'orphan'], 'a parent starts folded');
   const folded = projectView([t('f', { projectId: 'p', collapsed: true }), t('f1', { projectId: 'p', parentId: 'f' })], [], 'p');
   assert.deepEqual(ids(folded.loose), ['f'], 'a collapsed parent hides its subtasks');
   assert.equal(folded.loose[0].kids, 1);
@@ -345,7 +346,7 @@ test('a day\'s order is a total order: dragged tasks first in their order, then 
 });
 
 test('a project page with Display\'s choice: its subtasks follow it too (done ones with Show completed, the filter\'s choice)', () => {
-  const tasks = [t('top', { projectId: 'p' }), t('done-sub', { projectId: 'p', parentId: 'top', done: true }), t('p1-sub', { projectId: 'p', parentId: 'top', priority: 1 }),
+  const tasks = [t('top', { projectId: 'p', collapsed: false }), t('done-sub', { projectId: 'p', parentId: 'top', done: true }), t('p1-sub', { projectId: 'p', parentId: 'top', priority: 1 }),
     t('p4-sub', { projectId: 'p', parentId: 'top' })];
   const completed = projectView(tasks, [], 'p', { keep: () => true });
   assert.deepEqual(ids(completed.loose), ['top', 'done-sub', 'p1-sub', 'p4-sub']);

@@ -120,8 +120,13 @@ test('the + on Upcoming dates the new task for the day in sight; the sheet sets 
   await page.locator('#task-sheet .td-attr[aria-label^="Priority"]').click();
   await page.getByRole('menuitemradio', { name: 'Priority 1' }).click();
   await expect(row(page, '#upcoming', t)).toHaveAttribute('data-priority', '1');
-  await page.fill('#task-sheet .td-add-sub input', sub);
-  await page.press('#task-sheet .td-add-sub input', 'Enter');
+  // "Add sub-task" opens quick add over the sheet (one add, then it closes and the sheet shows the new sub-task)
+  await page.locator('#task-sheet .td-add-sub').click();
+  await expect(page.locator('#add-sheet')).toBeVisible();
+  await page.fill('#add-sheet .td-add-title', sub);
+  await page.press('#add-sheet .td-add-title', 'Enter');
+  await expect(page.locator('#add-sheet')).toBeHidden();
+  await expect(page.locator('#task-sheet')).toBeVisible();
   await expect(page.locator('#task-sheet .td-subtasks')).toContainText(sub);
   expect(await AxeBuilder(page)).toEqual([]);
   await expect.poll(async () => {

@@ -55,6 +55,7 @@ const SHELL = [
   'src/screens/comments.js',
   'src/screens/completed.js',
   'src/screens/display.js',
+  'src/screens/edit-task.js',
   'src/screens/filters.js',
   'src/screens/import.js',
   'src/screens/labels.js',

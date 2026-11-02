@@ -1,13 +1,14 @@
 // The task sheet (#task-sheet): the task's title and description in a card, then a row each for its project, date,
 // deadline, priority and labels, then its subtasks with "Add sub-task" and its comments. Every change saves as it is made (on change or when a
 // field is left), through the write queue; there is no Save button, and closing keeps what was typed. The "…" has
-// Duplicate, Move to and Delete (with an undo). Opening a subtask shows it in the same sheet, with its parent's name
+// Edit task (a full page: edit-task.js), Duplicate, Move to and Delete (with an undo). "Add sub-task" and the "+" in the
+// Sub-tasks header open quick add above the keyboard for it (the sheet stays at its height behind). Opening a subtask shows it in the same sheet, with its parent's name
 // at the top to go back up.
 // On a phone it opens at half the screen with the list showing above (app-ui's detents, index.html: "medium large"); a
 // drag up takes it to full height, a drag down back to half, and once more closes it. Focusing a field that takes
-// typing (the title, the description, a sub-task or a comment) takes it to full height at once, so the keyboard
+// typing (the title, the description or a comment) takes it to full height at once, so the keyboard
 // leaves room for the whole card. A panel (840 px and wider) keeps its own height.
-import { icon, confirmModal } from '@core/ui';
+import { icon, confirmModal, holdKeyboard } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { MORE } from '../icons-more.js';
 import { REFUSED } from '../items.js';
@@ -24,6 +25,7 @@ import { pickDate } from './scheduler.js';
 import { pickLabels, ticksOf, onIds } from './labels.js';
 import { hasMarks, showMarks } from '../markdown.js';
 import { commentsSection } from './comments.js';
+import { openEditTask } from './edit-task.js';
 import { LEADS, cleanReminders, leadText, dueMs } from '../reminders.js';
 
 /** @typedef {import('../items.js').Task} Task */
@@ -111,7 +113,7 @@ function draw(ctx) {
     const now = current(ctx);
     if (!now) return;
     const made = when(now.createdAt);
-    const email = { label: 'Email this task', icon: MORE.mail, run: () => {
+    const email = { label: 'Email to this task', icon: MORE.mail, run: () => {
       const body = [String(now.description ?? ''), taskLink(now.id)].filter(Boolean).join('\n\n');
       location.href = `mailto:?subject=${encodeURIComponent(now.title)}&body=${encodeURIComponent(body)}`;
     } };
@@ -120,7 +122,7 @@ function draw(ctx) {
       ctx.toast(`${made ? `Added ${made}` : 'Added earlier'}${done}`);
     } };
     openMenu(more, writable ? [
-      { label: 'Edit task', icon: MORE.pencil, run: () => { title.focus(); title.setSelectionRange(title.value.length, title.value.length); } },
+      { label: 'Edit task', icon: MORE.pencil, run: () => openEditTask(ctx, now) },
       { label: 'Duplicate task', icon: MORE.copy, run: async () => { const at = current(ctx); if (at && await ctx.app.duplicateTask(at)) ctx.toast(REFUSED); else ctx.toast('Duplicated'); } },
       copyLink,
       { label: hideDone ? 'Show completed sub-tasks' : 'Hide completed sub-tasks', icon: hideDone ? MORE.eye : MORE.circleSlash, run: () => { hideDone = !hideDone; refresh?.(ctx); } },
@@ -290,10 +292,14 @@ function draw(ctx) {
     const kids = hideDone ? all.filter(k => !k.done) : all;
     const lines = flatten(kids, data.tasks, { open: () => false });
     const parts = [];
-    /** @type {HTMLInputElement | null} */
-    let keep = null;
     const depthOk = canNest(/** @type {Task} */ ({ ...now, id: '_new', parentId: null }), now, data.tasks);
-    const form = /** @type {HTMLFormElement} */ (el('form', 'td-add-sub'));
+    // "Add sub-task" and the header's "+" open quick add over the sheet (it closes after the one add, the sheet stays as it is)
+    const addSub = () => {
+      const at = current(c);
+      if (!at) return;
+      const hold = holdKeyboard();
+      c.openQuickAdd({ projectId: projectOf(at), sectionId: at.sectionId ?? null, parentId: at.id }, hold);
+    };
     if (all.length) {
       const bar = el('div', 'td-subtasks-head');
       const h = el('h3', 'td-subtasks-title', 'Sub-tasks');
@@ -303,7 +309,7 @@ function draw(ctx) {
       if (c.canWrite() && depthOk) {
         const plus = /** @type {HTMLButtonElement} */ (el('button', 'td-subtasks-btn'));
         plus.type = 'button'; plus.setAttribute('aria-label', 'Add sub-task here'); plus.append(icon(ICONS.plus));
-        plus.addEventListener('click', () => { folded = false; fill(c); /** @type {HTMLInputElement | null} */ (subs.querySelector('.td-add-sub input'))?.focus(); });
+        plus.addEventListener('click', addSub);
         bar.append(plus);
       }
       const fold = /** @type {HTMLButtonElement} */ (el('button', 'td-subtasks-btn'));
@@ -324,27 +330,13 @@ function draw(ctx) {
       parts.push(list);
     }
     if (c.canWrite() && depthOk && !(folded && all.length)) {
-      const add = /** @type {HTMLInputElement} */ (el('input', ''));
-      add.placeholder = 'Add sub-task'; add.maxLength = 500; add.setAttribute('aria-label', 'Add sub-task');
-      form.append(icon(ICONS.plus, { class: 'td-add-icon' }), add);
-      form.addEventListener('submit', async e => {
-        e.preventDefault();
-        const v = add.value.trim();
-        if (!v) return;
-        add.value = '';
-        const at = current(c);
-        if (!at) return;
-        if (await c.app.addTask({ title: v, projectId: projectOf(at), sectionId: at.sectionId ?? null, parentId: at.id })) c.toast(REFUSED);
-        requestAnimationFrame(() => /** @type {HTMLInputElement | null} */ (d().querySelector('.td-add-sub input'))?.focus());
-      });
-      // a refresh (a change arriving) keeps what is being typed
-      const was = /** @type {HTMLInputElement | null} */ (subs.querySelector('.td-add-sub input'));
-      if (was?.value) add.value = was.value;
-      if (was && document.activeElement === was) keep = add;
-      parts.push(form);
+      const add = /** @type {HTMLButtonElement} */ (el('button', 'td-add-sub'));
+      add.type = 'button';
+      add.append(icon(ICONS.plus, { class: 'td-add-icon' }), el('span', '', 'Add sub-task'));
+      add.addEventListener('click', addSub);
+      parts.push(add);
     }
     subs.replaceChildren(...parts);
-    keep?.focus();
     talk.fill(c, now.id);
   };
   refresh = fill;
