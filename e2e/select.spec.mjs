@@ -20,7 +20,7 @@ test('hold opens the row\'s menu; Select task, a tap, and Priority for both', as
   await finger(page, rowIn('today', a), [], { hold: 650 });
   const menu = page.getByRole('menu', { name: a });
   await expect(menu).toBeVisible();
-  await expect(menu.getByRole('menuitem')).toHaveText(['Select task', 'Schedule', 'Priority', 'Move to', 'Delete']);
+  await expect(menu.getByRole('menuitem')).toHaveText(['Select task', 'Schedule', 'Priority', 'Move to', 'Copy link', 'Delete']);
   await expect(page.locator('#task-sheet')).toBeHidden();
   expect(await AxeBuilder(page)).toEqual([]);
   await menu.getByRole('menuitem', { name: 'Select task' }).click();

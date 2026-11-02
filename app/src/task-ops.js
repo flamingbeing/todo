@@ -199,6 +199,8 @@ export function taskOps({ save, id, data, now = Date.now, drop = () => {} }) {
     /** new order numbers for labels or filters (a drag in Filters & Labels) @param {'labels' | 'filters'} kind
      * @param {{ item: Label | Filter, order: number }[]} list */
     orderNamed: (kind, list) => first(list.map(({ item, order }) => put(kind === 'labels' ? LABELS : FILTERS, { ...item, order }, item))),
+    /** a comment or template, gone for good (not in the bin) @param {string} coll @param {{ id: string }} x */
+    removeRec: (coll, x) => remove(coll, [x]),
     /** a whole task under its own id, as a new save (a restore brings one back) @param {Task} task */
     put: task => put(COLL, { ...task }, null),
     /** one record of any collection as the import made it (base: its saved copy, or null) @param {string} coll @param {Record<string, unknown>} rec @param {unknown} base */

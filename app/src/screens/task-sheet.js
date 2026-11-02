@@ -1,5 +1,5 @@
 // The task sheet (#task-sheet): the task's title and description in a card, then a row each for its project, date,
-// deadline, priority and labels, then its subtasks with "Add sub-task". Every change saves as it is made (on change or when a
+// deadline, priority and labels, then its subtasks with "Add sub-task" and its comments. Every change saves as it is made (on change or when a
 // field is left), through the write queue; there is no Save button, and closing keeps what was typed. The "…" has
 // Duplicate, Move to and Delete (with an undo). Opening a subtask shows it in the same sheet, with its parent's name
 // at the top to go back up.
@@ -7,7 +7,7 @@ import { icon, confirmModal } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { MORE } from '../icons-more.js';
 import { REFUSED } from '../items.js';
-import { priorityOf, placeText, projectOf, labelsOf } from '../tasks.js';
+import { taskLink, priorityOf, placeText, projectOf, labelsOf } from '../tasks.js';
 import { dueLine, deadlineLine, dayKey, minutesText } from '../dates.js';
 import { colorHex } from '../colors.js';
 import { flatten, descendants, canNest } from '../tree.js';
@@ -18,6 +18,8 @@ import { el, pickPlace } from './pick.js';
 import { pickDate } from './scheduler.js';
 import { pickLabels, ticksOf, onIds } from './labels.js';
 import { hasMarks, showMarks } from '../markdown.js';
+import { commentsSection } from './comments.js';
+import { LEADS, cleanReminders, leadText, dueMs } from '../reminders.js';
 
 /** @typedef {import('../items.js').Task} Task */
 /** @typedef {import('./views.js').Ctx} Ctx */
@@ -83,8 +85,7 @@ function draw(ctx) {
   more.type = 'button'; more.setAttribute('aria-label', 'More'); more.setAttribute('aria-haspopup', 'menu'); more.append(icon(ICONS.ellipsis));
   // (Copy link: this page's address with #task=<id>, which opens this task's sheet on load; a viewer can copy it too)
   const copyLink = { label: 'Copy link', icon: MORE.link, run: async () => {
-    const url = `${location.origin}${location.pathname}${location.search}#task=${encodeURIComponent(t.id)}`;
-    try { await navigator.clipboard.writeText(url); ctx.toast('Link copied'); } catch { ctx.toast('Could not copy the link'); }
+    try { await navigator.clipboard.writeText(taskLink(t.id)); ctx.toast('Link copied'); } catch { ctx.toast('Could not copy the link'); }
   } };
   more.addEventListener('click', () => openMenu(more, writable ? [
     { label: 'Duplicate', icon: MORE.copy, run: async () => { const now = current(ctx); if (now && await ctx.app.duplicateTask(now)) ctx.toast(REFUSED); else ctx.toast('Duplicated'); } },
@@ -146,7 +147,8 @@ function draw(ctx) {
   const rows = el('div', 'td-card td-attrs');
   const place = attrRow(ICONS.hash, 'Project', []), date = attrRow(ICONS.calendar, 'Date', []), prio = attrRow(MORE.flag, 'Priority', []);
   const labels = attrRow(ICONS.tag, 'Labels', []), deadline = attrRow(ICONS.target, 'Deadline', []);
-  for (const b of [place, date, deadline, prio, labels]) b.disabled = !writable;
+  const remind = attrRow(MORE.bell, 'Reminders', []);
+  for (const b of [place, date, deadline, remind, prio, labels]) b.disabled = !writable;
   const move = () => { const now = current(ctx); if (now) pickPlace(ctx.data(), { projectId: projectOf(now), sectionId: now.sectionId }, async to => {
     const at = current(ctx);
     if (at && await ctx.app.moveTask(at, { ...to, parentId: null })) ctx.toast(REFUSED);
@@ -159,7 +161,16 @@ function draw(ctx) {
   labels.addEventListener('click', () => { const now = current(ctx); if (now) pickLabels(ctx, ticksOf(now, ctx.data().labels), ticks => save({ labels: onIds(ticks) })); });
   prio.addEventListener('click', () => openMenu(prio, [1, 2, 3, 4].map(p => ({ label: `Priority ${p}`, icon: MORE.flag, color: PRIORITY_COLOR[p],
     checked: priorityOf(/** @type {Task} */ (current(ctx))) === p, run: () => save({ priority: p }) })), { label: 'Priority' }));
-  rows.append(place, date, deadline, prio, labels);
+  // reminders: tick the leads wanted (before the due time; a date with no time counts as 09:00)
+  remind.addEventListener('click', () => {
+    const now = current(ctx);
+    if (!now) return;
+    if (dueMs(now) === null) { ctx.toast('Set a date first'); return; }
+    const has = cleanReminders(now.reminders);
+    openMenu(remind, LEADS.map(([lead, label]) => ({ label, icon: MORE.bell, checked: has.includes(lead),
+      run: () => save({ reminders: has.includes(lead) ? has.filter(x => x !== lead) : [...has, lead] }) })), { label: 'Reminders' });
+  });
+  rows.append(place, date, deadline, remind, prio, labels);
 
   // subtasks
   const subs = el('section', 'td-subtasks');
@@ -174,6 +185,7 @@ function draw(ctx) {
     ctx.undo.show('Task deleted', async () => { for (const g of gone) if (await ctx.app.put(g)) { ctx.toast(REFUSED); return; } });
   };
 
+  const talk = commentsSection();
   const fill = (/** @type {Ctx} */ c) => {
     const now = current(c);
     // gone (deleted on another device: a delete here closes the sheet first)
@@ -203,6 +215,10 @@ function draw(ctx) {
     deadline.replaceChildren(icon(ICONS.target, { class: 'td-attr-icon td-deadline-icon' }), el('span', `td-attr-text${dl ? '' : ' td-attr-empty'}`, dl ? dl.text : 'Deadline'));
     if (dl) /** @type {HTMLElement} */ (deadline.lastElementChild).dataset.tone = dl.tone;
     deadline.setAttribute('aria-label', dl ? `Deadline: ${dl.text}` : 'Deadline');
+    const rem = cleanReminders(now.reminders);
+    const remText = rem.length ? rem.map(leadText).join(', ').replace(/ before/g, '') : '';
+    remind.replaceChildren(icon(MORE.bell, { class: 'td-attr-icon' }), el('span', `td-attr-text${remText ? '' : ' td-attr-empty'}`, remText || 'Reminders'));
+    remind.setAttribute('aria-label', remText ? `Reminders: ${remText}` : 'Reminders');
     const flag = icon(MORE.flag, { class: `td-attr-icon td-flag${p < 4 ? ' is-filled' : ''}` });
     flag.style.color = PRIORITY_COLOR[p];
     prio.replaceChildren(flag, el('span', 'td-attr-text', `Priority ${p}`));
@@ -257,8 +273,9 @@ function draw(ctx) {
     }
     subs.replaceChildren(...parts);
     keep?.focus();
+    talk.fill(c, now.id);
   };
   refresh = fill;
   fill(ctx);
-  body.replaceChildren(head, card, rows, subs);
+  body.replaceChildren(head, card, rows, subs, talk.root);
 }

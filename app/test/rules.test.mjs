@@ -19,6 +19,8 @@ const VALID = {
   projects: { name: 'Work', color: 'blue', order: 1, view: 'list', updatedAt: 1 },
   sections: { name: 'Admin', projectId: 'p1', order: 1, updatedAt: 1 },
   labels: { name: 'errand', color: 'green', order: 1, updatedAt: 1 },
+  comments: { taskId: 't1', text: 'Called the shop', uid: 'u-member', name: 'Sam', updatedAt: 1 },
+  templates: { name: 'Trip', color: 'blue', view: 'list', sections: ['Book'], tasks: [{ title: 'Passport', priority: 4, section: null, parent: null }], updatedAt: 1 },
   filters: { name: 'Urgent', query: 'p1 & today', color: 'red', order: 1, updatedAt: 1 },
 };
 
@@ -118,6 +120,18 @@ test('tasks: title, description, ids, order, priority, labels, deadline and done
   ['no labels', { labels: [] }, true],
   ['20 labels of 64', { labels: Array.from({ length: 20 }, (_, i) => `${i}`.padEnd(64, 'x')) }, true],
   ['a deadline that is not a day', { deadline: '30/11/2026' }, false],
+  ['reminders at the time and before', { reminders: [0, 30, 1440] }, true],
+  ['five reminders', { reminders: [0, 5, 10, 15, 30] }, true],
+  ['six reminders', { reminders: [0, 5, 10, 15, 30, 60] }, false],
+  ['no reminders', { reminders: [] }, true],
+  ['null clears reminders', { reminders: null }, true],
+  ['a negative reminder', { reminders: [-5] }, false],
+  ['a reminder over four weeks', { reminders: [40321] }, false],
+  ['a reminder of four weeks', { reminders: [40320] }, true],
+  ['a fractional reminder', { reminders: [2.5] }, false],
+  ['a reminder as text', { reminders: ['30'] }, false],
+  ['the 5th reminder bad', { reminders: [0, 1, 2, 3, -1] }, false],
+  ['reminders that are not a list', { reminders: 30 }, false],
   ['collapsed as text', { collapsed: 'yes' }, false],
   ['done as text', { done: 'no' }, false],
   ['no done', drop('done'), false],
@@ -179,6 +193,55 @@ test('projects: a name, a known colour, a view; only the inbox doc is the Inbox,
   assert.equal((await as('member').delete('spaces/_/projects/inbox')).ok, false, 'the Inbox is never deleted');
   assert.equal((await as('admin').delete('spaces/_/projects/inbox')).ok, false);
 });
+
+test('comments: text of 1 to 2000, a task and an author; the author and the task never change; only the author or an admin edits or deletes', async () => {
+  await cases('comments', [
+    ['no name', drop('name'), true],
+    ['a null name', { name: null }, true],
+    ['a name over 120', { name: 'x'.repeat(121) }, false],
+    ['text of 2000', { text: 'x'.repeat(2000) }, true],
+    ['text of 2001', { text: 'x'.repeat(2001) }, false],
+    ['empty text', { text: '' }, false],
+    ['no text', drop('text'), false],
+    ['text that is not text', { text: 5 }, false],
+    ['no task', drop('taskId'), false],
+    ['a task id over 64', { taskId: 'x'.repeat(65) }, false],
+    ['no author', drop('uid'), false],
+    ['an author that is not the writer', { uid: 'u-other' }, false],
+    ['an attachment field', { file: 'a.png' }, false],
+  ]);
+  await emu.clear();
+  const path = 'spaces/_/comments/k', base = { ...VALID.comments, createdAt: 1 };
+  await emu.seed(path, base);
+  assert.equal((await as('member').set(path, { ...base, text: 'edited', updatedAt: 2 }, at)).ok, true, 'the author edits');
+  assert.equal((await emu.as('u-other', { g: { _: 'member' }, v: 1 }).set(path, { ...base, text: 'mine now', updatedAt: 2 }, at)).ok, false, 'another member cannot edit');
+  assert.equal((await as('admin').set(path, { ...base, text: 'moderated', updatedAt: 2 }, at)).ok, true, 'an admin can');
+  assert.equal((await as('member').set(path, { ...base, taskId: 't2', updatedAt: 3 }, at)).ok, false, 'it stays on its task');
+  assert.equal((await as('member').set(path, { ...base, uid: 'u-other', updatedAt: 3 }, at)).ok, false, 'it keeps its author');
+  assert.equal((await as('viewer').set(path, { ...base, text: 'x', updatedAt: 4 }, at)).ok, false, 'a viewer cannot edit');
+  assert.equal((await emu.as('u-other', { g: { _: 'member' }, v: 1 }).delete(path)).ok, false, 'another member cannot delete');
+  assert.equal((await as('viewer').delete(path)).ok, false, 'a viewer cannot delete');
+  assert.equal((await as('member').delete(path)).ok, true, 'the author deletes');
+  await emu.seed(path, base);
+  assert.equal((await as('admin').delete(path)).ok, true, 'an admin deletes');
+});
+
+test('templates: a name, a colour, a view, up to 50 sections and 300 tasks; no stray fields; viewers only read', () => cases('templates', [
+  ['a board', { view: 'board' }, true],
+  ['no sections or tasks', { sections: [], tasks: [] }, true],
+  ['300 tasks', { tasks: Array.from({ length: 300 }, (_, i) => ({ title: `t${i}`, priority: 4 })) }, true],
+  ['301 tasks', { tasks: Array.from({ length: 301 }, (_, i) => ({ title: `t${i}`, priority: 4 })) }, false],
+  ['50 sections', { sections: Array.from({ length: 50 }, (_, i) => `s${i}`) }, true],
+  ['51 sections', { sections: Array.from({ length: 51 }, (_, i) => `s${i}`) }, false],
+  ['sections that are not a list', { sections: 'Book' }, false],
+  ['tasks that are not a list', { tasks: {} }, false],
+  ['an empty name', { name: '' }, false],
+  ['a name over 120', { name: 'x'.repeat(121) }, false],
+  ['an unknown colour', { color: 'neon' }, false],
+  ['an unknown view', { view: 'grid' }, false],
+  ['a due date field', { due: '2026-11-05' }, false],
+  ['an attachment field', { file: 'a.png' }, false],
+]));
 
 test('sections: a name of 1 to 120 and a project', () => cases('sections', [
   ['collapsed', { collapsed: true }, true],

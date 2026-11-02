@@ -8,7 +8,7 @@
 //   a sheet is open or saves are sending (app.js, canReload).
 // - Fetch: SHELL files and pages cache-first; the design kit refreshed in the background; the pinned shared modules
 //   once fetched. Sign-in pages (/__/), /api/ and sw.js always go to the network.
-const VERSION = 'app-v2';
+const VERSION = 'app-v3';
 const SHELL = [
   './',
   'app.css',
@@ -26,12 +26,14 @@ const SHELL = [
   'src/colors.js',
   'src/config.js',
   'src/data-modules.js',
+  'src/dates-cal.js',
   'src/dates.js',
   'src/dom.js',
   'src/group-drop.js',
   'src/hint.js',
   'src/icons-more.js',
   'src/icons.js',
+  'src/import-history.js',
   'src/import-map.js',
   'src/items.js',
   'src/markdown.js',
@@ -39,13 +41,18 @@ const SHELL = [
   'src/options.js',
   'src/order.js',
   'src/parse.js',
+  'src/push.js',
   'src/query.js',
   'src/recur.js',
+  'src/reminder-delivery.js',
+  'src/reminders-wire.js',
+  'src/reminders.js',
   'src/roles.js',
   'src/screen-switch.js',
   'src/screens/board.js',
   'src/screens/browse.js',
   'src/screens/calendar.js',
+  'src/screens/comments.js',
   'src/screens/completed.js',
   'src/screens/display.js',
   'src/screens/filters.js',
@@ -56,6 +63,7 @@ const SHELL = [
   'src/screens/not-set-up.js',
   'src/screens/page-menu.js',
   'src/screens/pick.js',
+  'src/screens/productivity.js',
   'src/screens/project-sheet.js',
   'src/screens/quick-add.js',
   'src/screens/scheduler.js',
@@ -63,11 +71,14 @@ const SHELL = [
   'src/screens/select.js',
   'src/screens/signed-out.js',
   'src/screens/task-sheet.js',
+  'src/screens/templates.js',
   'src/screens/views.js',
   'src/search.js',
   'src/shell.js',
+  'src/stats.js',
   'src/task-ops.js',
   'src/tasks.js',
+  'src/templates.js',
   'src/tree.js',
   'src/ui/edge-scroll.js',
   'src/ui/menu.js',
@@ -194,6 +205,23 @@ const SHELL = [
 const MANIFEST = {};
 
 // add: service worker handlers
+// Reminders (src/reminder-delivery.js shows them here; a Web Push, once set up, arrives as 'push' with { title, body, taskId }).
+// A tap focuses an open window on the task, else opens one.
+self.addEventListener('push', e => {
+  let m = {};
+  try { m = e.data ? e.data.json() : {}; } catch { /* not JSON: shown plain */ }
+  e.waitUntil(self.registration.showNotification(String(m.title || 'Task'), { body: String(m.body || ''), tag: m.taskId ? 'task-' + m.taskId : undefined,
+    icon: 'icons/icon-192.png', data: { taskId: m.taskId || '', url: m.taskId ? './#task=' + encodeURIComponent(m.taskId) : './' } }));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = new URL((e.notification.data && e.notification.data.url) || './', self.registration.scope).href;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async list => {
+    const w = list[0];
+    if (w) { await w.focus(); if ('navigate' in w) await w.navigate(url).catch(() => {}); return; }
+    await self.clients.openWindow(url);
+  }));
+});
 
 importScripts('https://core.anawj.com/update/0.2.0/sw-core.js');
 AppUpdate.init({

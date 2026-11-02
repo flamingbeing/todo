@@ -110,7 +110,7 @@ export function views(app) {
   /** a list's Display choices on this device @param {string} view */
   const disp = view => cleanDisplay(/** @type {any} */ (app.settings.get('display'))?.[view], view);
   app.settings.watch('display', () => redraw());
-  app.settings.watch('weekStart', () => redraw());
+  for (const k of ['weekStart', 'dailyGoal', 'weeklyGoal']) app.settings.watch(k, () => redraw());
 
   /** @type {Ctx} */
   const ctx = {
@@ -404,6 +404,7 @@ export function views(app) {
       void lazy.withMod('filters', m => m.drawPlace(ctx, place, $('place'), $('place-empty'), disp(v), inCal(v) ? ts => drawCal(v, $('place'), $('place-empty'), ts, { projectId: INBOX }) : undefined));
     }
     else if (id === 'completed-page') void lazy.withMod('completed', m => m.drawCompleted(ctx, $('completed'), $('completed-empty')));
+    else if (id === 'productivity-page') void lazy.withMod('completed', m => m.drawProductivity(ctx, $('productivity')));
     else fresh.delete(id);
   };
   const redraw = () => {

@@ -8,6 +8,11 @@ const SWIPES = ['complete', 'schedule', 'delete', 'none'];
 /** @type {[unknown, string][]} */
 const SWIPE_CHOICES = [['complete', 'Complete'], ['schedule', 'Schedule'], ['delete', 'Delete'], ['none', 'None']];
 
+/** @param {number} max */
+const goal = max => ({ scope: /** @type {const} */ ('device'), default: 0, clean: (/** @type {unknown} */ v) => Math.min(max, Math.max(0, Math.round(Number(v)) || 0)) });
+/** @param {...number} n @returns {[unknown, string][]} */
+const goals = (...n) => n.map(x => [x, x ? String(x) : 'No goal']);
+
 /** @type {[unknown, string][]} the tabs Home can be */
 const HOMES = [['inbox', 'Inbox'], ['today', 'Today'], ['upcoming', 'Upcoming'], ['search', 'Search'], ['browse', 'Browse']];
 
@@ -32,6 +37,10 @@ export const OPTIONS = {
   display: { scope: 'device', default: {}, clean: v => (v && typeof v === 'object' && !Array.isArray(v) ? v : {}) },
   // the last searches on the Search tab (this device), newest first
   recentSearches: { scope: 'device', default: [], clean: v => (Array.isArray(v) ? v.filter(x => typeof x === 'string').slice(0, 10) : []) },
+  // notify when a reminder is due (this device)
+  reminders: { scope: 'device', default: false },
+    dailyGoal: goal(99),
+  weeklyGoal: goal(999),
   // add: options
 };
 
@@ -49,6 +58,9 @@ export const SETTING_SECTIONS = [
     { key: 'swipeRight', label: 'Swipe right', sub: 'This device', choices: SWIPE_CHOICES },
     { key: 'swipeLeft', label: 'Swipe left', sub: 'This device', choices: SWIPE_CHOICES },
     { key: 'home', label: 'Home view', sub: 'Where the app opens and Back returns to; Today if it is off the tab bar', choices: HOMES },
+    { key: 'dailyGoal', label: 'Daily goal', sub: 'Tasks a day. This device', choices: goals(0, 1, 3, 5, 10, 20) },
+    { key: 'weeklyGoal', label: 'Weekly goal', sub: 'Tasks a week. This device', choices: goals(0, 10, 20, 30, 50, 100) },
+    { key: 'reminders', label: 'Reminders', sub: 'Notify when a reminder is due. This device' },
     { key: 'weekStart', label: 'Start of the week', sub: 'This device', choices: /** @type {[unknown, string][]} */ ([[1, 'Monday'], [0, 'Sunday']]) },
   ] },
   { title: 'Tasks', icon: ICONS.listChecks, sub: 'Counts and row size', group: 'Tasks', rows: [

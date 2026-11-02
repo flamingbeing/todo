@@ -21,7 +21,7 @@ const applied = m => {
 
 test('counts: what imports, and what is left out', () => {
   const m = run();
-  assert.deepEqual(m.counts, { projects: 3, sections: 3, labels: 3, tasks: 9, recurring: 4, filters: 2, skipped: 2, changed: m.counts.changed });
+  assert.deepEqual(m.counts, { projects: 3, sections: 3, labels: 3, tasks: 9, recurring: 4, filters: 2, skipped: 2, changed: m.counts.changed, history: 0 });
   assert.equal(m.counts.changed, 1 + 3 + 3 + 3 + 2 + 9);   // Inbox, projects, sections, labels, filters, tasks
 });
 
@@ -210,4 +210,75 @@ test('a duration in minutes comes over (up to a day); one in days, or none, does
   assert.equal(durationFrom({ amount: 0, unit: 'minute' }), null);
   assert.equal(durationFrom({ amount: 'x', unit: 'minute' }), null);
   assert.equal(durationFrom(null), null);
+});
+
+// ---- finished history (sync.completed)
+const done = (extra = {}) => ({ id: 'c1', content: 'Filed taxes', project_id: 'p-work', section_id: null, completed_at: '2026-10-20T04:30:00.000000Z', added_at: '2026-10-01T00:00:00Z', priority: 4, labels: [], ...extra });
+const withDone = (...items) => ({ ...sync, completed: items });
+const projectId = sync.projects.find(p => !p.inbox_project && !p.is_deleted && !p.is_archived).id;
+
+test('history: a finished task comes over as a completed task with its completion time, priority and project', () => {
+  const m = run(withDone(done({ project_id: projectId, priority: 4 })));
+  assert.equal(m.counts.history, 1);
+  assert.equal(m.counts.tasks, 9, 'the open count is unchanged');
+  const t = named(m, 'tasks', 'title', 'Filed taxes');
+  assert.equal(t.done, true);
+  assert.equal(t.doneAt, Date.parse('2026-10-20T04:30:00.000000Z'));
+  assert.equal(t.priority, 1);
+  assert.equal(t.projectId, recs(m, 'projects').find(p => p.extId === projectId).id);
+  assert.equal(t.createdAt, Date.parse('2026-10-01T00:00:00Z'));
+  assert.equal(t.due, null);
+  assert.match(t.extId, /^done:c1:\d+$/);
+});
+
+test('history: the same finished tasks twice add nothing, and a new one adds only itself', () => {
+  const first = run(withDone(done({ project_id: projectId }), done({ project_id: projectId, id: 'c2', content: 'Paid rent', completed_at: '2026-10-21T01:00:00Z' })));
+  const after = {};
+  for (const c of ['tasks', 'projects', 'sections', 'labels', 'filters']) after[c] = first.writes[c].map(w => w.rec);
+  const again = run(withDone(done({ project_id: projectId }), done({ project_id: projectId, id: 'c2', content: 'Paid rent', completed_at: '2026-10-21T01:00:00Z' })), after);
+  assert.equal(again.counts.changed, 0);
+  const more = run(withDone(done({ project_id: projectId }), done({ project_id: projectId, id: 'c2', content: 'Paid rent', completed_at: '2026-10-21T01:00:00Z' }),
+    done({ project_id: projectId, id: 'c3', content: 'Called bank', completed_at: '2026-10-22T01:00:00Z' })), after);
+  assert.equal(more.counts.changed, 1);
+  assert.equal(more.writes.tasks[0].rec.title, 'Called bank');
+});
+
+test('history: a repeating task finished many times is one completed task per finish, beside its open one', () => {
+  const open = sync.items.find(t => !t.checked && !t.is_deleted && t.due?.is_recurring);
+  const m = run(withDone(
+    done({ id: open.id, content: open.content, project_id: open.project_id, completed_at: '2026-10-01T01:00:00Z' }),
+    done({ id: open.id, content: open.content, project_id: open.project_id, completed_at: '2026-10-08T01:00:00Z' })));
+  assert.equal(m.counts.history, 2);
+  const mine = recs(m, 'tasks').filter(t => t.title === open.content.trim().replace(/\s+/g, ' '));
+  assert.equal(mine.filter(t => t.done).length, 2);
+  assert.equal(mine.filter(t => !t.done).length, 1, 'the open repeat is still open');
+  assert.equal(new Set(mine.map(t => t.id)).size, 3);
+});
+
+test('history: a task an earlier import brought over open, finished at the source since, is updated in place', () => {
+  const open = sync.items.find(t => !t.checked && !t.is_deleted && !t.due?.is_recurring && projectIdsOf(t));
+  const first = run();
+  const have = {}; for (const c of ['tasks', 'projects', 'sections', 'labels', 'filters']) have[c] = first.writes[c].map(w => w.rec);
+  const was = have.tasks.find(t => t.extId === open.id);
+  const answer = { ...sync, items: sync.items.filter(t => t.id !== open.id), completed: [done({ id: open.id, content: open.content, project_id: open.project_id, completed_at: '2026-10-25T03:00:00Z' })] };
+  const m = run(answer, have);
+  const t = recs(m, 'tasks').find(x => x.id === was.id);
+  assert.ok(t, 'the same record');
+  assert.equal(t.done, true); assert.equal(t.doneAt, Date.parse('2026-10-25T03:00:00Z')); assert.equal(t.extId, open.id);
+  assert.equal(recs(m, 'tasks').filter(x => x.title === was.title).length, 1);
+  // one the person already finished here keeps its own time
+  const mine = have.tasks.map(x => (x.id === was.id ? { ...x, done: true, doneAt: 42 } : x));
+  const kept = recs(run(answer, { ...have, tasks: mine }), 'tasks').find(x => x.id === was.id);
+  assert.deepEqual([kept?.done, kept?.doneAt ?? 42], [true, 42]);
+});
+function projectIdsOf(t) { return !sync.projects.find(p => p.id === t.project_id)?.is_deleted; }
+
+test('history: left out when bad (no time, no title, a project that is not imported); a done subtask links to its open parent', () => {
+  const bad = [done({ id: 'x1', completed_at: 'nope' }), done({ id: 'x2', content: '  ' }), done({ id: 'x3', project_id: 'not-here' }), done({ id: 'x4', is_deleted: true }), null, 'x'];
+  assert.equal(run(withDone(...bad)).counts.history, 0);
+  const parent = sync.items.find(t => !t.checked && !t.is_deleted && !t.parent_id && projectIdsOf(t));
+  const m = run(withDone(done({ id: 'sub1', content: 'Child', project_id: parent.project_id, parent_id: parent.id })));
+  const kid = named(m, 'tasks', 'title', 'Child'), par = recs(m, 'tasks').find(t => t.extId === parent.id);
+  assert.equal(kid.parentId, par.id);
+  assert.equal(run({ ...sync, completed: 'oops' }).counts.history, 0);
 });

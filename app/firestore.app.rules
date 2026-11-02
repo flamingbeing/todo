@@ -20,6 +20,13 @@ service cloud.firestore {
     function optNum(d, k) { return gone(d, k) || d[k] is number; }
     function optBool(d, k) { return gone(d, k) || d[k] is bool; }
     function text(d, k, max) { return d[k] is string && d[k].size() > 0 && d[k].size() <= max; }
+    // a task's reminders: up to 5 leads, each whole minutes before the due time (0 = at the time) up to 4 weeks
+    function leadOk(n) { return n is int && n >= 0 && n <= 40320; }
+    function remindersOk(r) {
+      return r is list && r.size() <= 5
+        && (r.size() <= 0 || leadOk(r[0])) && (r.size() <= 1 || leadOk(r[1])) && (r.size() <= 2 || leadOk(r[2]))
+        && (r.size() <= 3 || leadOk(r[3])) && (r.size() <= 4 || leadOk(r[4]));
+    }
     // a task's labels: up to 20, each a label's id (or, from before ids, its name), text of 1 to 64.
     // Rules have no loops: the lengths by one pattern over the list joined by line breaks (a break inside one reads as
     // two, both still short), then each place is text.
@@ -53,7 +60,7 @@ service cloud.firestore {
       allow read: if can(g, ['admin', 'member', 'viewer']);
       allow create, update: if writer(g)
         && request.resource.data.keys().hasOnly(['title', 'description', 'projectId', 'sectionId', 'parentId', 'order', 'dayOrder',
-          'priority', 'labels', 'due', 'deadline', 'duration', 'collapsed', 'done', 'doneAt', 'extId', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
+          'priority', 'labels', 'due', 'deadline', 'duration', 'reminders', 'collapsed', 'done', 'doneAt', 'extId', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
         && text(request.resource.data, 'title', 500)
         && optText(request.resource.data, 'description', 16000)
         && text(request.resource.data, 'projectId', 64)
@@ -66,6 +73,8 @@ service cloud.firestore {
         // the planned length from due.time in whole minutes, up to a day (a calendar block's height)
         && (gone(request.resource.data, 'duration') || (request.resource.data.duration is int
           && request.resource.data.duration >= 1 && request.resource.data.duration <= 1440))
+        // reminders: up to 5 leads, whole minutes before the due time, 0 to 4 weeks
+        && (gone(request.resource.data, 'reminders') || remindersOk(request.resource.data.reminders))
         && optBool(request.resource.data, 'collapsed')
         && request.resource.data.done is bool && optNum(request.resource.data, 'doneAt')
         && optId(request.resource.data, 'extId')
@@ -119,6 +128,41 @@ service cloud.firestore {
         && text(request.resource.data, 'name', 120) && text(request.resource.data, 'query', 1000)
         && colorOk(request.resource.data) && request.resource.data.order is number
         && optBool(request.resource.data, 'favorite') && optId(request.resource.data, 'extId')
+        && synced(request.resource.data);
+      allow delete: if can(g, ['admin', 'member']);
+    }
+
+    // A comment on a task: plain text (up to 2000), by the person who wrote it (uid; name is for show). Members and admins
+    // add; only its author (or an admin) edits or deletes it, and a comment never moves to another task or author.
+    // Anyone with a role reads. Comments are not in the bin: a delete is final.
+    match /spaces/{g}/comments/{id} {
+      allow read: if can(g, ['admin', 'member', 'viewer']);
+      allow create: if writer(g)
+        && request.resource.data.keys().hasOnly(['taskId', 'text', 'uid', 'name', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
+        && text(request.resource.data, 'taskId', 64) && text(request.resource.data, 'text', 2000)
+        && text(request.resource.data, 'uid', 64) && optText(request.resource.data, 'name', 120)
+        && (request.resource.data.uid == request.auth.uid || can(g, ['admin']))
+        && synced(request.resource.data);
+      allow update: if writer(g)
+        && request.resource.data.keys().hasOnly(['taskId', 'text', 'uid', 'name', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
+        && text(request.resource.data, 'text', 2000) && optText(request.resource.data, 'name', 120)
+        && request.resource.data.taskId == resource.data.taskId && request.resource.data.uid == resource.data.uid
+        && (resource.data.uid == request.auth.uid || can(g, ['admin']))
+        && synced(request.resource.data);
+      allow delete: if can(g, ['admin', 'member']) && (resource.data.uid == request.auth.uid || can(g, ['admin']));
+    }
+
+    // A project template, the person's own: a name, colour and view, section names (up to 50) and task entries (up to 300:
+    // title, priority, label names, section and parent positions; no dates). Members and admins write; anyone with a role reads.
+    // Templates are not in the bin: a delete is final.
+    match /spaces/{g}/templates/{id} {
+      allow read: if can(g, ['admin', 'member', 'viewer']);
+      allow create, update: if writer(g)
+        && request.resource.data.keys().hasOnly(['name', 'color', 'view', 'sections', 'tasks', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
+        && text(request.resource.data, 'name', 120) && colorOk(request.resource.data)
+        && request.resource.data.view in ['list', 'board']
+        && request.resource.data.sections is list && request.resource.data.sections.size() <= 50
+        && request.resource.data.tasks is list && request.resource.data.tasks.size() <= 300
         && synced(request.resource.data);
       allow delete: if can(g, ['admin', 'member']);
     }

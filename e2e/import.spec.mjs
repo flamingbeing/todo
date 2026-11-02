@@ -5,6 +5,10 @@ import fs from 'node:fs';
 import AxeBuilder from './axe.mjs';
 import { test, expect, signIn, synced, uniq, db, openSettings, settingsBack, openTab } from './fixtures.mjs';
 
+// every import writes the one shared Inbox (it learns the source's id), so two imports at once make each other's
+// second preview see a change: run this file's tests one after another
+test.describe.configure({ mode: 'serial' });
+
 const API = 'https://api.todoist.com/api/v1/sync';
 const TITLE = 'Import from Todoist';
 
@@ -173,4 +177,55 @@ test('the server cannot be reached: a plain message, and the token stays to try 
   await page.locator('#settings-host').getByRole('button', { name: 'Preview' }).click();
   await expect(page.locator('#settings-host .td-import-status')).toContainText('Could not reach the server');
   await expect(field(page)).toHaveValue('some-token');
+});
+
+test('finished history: opt in, preview counts, import as completed tasks with their time, a second import adds nothing', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  await synced(page);
+  const u = uniq('hi'), token = `tok_${uniq('secret')}`;
+  const ans = answer(u);
+  const proj = ans.projects.find(p => !p.inbox_project && !p.is_deleted).id;
+  const when = ['2099-01-05T03:00:00Z', '2099-01-06T04:30:00Z'];
+  const done = [0, 1].map(i => ({ id: `${u}-d${i}`, content: `Finished thing ${i} ${u}`, project_id: proj, section_id: null, priority: 4, labels: [], completed_at: when[i], added_at: '2098-12-01T00:00:00Z' }));
+  const urls = [];
+  await mockApi(page, ans);
+  let first = true;
+  await page.route('**/api/v1/tasks/completed/by_completion_date*', route => {
+    const req = route.request();
+    urls.push({ url: req.url(), auth: req.headers().authorization });
+    const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, content-type', 'access-control-allow-methods': 'GET' };
+    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+    const items = first ? done : [];
+    first = false;
+    return route.fulfill({ status: 200, headers: cors, contentType: 'application/json', body: JSON.stringify({ items, next_cursor: null }) });
+  });
+  await openSettings(page, TITLE);
+  const host = page.locator('#settings-host');
+  await field(page).fill(token);
+  await page.getByLabel(/Also bring finished tasks/).check();
+  await host.getByRole('button', { name: 'Preview' }).click();
+  await expect(countOf(page, 'Finished tasks')).toHaveText('2');
+  await expect(countOf(page, 'Tasks')).toHaveText('9');
+  expect(urls.length).toBeGreaterThanOrEqual(8);
+  expect(urls[0].auth).toBe(`Bearer ${token}`);
+  expect(await AxeBuilder(page)).toEqual([]);
+  await host.getByRole('button', { name: 'Import', exact: true }).click();
+  await page.locator('dialog[open]').getByRole('button', { name: 'Import' }).click();
+  await expect(host.locator('.td-import-done-title')).toContainText('and 2 finished tasks', { timeout: 30_000 });
+  await synced(page);
+  const finished = (await byExt('tasks', `done:${u}-`));
+  expect(finished).toHaveLength(2);
+  expect(finished.every(t => t.done === true && t.projectId && t.due == null)).toBe(true);
+  expect(finished.map(t => t.doneAt).sort()).toEqual(when.map(Date.parse));
+
+  // again: nothing new
+  first = true;
+  await openSettings(page, TITLE);
+  await field(page).fill(token);
+  await page.getByLabel(/Also bring finished tasks/).check();
+  await host.getByRole('button', { name: 'Preview' }).click();
+  await expect(countOf(page, 'Finished tasks')).toHaveText('2');
+  await expect(host.getByRole('button', { name: 'Import', exact: true })).toBeDisabled();
+  expect((await byExt('tasks', `done:${u}-`))).toHaveLength(2);
 });

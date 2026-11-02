@@ -69,6 +69,11 @@ else {
   } });
   chipStatus$(st => { window.starter.status = st.state; });
   const list = views(app);
+  // Reminders: loaded only once the option is on (reminders-wire.js)
+  /** @type {Promise<{ update: (t: import('./items.js').Task[]) => void }> | null} */
+  let remind = null;
+  const reminders = () => (remind ??= import('./reminders-wire.js').then(m => m.wire(app)));
+  app.settings.watch('reminders', (/** @type {unknown} */ on) => { if (on) void reminders(); });
   const show = screenSwitch({
     'signed-out': signedOutScreen(app, { onForget: ok => { if (ok) $('sign-out-msg').textContent = ''; } }),
     'no-access': noAccessScreen(),
@@ -97,6 +102,7 @@ else {
     },
     onData(data, changed) {
       list.draw(data, changed);
+      if (remind || app.settings.get('reminders')) void reminders().then(r => r.update(data.tasks));
       keepList(list.shown());
       window.starter.ready = true;
     },
