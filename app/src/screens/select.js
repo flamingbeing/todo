@@ -55,7 +55,7 @@ export function scheduleTasks(ctx, tasks, after) {
   pickDate(one ? tasks[0].due : null, async (due, duration) => {
     for (const t of tasks) if (await ctx.app.editTask(t, { due: due ? { ...due } : null, ...(duration !== undefined ? { duration } : {}) })) { ctx.toast(REFUSED); break; }
     after?.();
-  }, { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1), ...(one ? { duration: tasks[0].duration ?? null } : {}) });
+  }, { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1), clearable: tasks.some(t => t.due), ...(one ? { duration: tasks[0].duration ?? null } : {}) });
 }
 
 /** A deadline for tasks (the scheduler's date-only sheet, "No deadline" clears it); one save each, one Undo for them all
@@ -79,7 +79,7 @@ export function deadlineTasks(ctx, tasks, after) {
       }
     });
     after?.();
-  }, { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1), dateOnly: true });
+  }, { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1), dateOnly: true, clearable: tasks.some(t => t.deadline) });
 }
 
 /** Today's Reschedule: a new day for every overdue task at once (recur.js rescheduled: a timed one keeps its time unless
@@ -101,7 +101,7 @@ export function rescheduleTasks(ctx, tasks) {
         if (await ctx.app.editTask(now, { due: before })) { ctx.toast(REFUSED); return; }
       }
     });
-  }, { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1) });
+  }, { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1), clearable: true });
 }
 
 /** A priority for tasks, from a menu at anchor @param {Ctx} ctx @param {HTMLElement} anchor @param {Task[]} tasks @param {() => void} [after] */

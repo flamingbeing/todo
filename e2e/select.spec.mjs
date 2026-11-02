@@ -148,7 +148,7 @@ test('"…" > Deadline sets and clears the deadline on every selected task, with
   const sheet = '#schedule-sheet';
   await expect(page.locator(sheet)).toBeVisible();
   await expect(page.locator(`${sheet} .td-sheet-title`)).toHaveText('Deadline');
-  await expect(page.locator(`${sheet} .td-sched-row`).filter({ hasText: 'No deadline' })).toHaveCount(0);
+  await expect(page.locator(`${sheet} .td-sched-row`).filter({ hasText: 'No deadline' })).toHaveCount(1);
   await page.locator(`${sheet} .td-cal-day[data-day="${day(3)}"]`).click();
   await page.locator(`${sheet} .td-sched-save`).click();
   await expect.poll(got, { timeout: 15_000 }).toEqual([day(3), day(3)]);

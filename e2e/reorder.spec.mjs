@@ -38,6 +38,13 @@ test('a held row moves above another; pulled right it becomes a subtask', async 
 
   await finger(page, rowIn('project', b), steps(34, 3, 6), { hold: 650, wait: 80 });
   await expect.poll(async () => (await get(b))?.parentId, { timeout: 15_000 }).toBe(a);
+  // (a parent starts folded: open A to see B under it)
+  await still(page, '#project');
+  const fold = page.locator(`${rowIn('project', a)} .td-fold`);
+  await expect(async () => {
+    if ((await fold.getAttribute('aria-expanded')) !== 'true') await fold.click();
+    await expect(fold).toHaveAttribute('aria-expanded', 'true', { timeout: 1500 });
+  }).toPass({ timeout: 10_000 });
   await expect(page.locator(rowIn('project', b))).toHaveCSS('--depth', '1');
   await expect(page.locator('#task-sheet')).toBeHidden();
 });

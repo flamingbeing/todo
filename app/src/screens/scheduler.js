@@ -21,9 +21,9 @@ import { openMenu } from '../ui/menu.js';
 import { el } from './pick.js';
 
 /** @typedef {import('../dates.js').Due} Due */
-/** @typedef {{ data?: import('../items.js').Data, weekStart?: number, dateOnly?: boolean, duration?: number | null, durationRow?: boolean }} ScheduleOptions
+/** @typedef {{ data?: import('../items.js').Data, weekStart?: number, dateOnly?: boolean, duration?: number | null, durationRow?: boolean, clearable?: boolean }} ScheduleOptions
  * dateOnly: the Deadline sheet, a day and nothing else (no time, no repeat); duration: the task's (null: none), for the Duration row
- * (durationRow false: handed back as it was, no row) */
+ * (durationRow false: handed back as it was, no row); clearable: No date even with no date given (several tasks, some dated) */
 /** the Duration menu's lengths, in minutes */
 export const DURATIONS = [15, 30, 45, 60, 90, 120, 180];
 
@@ -101,7 +101,7 @@ export function pickDate(due, done, o = {}) {
     ['Today', ICONS.calendar, 'today', today], ['Tomorrow', MORE.sun, 'tomorrow', addDays(today, 1)],
     ['This weekend', MORE.sofa, 'weekend', sat], ['Next week', MORE.calendarArrowUp, 'week', mon],
     // (No date only once there is a date to take off)
-    ...(dueOf(due) ? [/** @type {[string, import('app-ui/icons/lucide.js').IconNodes, string, string | null]} */ ([o.dateOnly ? 'No deadline' : 'No date', MORE.circleSlash, 'none', null])] : []),
+    ...(dueOf(due) || o.clearable ? [/** @type {[string, import('app-ui/icons/lucide.js').IconNodes, string, string | null]} */ ([o.dateOnly ? 'No deadline' : 'No date', MORE.circleSlash, 'none', null])] : []),
   ];
   const rows = el('ul', 'td-sched-quick');
   rows.setAttribute('aria-label', 'Quick dates');
