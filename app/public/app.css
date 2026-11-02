@@ -990,10 +990,10 @@ body:has(.ui-screen.td-grouped:not([hidden])) .ui-bar { background: var(--td-bar
 /* the bar's Back: a bare arrow, as the reference's */
 .ui-bar .ui-bar-back { width: 48px; min-width: 48px; height: 48px; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; color: var(--td-text); margin-inline-start: -12px; }
 
-/* the task sheet (screens/task-sheet.js): full height, a dark ground with slim cards, the project at the top left and "⋮" at
+/* the task sheet (screens/task-sheet.js): app-ui's detents (medium = half the screen on a phone, large = full height, which
+   the kit sizes: no height rule here), a dark ground with slim cards, the project at the top left and "⋮" at
    the right, the unset attributes as chips in a row that scrolls sideways, the sub-tasks under them, the comment box fixed at the bottom */
 #task-sheet.td-sheet { background: light-dark(#f6f3ee, #202020); border-radius: 16px 16px 0 0; }
-@media (max-width: 839.98px) { #task-sheet.td-sheet { height: calc(100dvh - 12px); } }
 #task-sheet .td-sheet-body { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0; }
 #task-sheet .td-sheet-head { flex: none; padding: 2px 16px 6px; }
 .td-sheet-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 0 0 16px; }

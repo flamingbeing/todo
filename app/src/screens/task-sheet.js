@@ -3,6 +3,10 @@
 // field is left), through the write queue; there is no Save button, and closing keeps what was typed. The "…" has
 // Duplicate, Move to and Delete (with an undo). Opening a subtask shows it in the same sheet, with its parent's name
 // at the top to go back up.
+// On a phone it opens at half the screen with the list showing above (app-ui's detents, index.html: "medium large"); a
+// drag up takes it to full height, a drag down back to half, and once more closes it. Focusing a field that takes
+// typing (the title, the description, a sub-task or a comment) takes it to full height at once, so the keyboard
+// leaves room for the whole card. A panel (840 px and wider) keeps its own height.
 import { icon, confirmModal } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { MORE } from '../icons-more.js';
@@ -39,8 +43,21 @@ let folded = false;
 /** the task as last heard @param {Ctx} ctx */
 const current = ctx => ctx.data().tasks.find(t => t.id === showing) ?? null;
 
+/** a field that takes typing gets focus on a phone: the sheet goes up to full height, by the kit's grabber (its own glide) */
+let grows = false;
+function growOnFocus() {
+  if (grows) return;
+  grows = true;
+  d().addEventListener('focusin', e => {
+    const f = /** @type {HTMLInputElement | null} */ (e.target instanceof Element ? e.target.closest('input,textarea') : null);
+    if (!f || f.readOnly || d().getAttribute('data-detent') === 'large' || matchMedia('(min-width: 840px)').matches) return;
+    /** @type {HTMLElement | null} */ (d().querySelector('.ui-sheet-grabber'))?.click();
+  });
+}
+
 /** @param {Ctx} ctx @param {Task} task */
 export function openTask(ctx, task) {
+  growOnFocus();
   if (!d().open) { hideDone = false; folded = false; }
   showing = task.id;
   draw(ctx);
