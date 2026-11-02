@@ -43,6 +43,7 @@ const SHELL = [
   'src/parse.js',
   'src/push.js',
   'src/query.js',
+  'src/recent.js',
   'src/recur.js',
   'src/reminder-delivery.js',
   'src/reminders-wire.js',

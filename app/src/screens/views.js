@@ -14,7 +14,7 @@ import { $, sectionScreen } from '../dom.js';
 import { rowList, addRow, groupHead, emptyNote } from '../ui/row.js';
 import { isOpen } from '../tree.js';
 import { screens } from '../shell.js';
-import { rememberPlace } from '../search.js';
+import { rememberPlace } from '../recent.js';
 import { modules } from '../modules.js';
 
 // a task's link (#task=<id>, the sheet's "Copy link"): read before the tabs take the address over, opened once it is there
