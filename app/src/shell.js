@@ -69,7 +69,7 @@ export function startShell() {
   tabs.forEach((t, i) => t.setAttribute('data-tab-page', pages[i]));
   const start = tabOf(home);
   if (start) for (const t of tabs) { if (t === start) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); }
-  const go = tabPages(bar, { screens: kit.screens, host, ahead: page => page.dispatchEvent(new CustomEvent('draw-ahead')), backToFirst: false });
+  const go = tabPages(bar, { screens: kit.screens, host, ahead: page => page.dispatchEvent(new CustomEvent('draw-ahead')), backToFirst: false, swipe: false });
   kit.tabs = go;
   goTo = page => { if (go.current() !== page) go.go(page); };
   try { history.scrollRestoration = 'manual'; } catch { /* none */ }
