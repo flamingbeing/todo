@@ -73,7 +73,7 @@ export const SETTING_SECTIONS = [
     { key: 'weeklyGoal', label: 'Weekly goal', sub: 'Tasks a week. This device', choices: goals(0, 10, 20, 30, 50, 100) },
   ] },
   { title: 'Reminders', icon: ICONS.alarmClock, group: 'Productivity', find: 'notify notifications alert', rows: [
-    { key: 'reminders', label: 'Notify me', sub: 'Notify when a reminder is due. This device' },
+    { key: 'reminders', label: 'Notify me', sub: 'Notify when a reminder is due. Works when the app is closed (iPhone: add to Home Screen first). This device' },
   ] },
   { title: 'Features', icon: ICONS.listChecks, sub: 'Switch optional parts on or off', group: 'More', visible: () => FEATURES.length > 0, rows: FEATURES },
 ];

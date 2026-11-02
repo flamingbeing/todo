@@ -22,6 +22,8 @@
   // Workers Logs: keeps console lines such as the CSP reports (worker/csp-report.js) to read in the dashboard
   "observability": { "enabled": true },
   "vars": { "FIREBASE_PROJECT": "flamingbeing-todo" },
+  // once a minute: Web Push for the reminders that came due (worker/push.js; the secrets VAPID_PRIVATE_KEY and VAPID_SUBJECT)
+  "triggers": { "crons": ["* * * * *"] },
   // add: r2
   // the real address, as in worker/routes.js SITES; the first deploy adds the custom domain
   "routes": [{ "pattern": "todo.anawj.com", "custom_domain": true }]

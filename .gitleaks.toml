@@ -4,5 +4,7 @@
 useDefault = true
 
 [allowlist]
-description = "Firebase web config, vendored Firebase hashes"
-paths = ['''app/(src/)?config\.js''', '''tools/firebase\.lock\.json''']
+description = "Firebase web config, vendored Firebase hashes, Web Push public key and published test vectors"
+# app/src/vapid.js: the VAPID PUBLIC key (public by design; the private half is a Worker secret, never in the repo).
+# worker/test/webpush.test.mjs, push.test.mjs: the example keys, salt and auth secret printed in RFC 8291 appendix A (public test data).
+paths = ['''app/(src/)?config\.js''', '''tools/firebase\.lock\.json''', '''app/src/vapid\.js''', '''worker/test/(web)?push\.test\.mjs''']

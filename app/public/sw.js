@@ -8,7 +8,7 @@
 //   a sheet is open or saves are sending (app.js, canReload).
 // - Fetch: SHELL files and pages cache-first; the design kit refreshed in the background; the pinned shared modules
 //   once fetched. Sign-in pages (/__/), /api/ and sw.js always go to the network.
-const VERSION = 'app-v3';
+const VERSION = 'app-v4';
 const SHELL = [
   './',
   'app.css',
@@ -41,6 +41,8 @@ const SHELL = [
   'src/options.js',
   'src/order.js',
   'src/parse.js',
+  'src/push-items.js',
+  'src/push-wire.js',
   'src/push.js',
   'src/query.js',
   'src/recent.js',
@@ -94,6 +96,7 @@ const SHELL = [
   'src/ui/tab-hold.js',
   'src/ui/two-finger.js',
   'src/ui/week-strip.js',
+  'src/vapid.js',
   'vendor/chrono-node/2.10.3/LICENSE',
   'vendor/chrono-node/2.10.3/chrono.js',
   'vendor/firebase/12.19.0/firebase-app.js',
@@ -215,7 +218,7 @@ const MANIFEST = {};
 self.addEventListener('push', e => {
   let m = {};
   try { m = e.data ? e.data.json() : {}; } catch { /* not JSON: shown plain */ }
-  e.waitUntil(self.registration.showNotification(String(m.title || 'Task'), { body: String(m.body || ''), tag: m.taskId ? 'task-' + m.taskId : undefined,
+  e.waitUntil(self.registration.showNotification(String(m.title || 'Task'), { body: String(m.body || ''), tag: m.tag || (m.taskId ? 'task-' + m.taskId : undefined),
     icon: 'icons/icon-192.png', data: { taskId: m.taskId || '', url: m.taskId ? './#task=' + encodeURIComponent(m.taskId) : './' } }));
 });
 self.addEventListener('notificationclick', e => {

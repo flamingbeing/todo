@@ -1,9 +1,9 @@
-// The client half of server-side Web Push (reminders when the app is closed). Not used until the owner has done the steps
-// in STATUS.md "Next": it needs a Worker route and VAPID keys that only the owner can make. Nothing here runs on load.
-// Interface:
+// The client half of server-side Web Push (reminders when the app is closed); push-wire.js uses it, loaded only with the Reminders
+// option on. Interface:
 //   subscribePush(vapidPublicKey) -> the browser's PushSubscription as JSON ({ endpoint, keys: { p256dh, auth } }) to send to
 //   the Worker (POST /api/push/subscribe, signed in), or null when push is unsupported, refused, or no key is given.
-//   The Worker then sends a push whose JSON body is { title, body, taskId }; sw.js shows it and a tap opens the task.
+//   unsubscribePush() -> the endpoint it dropped (to tell the Worker), or null when there was none.
+//   The Worker then sends a push whose JSON body is { title, body, taskId, tag }; sw.js shows it and a tap opens the task.
 
 /** @param {string} b64 URL-safe base64 -> bytes */
 function bytes(b64) {
@@ -20,5 +20,17 @@ export async function subscribePush(vapidPublicKey) {
     const reg = await navigator.serviceWorker.ready;
     const sub = (await reg.pushManager.getSubscription()) ?? await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: bytes(vapidPublicKey) });
     return sub.toJSON();
+  } catch { return null; }
+}
+
+/** @returns {Promise<string | null>} */
+export async function unsubscribePush() {
+  if (!pushSupported()) return null;
+  try {
+    const sub = await (await navigator.serviceWorker.ready).pushManager.getSubscription();
+    if (!sub) return null;
+    const endpoint = sub.endpoint;
+    await sub.unsubscribe();
+    return endpoint;
   } catch { return null; }
 }

@@ -8,7 +8,7 @@
 import { resolve, publicFile } from './routes.js';
 import { securityHeaders } from './headers.js';
 import { handleCspReport } from './csp-report.js';
-import { ROUTES } from './modules.js';
+import { ROUTES, SCHEDULED } from './modules.js';
 // cloud{ roles and members (a static app has neither: tools/flavour.mjs)
 import { handleClaims, verifyIdToken } from './claims.js';
 import { adminFor } from './admin.js';
@@ -65,6 +65,11 @@ export default {
     // service workers must always be checked fresh, or phones keep an old app for a day
     if (/(^|\/)sw\.js$/.test(file)) res.headers.set('Cache-Control', 'no-cache');
     return finish(res);
+  },
+
+  // the modules' once-a-minute jobs (worker/modules.js SCHEDULED; wrangler.jsonc "triggers")
+  async scheduled(event, env, ctx) {
+    for (const job of SCHEDULED) ctx.waitUntil(Promise.resolve(job(env, ctx)).catch(e => console.error('scheduled job failed', e?.message)));
   },
 };
 
