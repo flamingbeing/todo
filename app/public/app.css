@@ -308,18 +308,25 @@ span.td-chip { height: 26px; padding: 0 8px; cursor: default; }
 .td-chip[data-tone="weekend"] { color: var(--td-d-weekend); }
 
 /* quick add: the name, the description, chips, then the project and the round send button */
-#add-sheet.td-sheet { border-radius: 16px 16px 0 0; background: var(--td-card); }
-.td-add { display: grid; gap: 8px; padding: 6px 16px 0; }
+#add-sheet.td-sheet { height: auto; min-height: 0; box-sizing: border-box; width: calc(100% - 16px); max-width: calc(100% - 16px); margin: auto 8px 8px; border-radius: 24px; background: var(--td-card); }
+.td-add { display: grid; gap: 10px; padding: 4px 12px 4px; }
+.td-grab { justify-self: center; width: 28px; height: 3px; margin-top: 2px; border-radius: 2px; background: var(--td-text-3); opacity: .6; }
 .td-add-title, .td-add-desc { box-sizing: border-box; width: 100%; padding: 0; border: 0; outline: 0; background: none; resize: none; }
 /* the name: a field over a layer with the same text, where the words found sit on peach */
 .td-qa-field { position: relative; }
-.td-add-title, .td-qa-mirror { box-sizing: border-box; margin: 0; padding: 2px 0; font: 500 17px/1.45 var(--td-font); letter-spacing: normal;
+.td-add-title, .td-qa-mirror { box-sizing: border-box; margin: 0; padding: 2px 4px; font: 400 17px/1.45 var(--td-font); letter-spacing: normal;
   white-space: pre-wrap; overflow-wrap: break-word; word-break: normal; }
 .td-add-title { position: relative; display: block; min-height: 30px; overflow: hidden; color: var(--td-text); caret-color: var(--td-accent); }
 .td-qa-mirror { position: absolute; inset: 0; overflow: hidden; color: transparent; pointer-events: none; }
 .td-qa-mirror .td-hl { border-radius: 4px; background: var(--td-peach); color: transparent; box-shadow: 0 0 0 1px var(--td-peach); }
-.td-add-desc { font-size: 15px; line-height: 1.4; color: var(--td-text-2); }
+.td-add-desc { padding: 0 4px; font-size: 15px; line-height: 1.4; color: var(--td-text-2); }
+.td-add-desc[hidden] { display: none; }
 div.td-chip { gap: 0; padding: 0; cursor: default; }
+.td-add .td-chips { flex-wrap: nowrap; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.td-add .td-chips::-webkit-scrollbar { display: none; }
+.td-add .td-chip { flex: none; height: 32px; border-color: transparent; background: light-dark(#f2f2f2, #383838); }
+.td-add .td-chip-more { width: 32px; justify-content: center; padding: 0; background: light-dark(#f2f2f2, #383838); }
+.td-add .td-chip[data-tone] { border-color: transparent; }
 .td-chip-main { display: inline-flex; align-items: center; gap: 5px; height: 100%; padding: 0 10px; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
 .td-chip.is-set .td-chip-main { padding-inline-end: 4px; }
 .td-chip-main .ui-icon { width: 16px; height: 16px; }
@@ -334,12 +341,12 @@ div.td-chip { gap: 0; padding: 0; cursor: default; }
 .td-suggest-item { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; border: 0; background: none; font-size: 15px;
   color: var(--td-text); text-align: start; cursor: pointer; }
 .td-suggest-item .ui-icon { width: 16px; height: 16px; color: var(--td-text-2); }
-.td-add-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px -16px 0; padding: 10px 16px 0; border-top: .5px solid var(--td-hair); }
-.td-add-place { display: inline-flex; align-items: center; gap: 6px; min-width: 0; height: 32px; padding: 0 8px; border: 0; border-radius: 8px; background: none;
-  color: var(--td-text-2); font-size: 14px; font-weight: 600; cursor: pointer; }
+.td-add-place { display: inline-flex; flex: none; align-items: center; gap: 6px; max-width: 40%; height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: light-dark(#f2f2f2, #383838);
+  color: var(--td-text-2); font-size: 13px; cursor: pointer; }
+.td-add-place .td-add-place-more { display: none; }
 .td-add-place > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .td-add-place .ui-icon { width: 16px; height: 16px; flex: none; }
-.td-send { display: grid; place-items: center; flex: none; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: var(--td-fill); color: #fff; cursor: pointer; }
+.td-send { display: grid; place-items: center; flex: none; width: 44px; height: 40px; margin-inline-start: auto; padding: 0; border: 0; border-radius: 12px; background: var(--td-fill); color: #fff; cursor: pointer; }
 .td-send:disabled { opacity: .4; cursor: default; }
 .td-send .ui-icon { width: 18px; height: 18px; stroke-width: 2.5; }
 

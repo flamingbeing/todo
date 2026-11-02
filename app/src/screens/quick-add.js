@@ -14,10 +14,11 @@ import { placeText } from '../tasks.js';
 import { dueLine, deadlineLine, dayKey, minutesText } from '../dates.js';
 import { colorHex } from '../colors.js';
 import { byOrder } from '../order.js';
+import { projectTree } from '../arrange.js';
 import { parse, shiftRanges } from '../parse.js';
 import { dateLibs } from '../recur.js';
 import { openMenu } from '../ui/menu.js';
-import { el, pickPlace } from './pick.js';
+import { el } from './pick.js';
 import { pickDate, DURATIONS } from './scheduler.js';
 import { pickLabels, onIds } from './labels.js';
 
@@ -66,12 +67,13 @@ export function openQuickAdd(ctx, start, hold = null) {
   const field = el('div', 'td-qa-field');
   const mirror = el('div', 'td-qa-mirror');
   mirror.setAttribute('aria-hidden', 'true');
-  const title = Object.assign(document.createElement('textarea'), { className: 'td-add-title', placeholder: 'Task name', maxLength: 500,
+  const title = Object.assign(document.createElement('textarea'), { className: 'td-add-title', placeholder: 'e.g. Water the plants Friday at 5pm', maxLength: 500,
     rows: 1, autocomplete: 'off', enterKeyHint: 'send', spellcheck: true });
   title.setAttribute('aria-label', 'Task name');
   field.append(mirror, title);
   const desc = Object.assign(document.createElement('textarea'), { className: 'td-add-desc', placeholder: 'Description', rows: 1, maxLength: 16000 });
   desc.setAttribute('aria-label', 'Description');
+  desc.hidden = true;
   const grow = (/** @type {HTMLTextAreaElement} */ t) => { t.style.height = 'auto'; t.style.height = `${t.scrollHeight}px`; };
   desc.addEventListener('input', () => { grow(desc); keep(); });
 
@@ -155,6 +157,7 @@ export function openQuickAdd(ctx, start, hold = null) {
     prioC.box.style.color = v.priority < 4 ? PRIORITY_COLOR[v.priority] : '';
     prioChip.replaceChildren(flag, el('span', '', v.priority === 4 ? 'Priority' : `P${v.priority}`));
     prioChip.setAttribute('aria-label', v.priority === 4 ? 'Priority' : `Priority: P${v.priority}`);
+    prioC.box.hidden = v.priority === 4;
     setX(prioC, v.priority !== 4, () => { unmark(['priority']); delete manual.priority; base.priority = undefined; });
     labelChip.replaceChildren(icon(ICONS.tag), el('span', '', v.labels.length ? v.labels.join(', ') : 'Labels'));
     labelChip.setAttribute('aria-label', v.labels.length ? `Labels: ${v.labels.join(', ')}` : 'Labels');
@@ -204,10 +207,12 @@ export function openQuickAdd(ctx, start, hold = null) {
   };
   labelChip.addEventListener('click', openLabels);
   const moreChip = button('td-chip td-chip-more', 'More options');
-  moreChip.append(icon(ICONS.ellipsis));
-  moreChip.addEventListener('click', () => openMenu(moreChip, [{ label: 'Labels', icon: ICONS.tag, run: openLabels }, { label: 'Deadline', icon: ICONS.target, run: openDeadline },
+  moreChip.append(icon(ICONS.plus));
+  const showDesc = () => { desc.hidden = false; desc.focus(); };
+  moreChip.addEventListener('click', () => openMenu(moreChip, [{ label: 'Description', icon: ICONS.listTree, run: showDesc },
+    { label: 'Priority', icon: MORE.flag, run: () => prioChip.click() },
+    { label: 'Labels', icon: ICONS.tag, run: openLabels }, { label: 'Deadline', icon: ICONS.target, run: openDeadline },
     { label: 'Duration', icon: MORE.hourglass, run: () => openDuration(moreChip) }], { label: 'More options' }));
-  chips.append(dateC.box, prioC.box, labelC.box, deadC.box, durC.box, moreChip);
 
   // names as they are typed after #, /, @ or %
   const list = el('div', 'td-suggest');
@@ -251,7 +256,6 @@ export function openQuickAdd(ctx, start, hold = null) {
   };
 
   // the foot: where it goes, and send
-  const foot = el('div', 'td-add-foot');
   const place = button('td-add-place', 'Project');
   const drawPlace = () => {
     const v = value(), data = ctx.data(), p = data.projects.find(x => x.id === v.projectId);
@@ -261,13 +265,23 @@ export function openQuickAdd(ctx, start, hold = null) {
     place.replaceChildren(i, el('span', '', words), icon(ICONS.chevronDown, { class: 'td-add-place-more' }));
     place.setAttribute('aria-label', `Project: ${words}`);
   };
-  place.addEventListener('click', () => pickPlace(ctx.data(), value(), to => { unmark(['project', 'section']); manual.place = to; reparse(); title.focus(); }));
+  place.addEventListener('click', () => {
+    // "My Projects": a small popup above the row (Inbox, then each project with its sections)
+    const data = ctx.data(), now = value();
+    const set = (/** @type {{ projectId: string, sectionId: string | null }} */ to) => { unmark(['project', 'section']); manual.place = to; reparse(); title.focus(); };
+    const secs = (/** @type {string} */ pid) => byOrder(data.sections.filter(s => s.projectId === pid)).map(s => ({ label: s.name, icon: ICONS.listTree,
+      checked: now.projectId === pid && now.sectionId === s.id, run: () => set({ projectId: pid, sectionId: s.id }) }));
+    openMenu(place, [{ label: 'Inbox', icon: ICONS.inbox, checked: now.projectId === INBOX && !now.sectionId, run: () => set({ projectId: INBOX, sectionId: null }) },
+      ...secs(INBOX),
+      ...projectTree(data.projects.map(x => ({ ...x, collapsed: false }))).flatMap(({ project: p }) => [{ label: p.name, icon: ICONS.hash, color: colorHex(p.color),
+        checked: now.projectId === p.id && !now.sectionId, run: () => set({ projectId: p.id, sectionId: null }) }, ...secs(p.id)])], { label: 'My Projects' });
+  });
   const send = /** @type {HTMLButtonElement} */ (el('button', 'td-send'));
   send.type = 'submit';
   send.setAttribute('aria-label', 'Add task');
   send.append(icon(MORE.arrowUp));
   const ready = () => { send.disabled = !parsed.title; };
-  foot.append(place, send);
+  chips.append(moreChip, place, dateC.box, prioC.box, labelC.box, deadC.box, durC.box, send);
 
   // (the FAB dropped between two rows gives the first task that place; the next ones go to the end)
   const atDrop = (/** @type {{ projectId: string, sectionId: string | null, parentId: string | null }} */ v) => {
@@ -292,7 +306,7 @@ export function openQuickAdd(ctx, start, hold = null) {
       duration: v.duration ?? undefined });
   };
   const clearAll = () => {
-    title.value = ''; desc.value = ''; desc.style.height = ''; ignore = []; was = '';
+    title.value = ''; desc.value = ''; desc.style.height = ''; desc.hidden = true; ignore = []; was = '';
     for (const k of /** @type {const} */ (['due', 'priority', 'labels', 'deadline', 'duration'])) delete manual[k];
     try { draft.clear(); } catch { /* storage blocked */ }
     reparse();
@@ -349,7 +363,7 @@ export function openQuickAdd(ctx, start, hold = null) {
     title.focus();
   });
 
-  form.append(field, desc, list, chips, foot);
+  form.append(el('div', 'td-grab'), field, desc, list, chips);
   body.replaceChildren(form);
   if (kept && (kept.name || kept.desc)) {
     title.value = kept.name ?? ''; desc.value = kept.desc ?? '';
@@ -357,7 +371,7 @@ export function openQuickAdd(ctx, start, hold = null) {
     was = title.value;
   }
   reparse();
-  if (desc.value) grow(desc);
+  if (desc.value) { desc.hidden = false; grow(desc); }
   if (!sheet.open) sheet.showModal();
   if (hold) hold.handTo(title); else title.focus();
   title.setSelectionRange(title.value.length, title.value.length);
