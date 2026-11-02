@@ -11,7 +11,7 @@ test('theme and density switch: kept on this device, accessible in dark', async 
   await expect(root).not.toHaveAttribute('data-theme');
   await expect(root).not.toHaveAttribute('data-density');
 
-  await page.getByLabel('Theme').selectOption('dark');
+  await page.locator('#theme-pick').selectOption('dark');
   await page.getByLabel('Density').selectOption('compact');
   await expect(root).toHaveAttribute('data-theme', 'dark');
   await expect(root).toHaveAttribute('data-density', 'compact');
@@ -22,7 +22,7 @@ test('theme and density switch: kept on this device, accessible in dark', async 
   await expect(root).toHaveAttribute('data-theme', 'dark');
   await expect(page.getByLabel('Density')).toHaveValue('compact');
 
-  await page.getByLabel('Theme').selectOption('auto');
+  await page.locator('#theme-pick').selectOption('auto');
   await expect(root).not.toHaveAttribute('data-theme');
 });
 
@@ -39,7 +39,7 @@ test('look and dark style: applied before the page is ready, kept on reload, OLE
   expect(await cssVar(page, '--bg')).toBe('#efe6d2');   // the look's sepia ground
   expect(await cssVar(page, '--leading')).toBe('1.65');
 
-  await page.getByLabel('Theme').selectOption('dark');
+  await page.locator('#theme-pick').selectOption('dark');
   await page.getByLabel('Dark style').selectOption('oled');
   await expect(root).toHaveAttribute('data-dark', 'oled');
   expect(await cssVar(page, '--bg')).toBe('#000000');
@@ -62,7 +62,7 @@ test('look and dark style: applied before the page is ready, kept on reload, OLE
   await openSettings(page, 'Theme');
 
   await page.locator('#preset-pick').selectOption('default');
-  await page.getByLabel('Theme').selectOption('light');
+  await page.locator('#theme-pick').selectOption('light');
   expect(await cssVar(page, '--bg')).toBe(lightBg);
 });
 
@@ -103,7 +103,7 @@ for (const look of LOOKS) {
     await openSettings(page, 'Theme');
     await page.locator('#preset-pick').selectOption(look);
     for (const [theme, dark] of [['light', 'dark'], ['dark', 'dark'], ['dark', 'oled']]) {
-      await page.getByLabel('Theme').selectOption(theme);
+      await page.locator('#theme-pick').selectOption(theme);
       await page.getByLabel('Dark style').selectOption(dark);
       expect(await AxeBuilder(page), `${look} ${theme} ${dark}`).toEqual([]);
     }

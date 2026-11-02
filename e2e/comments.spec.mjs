@@ -29,6 +29,7 @@ test('add, edit and delete a comment; the row counts them', async ({ phone }) =>
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(one.locator('.td-comment-text')).toHaveText('Moved to Monday');
   await page.keyboard.press('Escape');
+  await expect(page.locator(sheet)).toBeHidden();   // (closed for good before it opens again: its Back step is gone)
   await expect(row.locator('.td-comments-count')).toHaveText('1');
   await clickOpens(row.locator('.td-row-main'), page.locator(sheet));
   await page.getByRole('button', { name: 'Delete comment' }).click();

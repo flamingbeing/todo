@@ -17,13 +17,14 @@ async function project(page, name) {
   await page.locator('#browse').getByRole('button', { name: new RegExp(`^${name}`) }).click();
   await expect(page.locator('#project-page')).toBeVisible();
 }
-/** Display > Calendar (and a kind: Week, Month, Agenda), then Done */
+/** Display > Calendar (Upcoming's tile is named 5-day) and a kind: Week, Month, Agenda, then Save */
 async function calendar(page, kind = '') {
   await page.locator('#display-btn').click();
   const sheet = page.locator('#display-sheet');
   await expect(sheet).toBeVisible();
-  await sheet.getByRole('radio', { name: 'Calendar' }).click();
-  await expect(sheet.getByRole('radio', { name: 'Calendar' })).toHaveAttribute('aria-checked', 'true');
+  const tile = sheet.getByRole('radiogroup', { name: 'Layout' }).getByRole('radio', { name: /^(Calendar|5-day)$/ });
+  await tile.click();
+  await expect(tile).toHaveAttribute('aria-checked', 'true');
   if (kind) await sheet.locator('.td-seg').getByRole('radio', { name: kind }).click();
   await sheet.getByRole('button', { name: /^(Done|Save)$/ }).click();
   await expect(sheet).toBeHidden();

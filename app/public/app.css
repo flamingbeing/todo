@@ -242,7 +242,7 @@ button.td-group-title { display: flex; align-items: center; gap: 6px; width: 100
 #settings-host .ui-settings-menu-groups > .ui-list { margin: 0; padding: 0; background: none; border-radius: 0; box-shadow: none; }
 #settings-host .ui-settings-menu-groups > .ui-list > li { border: 0; }
 #settings-host .ui-settings-menu-groups > .ui-settings-title { margin: 0; padding: 14px 20px 6px; border-top: .5px solid var(--td-hair);
-  font-size: 15px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--td-accent); }
+  font-size: 15px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--td-accent-text); }
 #settings-host .ui-settings-menu-groups > .ui-list:first-child { margin-top: 8px; }
 #settings-host .ui-settings-menu-groups .ui-settings-go { display: flex; align-items: center; gap: 24px; box-sizing: border-box; width: 100%; min-height: 56px;
   padding: 0 20px; border: 0; background: none; color: var(--td-text); font-size: 17px; text-align: start; }
@@ -1056,7 +1056,7 @@ body:has(.ui-screen.td-grouped:not([hidden])) .ui-bar { background: var(--td-bar
 .td-browse-card .td-browse-label { font-size: 16px; }
 .td-browse-head { margin: 18px 10px 4px; padding: 0 4px 0 14px; font-size: 16px; font-weight: 400; }
 .td-browse-fold { font-weight: 400; gap: 8px; }
-.td-browse-chip { padding: 2px 6px; border-radius: 4px; background: color-mix(in srgb, var(--td-text) 14%, transparent); color: var(--td-text-2); font-size: 11px; font-weight: 600; letter-spacing: .04em; }
+.td-browse-chip { padding: 2px 6px; border-radius: 4px; background: color-mix(in srgb, var(--td-text) 14%, transparent); color: var(--td-text); font-size: 11px; font-weight: 600; letter-spacing: .04em; }
 .td-browse-head-end { display: inline-flex; align-items: center; gap: 2px; }
 .td-browse-card .is-manage .td-browse-label { color: var(--td-text-2); font-size: 15px; }
 
@@ -1065,5 +1065,5 @@ body:has(.ui-screen.td-grouped:not([hidden])) .ui-bar { background: var(--td-bar
 #settings-host .ui-settings-group .theme-switch { margin-inline: 0; border-radius: 0; background: none; box-shadow: none; }
 #settings-host .ui-settings-group .ui-setting { min-height: 56px; padding: 8px 20px; border-radius: 0; background: none; }
 #settings-host .ui-settings-group .ui-setting .ui-row-main { font-size: 17px; }
-#settings-host .ui-settings-group .ui-setting .ui-row-sub { margin-top: 1px; font-size: 14px; color: var(--td-text-3); }
+#settings-host .ui-settings-group .ui-setting .ui-row-sub { margin-top: 1px; font-size: 14px; color: var(--td-text-2); }
 #settings-host .ui-settings-group .theme-switch > * { padding-inline: 20px; }

@@ -154,7 +154,6 @@ export function openQuickAdd(ctx, start, hold = null) {
     setX(dateC, !!line, () => { if (fromWords(['date', 'recur'])) unmark(['date', 'recur']); manual.due = base.due ? null : undefined; });
     const flag = icon(MORE.flag, { class: `td-flag${v.priority < 4 ? ' is-filled' : ''}` });
     flag.style.color = PRIORITY_COLOR[v.priority];
-    prioC.box.style.color = v.priority < 4 ? PRIORITY_COLOR[v.priority] : '';
     prioChip.replaceChildren(flag, el('span', '', v.priority === 4 ? 'Priority' : `P${v.priority}`));
     prioChip.setAttribute('aria-label', v.priority === 4 ? 'Priority' : `Priority: P${v.priority}`);
     prioC.box.hidden = v.priority === 4;

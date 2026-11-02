@@ -88,11 +88,13 @@ test('a settings file: exported, imported on another account, bad keys dropped',
   const bad = { ...file, settings: { ...file.settings, showCounts: true, bigRows: true, nope: 1 } };
   await b.setInputFiles('.ui-settings input[type=file]', { name: 'settings.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(bad)) });
   await expect(note(b)).toContainText('Imported: 0 changes, 3 left out');
+  await openCounts(b);   // (the device options sit on the Navigation menu page)
   await expect(count(b)).not.toBeChecked();
+  await open(b);
   await expect(big(b)).not.toBeChecked();
   await b.setInputFiles('.ui-settings input[type=file]', { name: 'x.json', mimeType: 'application/json', buffer: Buffer.from('not json') });
   await expect(note(b)).toContainText('not JSON');
-  await expect(count(b)).not.toBeChecked();
+  await expect(big(b)).not.toBeChecked();
 });
 
 test('the Settings page passes axe', async ({ phone }) => {

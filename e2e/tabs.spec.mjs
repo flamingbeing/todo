@@ -23,7 +23,7 @@ test('a tab taken off the bar is one tap away in Settings and stays off', async 
   await expect(page.locator('.ui-tabbar [data-tab-id="upcoming"]')).toHaveAttribute('data-off-bar', '');
 });
 
-// A long press (500 ms, with a tick) on the bar opens Settings > Tab bar. A tap still switches tabs; a press that turns
+// A long press (500 ms, with a tick) on the bar opens Settings > Navigation bar. A tap still switches tabs; a press that turns
 // into a swipe, or is lifted early, opens nothing.
 test('a long press on the tab bar opens Tab bar settings; a tap still switches tabs', async ({ phone }) => {
   const page = await phone();
@@ -46,7 +46,7 @@ test('a long press on the tab bar opens Tab bar settings; a tap still switches t
   await page.waitForTimeout(700);
   expect(await page.locator('#settings-host').isVisible()).toBe(false);
 
-  // held: Settings > Tab bar, and no tab switch from that lift
+  // held: Settings > Navigation bar, and no tab switch from that lift
   [x, y] = await at('inbox');
   await fingers(page, [[[x, y]]], { hold: 700 });
   await expect(page.getByRole('switch', { name: 'On the tab bar: Browse' })).toBeVisible();

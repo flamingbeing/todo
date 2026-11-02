@@ -86,7 +86,7 @@ for (const [name, pick] of MODES) test(`the sample in ${name}: axe on the bar, a
   // (other tests add to the same list in parallel: wait for this test's last item, not a total)
   await expect(title(page, `Sample item 14 ${run}`)).toBeVisible();
   await openSettings(page, 'Theme');
-  await page.getByLabel('Theme').selectOption(pick.theme);
+  await page.locator('#theme-pick').selectOption(pick.theme);
   await page.getByLabel('Dark style').selectOption(pick.dark);
   await page.getByLabel('Bars and sheets').selectOption(pick.material);
   await openToday(page);
