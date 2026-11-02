@@ -99,13 +99,15 @@ test('Reschedule on Overdue moves every overdue task to the day picked; Undo put
   await expect(page.locator('#today')).toContainText(a);
 });
 
-test('a day\'s Add task on Upcoming dates the new task; the sheet sets its priority and adds a subtask', async ({ phone }) => {
+test('the + on Upcoming dates the new task for the day in sight; the sheet sets its priority and adds a subtask', async ({ phone }) => {
   const page = await phone();
   await signIn(page, 'member');
   await synced(page);
   const t = uniq('sheet'), sub = uniq('sub');
   await openTab(page, 'upcoming');
-  await page.locator(`#upcoming .td-day[data-day="${day(1)}"] .td-add-row`).click();
+  await page.locator(`#upcoming-strip .td-wday[data-day="${day(1)}"]`).click();
+  await expect(page.locator(`#upcoming-strip .td-wday[data-day="${day(1)}"]`)).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('#fab').click();
   await expect(page.locator('#add-sheet')).toBeVisible();
   expect(await AxeBuilder(page)).toEqual([]);
   await page.fill('#add-sheet .td-add-title', t);

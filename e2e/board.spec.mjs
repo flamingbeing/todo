@@ -31,7 +31,7 @@ test('Display > Board: a column per section, a card dragged to the next one move
   await sheet.getByRole('radio', { name: 'Board' }).click();
   await expect(sheet.getByRole('radio', { name: 'Board' })).toHaveAttribute('aria-checked', 'true');
   await expect.poll(async () => (await db.get(`spaces/_/projects/${pid}`))?.view).toBe('board');
-  await sheet.getByRole('button', { name: 'Done' }).click();
+  await sheet.getByRole('button', { name: /^(Done|Save)$/ }).click();
   await expect(sheet).toBeHidden();
 
   const board = page.locator('#project.td-board');
@@ -76,7 +76,7 @@ test('a board grouped by priority: a column per priority, a card dragged to Prio
   await sheet.getByRole('button', { name: /^Grouping/ }).click();
   await page.locator('#pick-sheet').getByRole('option', { name: 'Priority', exact: true }).click();
   await expect(page.locator('#pick-sheet')).toBeHidden();
-  await sheet.getByRole('button', { name: 'Done' }).click();
+  await sheet.getByRole('button', { name: /^(Done|Save)$/ }).click();
   await expect(sheet).toBeHidden();
   const board = page.locator('#project.td-board');
   await expect(board.locator('.td-col-title')).toHaveText(['Priority 1', 'No priority']);

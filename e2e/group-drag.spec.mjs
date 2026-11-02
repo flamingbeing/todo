@@ -19,7 +19,7 @@ const choose = async (page, row, value) => {
   await sheet.getByRole('button', { name: new RegExp(`^${row}`) }).click();
   await page.locator('#pick-sheet').getByRole('option', { name: value, exact: true }).click();
   await expect(page.locator('#pick-sheet')).toBeHidden();
-  await sheet.getByRole('button', { name: 'Done' }).click();
+  await sheet.getByRole('button', { name: /^(Done|Save)$/ }).click();
   await expect(sheet).toBeHidden();
 };
 /** a project of its own, its page open */

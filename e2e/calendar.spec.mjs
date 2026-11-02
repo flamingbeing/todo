@@ -25,7 +25,7 @@ async function calendar(page, kind = '') {
   await sheet.getByRole('radio', { name: 'Calendar' }).click();
   await expect(sheet.getByRole('radio', { name: 'Calendar' })).toHaveAttribute('aria-checked', 'true');
   if (kind) await sheet.locator('.td-seg').getByRole('radio', { name: kind }).click();
-  await sheet.getByRole('button', { name: 'Done' }).click();
+  await sheet.getByRole('button', { name: /^(Done|Save)$/ }).click();
   await expect(sheet).toBeHidden();
 }
 /** a made-up project with these tasks -> its name */

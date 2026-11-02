@@ -1,5 +1,5 @@
-// Upcoming's head: the month and the week strip. A day with tasks has a dot; a swipe goes to the next week; a tap on a
-// day scrolls the list to it, and the + adds for that day; Today goes back; a task dragged onto a day of the strip
+// Upcoming's head: the month (opens five weeks in place) and the week strip. A swipe goes to the next week; a tap on a
+// day scrolls the list to it, and the + adds for that day; a task dragged onto a day of the strip
 // moves to that day. Passes axe.
 import AxeBuilder from './axe.mjs';
 import { test, expect, signIn, synced, uniq, today, db, openTab, finger, gesturesReady, steps, still, boxOf } from './fixtures.mjs';
@@ -8,7 +8,7 @@ const plus = (key, n) => { const d = new Date(`${key}T12:00:00Z`); d.setUTCDate(
 const weekOf = key => plus(key, -((new Date(`${key}T12:00:00Z`).getUTCDay() + 6) % 7));   // (weeks start on Monday)
 const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { title: id, projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
 
-test('dots, a swipe to next week, a tap scrolls to the day (the + adds there), Today, a task dragged onto a day', async ({ phone }) => {
+test('a swipe to next week, a tap scrolls to the day (the + adds there), the month opens in place, a task dragged onto a day', async ({ phone }) => {
   const page = await phone();
   await signIn(page, 'member');
   const now = today(), next = plus(weekOf(now), 7), there = plus(next, 1), drop = plus(next, 2);
@@ -29,7 +29,6 @@ test('dots, a swipe to next week, a tap scrolls to the day (the + adds there), T
   // a swipe to the left: next week, with the dot on the day of the far task
   await finger(page, '#upcoming-strip .td-week-view', steps(-260, 4, 10), { wait: 30 });
   await expect(strip.locator('.td-wday').first()).toHaveAttribute('data-day', next);
-  await expect(strip.locator(`.td-wday[data-day="${there}"] .td-wday-dot`)).toBeVisible();
 
   // a tap on that day: the list scrolls to it
   await strip.locator(`.td-wday[data-day="${there}"]`).click();
@@ -58,17 +57,14 @@ test('dots, a swipe to next week, a tap scrolls to the day (the + adds there), T
   await finger(page, `#upcoming .td-row[data-id="${far}"]`, steps(dx, dy, 12), { hold: 650, wait: 80 });
   await expect.poll(async () => (await db.get(`spaces/_/tasks/${far}`))?.due?.date, { timeout: 15_000 }).toBe(drop);
 
-  // Today: back to this week, today picked
-  await strip.getByRole('button', { name: 'Today' }).click();
-  await expect(strip.locator(`.td-wday[data-day="${now}"]`)).toHaveAttribute('aria-pressed', 'true');
-  await expect(strip.getByRole('button', { name: 'Today' })).toBeHidden();
-
-  // the month: a day picked there
+  // the month: five weeks open in place (no sheet); today picked there closes them and picks it
   await strip.locator('.td-month').click();
-  const sheet = page.locator('#pick-sheet');
-  await expect(sheet).toBeVisible();
+  await expect(strip.locator('.td-weeks .td-wcell')).toHaveCount(35);
+  await expect(strip.locator('.td-month')).toHaveAttribute('aria-expanded', 'true');
   expect(await AxeBuilder(page)).toEqual([]);
-  await page.keyboard.press('Escape');
+  await strip.locator(`.td-wcell[data-day="${plus(weekOf(now), 7)}"]`).click();
+  await expect(strip.locator('.td-weeks')).toBeHidden();
+  await expect(strip.locator('.td-wday').first()).toHaveAttribute('data-day', plus(weekOf(now), 7));
 });
 
 test('a long press on a day of the strip opens the quick add dated that day', async ({ phone }) => {

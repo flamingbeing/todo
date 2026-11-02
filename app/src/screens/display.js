@@ -1,4 +1,4 @@
-// Display (#display-sheet, from a list's "…"): how the list on top is laid out and what it shows. A project chooses
+// Display (#display-sheet, from a list's "…"): choices are a draft until Save (Done when unchanged); Reset all returns to the list's own look. How the list on top is laid out and what it shows. A project chooses
 // List or Board (kept with the project, so on every device); every list can be a Calendar instead (on this device:
 // Agenda, Week or Month; Upcoming Week or Month; Today its day), coloured by priority, label or project, with a
 // repeating task's later dates if asked. Every list chooses whether done tasks show (greyed, at the end), how its
@@ -34,26 +34,33 @@ export function openDisplay(ctx, view, project) {
   const days = view === 'upcoming';
   /** @type {Display} */
   let d = ctx.display(view);
+  // the choices are a draft until Save (closing the sheet drops them); the button reads Done while nothing changed
+  const first = JSON.stringify(d);
   const save = (/** @type {Partial<Display>} */ patch) => {
     d = cleanDisplay({ ...d, ...patch }, view);
+    draw();
+  };
+  const commit = () => {
     const all = { .../** @type {Record<string, unknown>} */ (settings.get('display') ?? {}) };
     if (plainDisplay(d, view)) delete all[view]; else all[view] = d;
     settings.set('display', all);
-    draw();
+    sheet.close();
   };
 
-  const head = el('div', 'td-sheet-head');
-  const x = /** @type {HTMLButtonElement} */ (el('button', 'td-round td-sheet-x'));
-  x.type = 'button'; x.setAttribute('aria-label', 'Close'); x.append(icon(MORE.x));
-  x.classList.add('td-sheet-grey');
-  x.addEventListener('click', () => sheet.close());
+  const head = el('div', 'td-sheet-head td-display-head');
   const h = el('h2', 'td-sheet-title', 'Display');
   h.id = 'display-sheet-title';
   sheet.setAttribute('aria-labelledby', h.id);
-  const ok = /** @type {HTMLButtonElement} */ (el('button', 'td-round td-sheet-ok'));
-  ok.type = 'button'; ok.setAttribute('aria-label', 'Done'); ok.append(icon(ICONS.check));
-  ok.addEventListener('click', () => sheet.close());
-  head.append(x, h, ok);
+  head.append(h);
+  // the bottom bar: Reset all (back to the list's own look) and Save
+  const bar = el('div', 'td-display-bar');
+  const reset = /** @type {HTMLButtonElement} */ (el('button', 'td-text-btn td-display-reset', 'Reset all'));
+  reset.type = 'button';
+  reset.addEventListener('click', () => { d = cleanDisplay({}, view); draw(); });
+  const ok = /** @type {HTMLButtonElement} */ (el('button', 'td-sheet-done td-display-save', 'Done'));
+  ok.type = 'button';
+  ok.addEventListener('click', () => { if (JSON.stringify(d) === first) sheet.close(); else commit(); });
+  bar.append(reset, ok);
   const rest = el('div', 'td-display');
 
   const row = (/** @type {import('app-ui/icons/lucide.js').IconNodes} */ ic, /** @type {string} */ label, /** @type {string} */ value, /** @type {() => void} */ run) => {
@@ -83,13 +90,15 @@ export function openDisplay(ctx, view, project) {
     const tiles = el('div', 'td-layouts');
     tiles.setAttribute('role', 'radiogroup');
     tiles.setAttribute('aria-label', 'Layout');
-    for (const [key, label] of /** @type {const} */ ([['list', 'List'], ['board', 'Board'], ['calendar', 'Calendar']])) {
+    // Upcoming is an Agenda already: its tiles are Agenda and the day columns
+    const tiles_ = days ? /** @type {const} */ ([['list', 'Agenda'], ['calendar', '5-day']]) : /** @type {const} */ ([['list', 'List'], ['board', 'Board'], ['calendar', 'Calendar']]);
+    for (const [key, label] of tiles_) {
       const b = /** @type {HTMLButtonElement} */ (el('button', 'td-layout'));
       b.type = 'button';
       b.setAttribute('role', 'radio');
       const on = shown === key;
       b.setAttribute('aria-checked', String(on));
-      b.append(picture(key), el('span', 'td-layout-name', label));
+      b.append(picture(key), el('span', 'td-layout-name', label), el('span', 'td-layout-radio'));
       b.addEventListener('click', async () => {
         if (on) return;
         // (a list that is not a project: its board is this device's too)
@@ -107,7 +116,7 @@ export function openDisplay(ctx, view, project) {
     card.append(tiles);
     if (cal) {
       // Today is its day; Upcoming has no Agenda (it is one)
-      const kinds = view === 'today' ? [] : CAL_WORDS.filter(([k]) => !days || k !== 'agenda');
+      const kinds = view === 'today' ? [] : CAL_WORDS.filter(([k]) => !days || k !== 'agenda');   // (Upcoming: 5-day is Week)
       if (kinds.length) {
         const seg = el('div', 'td-seg');
         seg.setAttribute('role', 'radiogroup');
@@ -124,14 +133,16 @@ export function openDisplay(ctx, view, project) {
       }
       const colors = COLOR_WORDS.filter(([k]) => k !== 'project' || !(view === 'inbox' || view.startsWith('project:')));
       card.append(row(MORE.palette, 'Coloring', word(COLOR_WORDS, d.color), () => choose('Coloring', colors, d.color, v => save({ color: v }))));
-      card.append(toggle(ICONS.repeat, 'Future occurrences', d.future, v => save({ future: v })));
     }
+    const toggles = el('div', 'td-display-toggles');
     if (!days) {
       const done = toggle(MORE.circleCheckBig, 'Completed tasks', d.completed, v => save({ completed: v }));
       done.classList.add('td-display-done');
-      card.append(done);
+      toggles.append(done);
     }
+    if (cal || days) toggles.append(toggle(ICONS.repeat, 'Future occurrences', d.future, v => save({ future: v })));
     parts.push(el('h3', 'td-display-h', 'Layout'), card);
+    if (toggles.children.length) parts.push(toggles);
     const sort = el('div', 'td-card td-attrs');
     if (!days && !cal) sort.append(row(MORE.layers, 'Grouping', word(GROUP_WORDS, d.group), () => choose('Grouping', GROUP_WORDS, d.group, v => save({ group: v }))));
     // (a calendar has no hand-made order: the tasks of a day go by the sort chosen, by time first)
@@ -148,15 +159,11 @@ export function openDisplay(ctx, view, project) {
       row(ICONS.tag, 'Label', label?.name ?? 'All', () => choose('Label', [['', 'All'], ...labels.map(l => /** @type {const} */ ([l.id, l.name]))], d.label, v => save({ label: v }))),
       row(MORE.calendarClock, 'Date', word(DATE_WORDS, d.date), () => choose('Date', DATE_WORDS, d.date, v => save({ date: v }))));
     parts.push(el('h3', 'td-display-h', 'Filter'), filter);
-    if (!plainDisplay(d, view)) {
-      const reset = /** @type {HTMLButtonElement} */ (el('button', 'td-text-btn td-display-reset', 'Reset'));
-      reset.type = 'button';
-      reset.addEventListener('click', () => { d = cleanDisplay({}, view); save({}); });
-      parts.push(reset);
-    }
+    reset.disabled = plainDisplay(d, view);
+    ok.textContent = JSON.stringify(d) === first ? 'Done' : 'Save';
     rest.replaceChildren(...parts);
   };
-  body.replaceChildren(head, rest);
+  body.replaceChildren(head, rest, bar);
   draw();
   if (!sheet.open) sheet.showModal();
   ok.focus({ preventScroll: true });
@@ -166,17 +173,17 @@ export function openDisplay(ctx, view, project) {
  * @param {'list' | 'board' | 'calendar'} kind */
 function picture(kind) {
   const svg = document.createElementNS(SVG, 'svg');
-  svg.setAttribute('viewBox', '0 0 48 32');
+  svg.setAttribute('viewBox', '0 0 32 44');
   svg.setAttribute('class', 'td-layout-pic');
   svg.setAttribute('aria-hidden', 'true');
   const rect = (/** @type {number} */ x, /** @type {number} */ y, /** @type {number} */ w, /** @type {number} */ h) => {
     const r = document.createElementNS(SVG, 'rect');
-    for (const [k, v] of Object.entries({ x, y, width: w, height: h, rx: 1.5 })) r.setAttribute(k, String(v));
+    for (const [k, v] of Object.entries({ x, y, width: w, height: h, rx: 1 })) r.setAttribute(k, String(v));
     svg.append(r);
   };
-  if (kind === 'list') for (let i = 0; i < 4; i++) { rect(6, 5 + i * 6.5, 4, 4); rect(13, 6 + i * 6.5, 29, 2); }
-  else if (kind === 'board') for (let c = 0; c < 3; c++) for (let i = 0; i < 3 - (c % 2); i++) rect(5 + c * 13.5, 5 + i * 8, 11, 6);
-  else { rect(6, 4, 36, 4); for (let r = 0; r < 4; r++) for (let c = 0; c < 6; c++) rect(6 + c * 6.2, 11 + r * 5, 4.6, 3.6); }
+  if (kind === 'list') for (let i = 0; i < 5; i++) { rect(5, 7 + i * 6.5, 3, 3); rect(10, 8 + i * 6.5, 17, 1.6); }
+  else if (kind === 'board') for (let c = 0; c < 3; c++) for (let i = 0; i < 4 - (c % 2); i++) rect(4 + c * 8.5, 7 + i * 8.5, 7, 6);
+  else { rect(5, 6, 22, 3); for (let r = 0; r < 5; r++) for (let c = 0; c < 4; c++) rect(5 + c * 5.8, 12 + r * 6.4, 4.4, 5); }
   return svg;
 }
 
