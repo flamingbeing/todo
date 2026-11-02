@@ -11,6 +11,8 @@ import { el } from './pick.js';
 import { startSelect } from './select.js';
 
 /** @typedef {import('./views.js').Ctx} Ctx */
+// Productivity shares this module's load (views.js has one lazy entry for both)
+export { drawProductivity } from './productivity.js';
 
 /** @param {Ctx} ctx @param {HTMLElement} host @param {HTMLElement} empty */
 export function drawCompleted(ctx, host, empty) {

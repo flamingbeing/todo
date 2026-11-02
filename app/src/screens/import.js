@@ -7,6 +7,7 @@ import { icon, confirmModal, plural } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { MORE } from '../icons-more.js';
 import { mapImport } from '../import-map.js';
+import { fetchCompleted } from '../import-history.js';
 
 /** the API's one full-sync address; the page's policy (worker/headers.js) allows only this host besides its own */
 export const SYNC_URL = 'https://api.todoist.com/api/v1/sync';
@@ -46,7 +47,7 @@ export async function fetchSync(token, fetcher, signal) {
  * @returns {{ leave: () => void, destroy: () => void }}  leave: the page is no longer shown (the token goes, the preview too)
  */
 export function importScreen(host, { app, openInbox = () => {}, fetcher = (...a) => fetch(...a), today }) {
-  let token = '', busy = false, importing = false;
+  let token = '', busy = false, importing = false, wanted = false, historyNote = '';
   /** @type {import('../import-map.js').Mapped | null} */
   let mapped = null;
   /** @type {AbortController | null} */
@@ -70,12 +71,16 @@ export function importScreen(host, { app, openInbox = () => {}, fetcher = (...a)
   box.append(input, show);
   field.append(label, box);
 
+  const histLabel = el('label', 'td-import-history');
+  const hist = /** @type {HTMLInputElement} */ (el('input'));
+  hist.type = 'checkbox'; hist.id = 'import-history';
+  histLabel.append(hist, el('span', '', ' Also bring finished tasks (the last 2 years), as completed tasks with their finish time'));
   const preview = /** @type {HTMLButtonElement} */ (el('button', 'td-primary td-import-go', 'Preview'));
   preview.type = 'button'; preview.disabled = true;
   const status = el('p', 'td-import-status');
   status.setAttribute('role', 'status');
   const result = el('div', 'td-import-result');
-  root.append(intro, field, preview, status, result);
+  root.append(intro, field, histLabel, preview, status, result);
   host.append(root);
 
   const say = (/** @type {string} */ text, error = false) => { status.textContent = text; status.classList.toggle('is-error', error); };
@@ -99,11 +104,12 @@ export function importScreen(host, { app, openInbox = () => {}, fetcher = (...a)
     const card = el('section', 'td-import-card');
     card.setAttribute('aria-label', 'What would come over');
     const rows = /** @type {[string, number][]} */ ([['Projects', c.projects], ['Sections', c.sections], ['Labels', c.labels], ['Tasks', c.tasks],
-      ['Repeating tasks', c.recurring], ['Filters', c.filters]]);
+      ['Repeating tasks', c.recurring], ['Filters', c.filters], ...(wanted ? [['Finished tasks', c.history]] : [])]);
     const list = el('dl', 'td-import-counts');
     for (const [name, n] of rows) { const row = el('div', 'td-import-count'); row.append(el('dt', '', name), el('dd', '', String(n))); list.append(row); }
     card.append(list);
     if (c.skipped) card.append(el('p', 'td-import-note', `${plural(c.skipped, 'task')} left out: finished, or in a project that is not imported.`));
+    if (historyNote) card.append(el('p', 'td-import-note', historyNote));
     if (m.unparsed.length) {
       const h = el('h3', 'td-import-h', `${plural(m.unparsed.length, 'repeat')} this app can't read`);
       const ul = el('ul', 'td-import-unparsed');
@@ -126,10 +132,16 @@ export function importScreen(host, { app, openInbox = () => {}, fetcher = (...a)
     const timer = setTimeout(() => aborter?.abort(), 30_000);
     try {
       const answer = await fetchSync(token, fetcher, aborter.signal);
+      wanted = hist.checked; historyNote = '';
+      if (wanted) {
+        say('Fetching finished tasks…');
+        try { answer.completed = await fetchCompleted(token, fetcher, aborter.signal); }
+        catch (e) { wanted = false; historyNote = `Finished tasks could not be fetched (${(e instanceof Error ? e.message : 'something went wrong').replace(/\.$/, '')}); the rest can still come over. Try the preview again to include them.`; }
+      }
       forget();   // the token is not needed again
       mapped = mapImport(answer, { today: today?.(), existing: app.data() });
       const c = mapped.counts;
-      if (!c.projects && !c.tasks && !c.labels && !c.filters) { say('There is nothing to import in that account.'); mapped = null; }
+      if (!c.projects && !c.tasks && !c.labels && !c.filters && !c.history) { say('There is nothing to import in that account.'); mapped = null; }
       else say('');
       drawPreview();
     } catch (e) {
@@ -143,7 +155,7 @@ export function importScreen(host, { app, openInbox = () => {}, fetcher = (...a)
   async function run(go) {
     const m = mapped;
     if (!m || importing) return;
-    const n = m.counts.tasks;
+    const n = m.counts.tasks + m.counts.history;
     if (!await confirmModal(`Import ${plural(n, 'task')} into this account?`, { title: 'Import', yes: 'Import' })) return;
     importing = true; go.disabled = true; preview.disabled = true;
     const total = ORDER.reduce((sum, k) => sum + m.writes[k].length, 0);
@@ -180,7 +192,7 @@ export function importScreen(host, { app, openInbox = () => {}, fetcher = (...a)
     const summary = el('section', 'td-import-card td-import-done');
     summary.setAttribute('aria-label', 'Imported');
     const head = el('p', 'td-import-done-title');
-    head.append(icon(ICONS.circleCheck), `Imported ${plural(m.counts.tasks, 'task')}`);
+    head.append(icon(ICONS.circleCheck), `Imported ${plural(m.counts.tasks, 'task')}${m.counts.history ? ` and ${plural(m.counts.history, 'finished task')}` : ''}`);
     summary.append(head, el('p', 'td-import-note',
       `${plural(m.counts.projects, 'project')}, ${plural(m.counts.sections, 'section')}, ${plural(m.counts.labels, 'label')} and ${plural(m.counts.filters, 'filter')} came with them.`));
     const open = /** @type {HTMLButtonElement} */ (el('button', 'td-primary td-import-go', 'Open Inbox'));
@@ -194,7 +206,7 @@ export function importScreen(host, { app, openInbox = () => {}, fetcher = (...a)
     forget();
     input.type = 'password'; show.setAttribute('aria-pressed', 'false'); show.setAttribute('aria-label', 'Show token'); show.replaceChildren(icon(MORE.eye));
     if (importing) return;   // the writes carry on; the page is drawn as it was
-    mapped = null; busy = false; say(''); result.replaceChildren();
+    mapped = null; busy = false; historyNote = ''; say(''); result.replaceChildren();
   };
   return { leave, destroy() { leave(); root.remove(); } };
 }

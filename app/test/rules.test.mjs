@@ -20,6 +20,7 @@ const VALID = {
   sections: { name: 'Admin', projectId: 'p1', order: 1, updatedAt: 1 },
   labels: { name: 'errand', color: 'green', order: 1, updatedAt: 1 },
   comments: { taskId: 't1', text: 'Called the shop', uid: 'u-member', name: 'Sam', updatedAt: 1 },
+  templates: { name: 'Trip', color: 'blue', view: 'list', sections: ['Book'], tasks: [{ title: 'Passport', priority: 4, section: null, parent: null }], updatedAt: 1 },
   filters: { name: 'Urgent', query: 'p1 & today', color: 'red', order: 1, updatedAt: 1 },
 };
 
@@ -224,6 +225,23 @@ test('comments: text of 1 to 2000, a task and an author; the author and the task
   await emu.seed(path, base);
   assert.equal((await as('admin').delete(path)).ok, true, 'an admin deletes');
 });
+
+test('templates: a name, a colour, a view, up to 50 sections and 300 tasks; no stray fields; viewers only read', () => cases('templates', [
+  ['a board', { view: 'board' }, true],
+  ['no sections or tasks', { sections: [], tasks: [] }, true],
+  ['300 tasks', { tasks: Array.from({ length: 300 }, (_, i) => ({ title: `t${i}`, priority: 4 })) }, true],
+  ['301 tasks', { tasks: Array.from({ length: 301 }, (_, i) => ({ title: `t${i}`, priority: 4 })) }, false],
+  ['50 sections', { sections: Array.from({ length: 50 }, (_, i) => `s${i}`) }, true],
+  ['51 sections', { sections: Array.from({ length: 51 }, (_, i) => `s${i}`) }, false],
+  ['sections that are not a list', { sections: 'Book' }, false],
+  ['tasks that are not a list', { tasks: {} }, false],
+  ['an empty name', { name: '' }, false],
+  ['a name over 120', { name: 'x'.repeat(121) }, false],
+  ['an unknown colour', { color: 'neon' }, false],
+  ['an unknown view', { view: 'grid' }, false],
+  ['a due date field', { due: '2026-11-05' }, false],
+  ['an attachment field', { file: 'a.png' }, false],
+]));
 
 test('sections: a name of 1 to 120 and a project', () => cases('sections', [
   ['collapsed', { collapsed: true }, true],

@@ -152,6 +152,21 @@ service cloud.firestore {
       allow delete: if can(g, ['admin', 'member']) && (resource.data.uid == request.auth.uid || can(g, ['admin']));
     }
 
+    // A project template, the person's own: a name, colour and view, section names (up to 50) and task entries (up to 300:
+    // title, priority, label names, section and parent positions; no dates). Members and admins write; anyone with a role reads.
+    // Templates are not in the bin: a delete is final.
+    match /spaces/{g}/templates/{id} {
+      allow read: if can(g, ['admin', 'member', 'viewer']);
+      allow create, update: if writer(g)
+        && request.resource.data.keys().hasOnly(['name', 'color', 'view', 'sections', 'tasks', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
+        && text(request.resource.data, 'name', 120) && colorOk(request.resource.data)
+        && request.resource.data.view in ['list', 'board']
+        && request.resource.data.sections is list && request.resource.data.sections.size() <= 50
+        && request.resource.data.tasks is list && request.resource.data.tasks.size() <= 300
+        && synced(request.resource.data);
+      allow delete: if can(g, ['admin', 'member']);
+    }
+
     // modules: rules{ written from app/rules/*.rules by node tools/modules.mjs; edit those, not this block
     // }modules
 

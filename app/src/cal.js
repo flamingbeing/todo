@@ -3,7 +3,8 @@
 // 15-minute snap, side-by-side lanes for blocks that overlap, a month's weeks with a few chips a day and "+N more",
 // what a drop changes (a day keeps the time, a slot sets it, the all-day row drops it), the period's title and paging,
 // and a repeating task's later dates in a range.
-import { addDays, weekOf, monthGrid, isTime, dueOf } from './dates.js';
+import { addDays, weekOf, isTime, dueOf } from './dates.js';
+import { monthGrid } from './dates-cal.js';
 
 /** @typedef {import('./dates.js').Due} Due */
 /** @typedef {{ due?: Due | null, duration?: number | null }} Timed */

@@ -84,6 +84,7 @@ export function drawBrowse(ctx, host) {
     row({ label: 'Upcoming', ic: MORE.calendarDays, count: n(upcomingCount(data.tasks, today)), run: () => tab('upcoming') }),
     row({ label: 'Filters & Labels', ic: MORE.layoutGrid, run: openFiltersLabels }),
     row({ label: 'Completed', ic: ICONS.circleCheck, run: () => screens()?.push('#completed-page') }),
+    row({ label: 'Productivity', ic: MORE.trendingUp, run: () => screens()?.push('#productivity-page') }),
   ]);
 
   const projectRow = (/** @type {import('../items.js').Project} */ p, /** @type {number} */ depth) => row({
@@ -180,7 +181,16 @@ export function manageProjects(ctx) {
       li.append(grip, dot, el('span', 'td-manage-name', project.name));
       return li;
     }));
-    body.replaceChildren(sheetHead('Manage projects', d), list);
+    const tools = el('ul', 'td-card td-choices td-manage-tools');
+    for (const [label, run] of /** @type {[string, (m: typeof import('./templates.js')) => void][]} */ ([
+      ['Save a project as a template', m => m.saveAsTemplate(ctx)], ['New project from a template', m => m.newFromTemplate(ctx)]])) {
+      const li = el('li', ''), b = /** @type {HTMLButtonElement} */ (el('button', 'td-choice'));
+      b.type = 'button';
+      b.append(icon(MORE.layoutTemplate, { class: 'td-choice-icon' }), el('span', 'td-choice-label', label));
+      b.addEventListener('click', () => { d.close(); void import('./templates.js').then(run); });
+      li.append(b); tools.append(li);
+    }
+    body.replaceChildren(sheetHead('Manage projects', d), list, ...(ctx.canWrite() ? [tools] : []));
     if (focus) /** @type {HTMLElement | null} */ (list.querySelector(`[data-id="${CSS.escape(focus)}"]`))?.focus();
   };
   draw();

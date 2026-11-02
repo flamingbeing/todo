@@ -1,7 +1,7 @@
 // The task sheet's Comments section, loaded with the sheet (task-sheet.js, itself lazy). A comment is plain text with the
 // small markdown marks (markdown.js), up to 2000 characters, kept in its own collection (items.js COMMENTS) with the
 // task's id. Everyone with a role reads them; members add; the author edits or deletes their own (the rules say the
-// same). Every change saves through the write queue (app.writeRecord / app.removeComment). No attachments.
+// same). Every change saves through the write queue (app.writeRecord / app.removeRec). No attachments.
 import { icon } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { MORE } from '../icons-more.js';
@@ -115,7 +115,7 @@ export function commentsSection() {
       };
       act.append(
         mk(MORE.pencil, 'Edit comment', () => { editing = c.id; again(); }),
-        mk(MORE.trash2, 'Delete comment', async () => { if (await ctx.app.removeComment(c)) ctx.toast(REFUSED); }));
+        mk(MORE.trash2, 'Delete comment', async () => { if (await ctx.app.removeRec(COMMENTS, c)) ctx.toast(REFUSED); }));
       li.append(act);
     }
     return li;

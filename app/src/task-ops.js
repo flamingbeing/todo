@@ -2,7 +2,7 @@
 // saved (the sync engine's save, queued and sent in the cloud app). Each resolves to '' when every save is stored or
 // queued, or to the reason when one was refused at once (app-sync rejects then; the copy waits in the refused list).
 // A tick, move or delete takes a task's subtasks along; a project's delete takes its sub-projects, sections and tasks.
-import { COLL, PROJECTS, SECTIONS, LABELS, FILTERS, COMMENTS, INBOX } from './items.js';
+import { COLL, PROJECTS, SECTIONS, LABELS, FILTERS, INBOX } from './items.js';
 import { cleanFields, cleanColor, cleanDue, projectCascade, sectionCascade, projectOf } from './tasks.js';
 import { descendants } from './tree.js';
 import { orderAtEnd, orderBetween } from './order.js';
@@ -199,8 +199,8 @@ export function taskOps({ save, id, data, now = Date.now, drop = () => {} }) {
     /** new order numbers for labels or filters (a drag in Filters & Labels) @param {'labels' | 'filters'} kind
      * @param {{ item: Label | Filter, order: number }[]} list */
     orderNamed: (kind, list) => first(list.map(({ item, order }) => put(kind === 'labels' ? LABELS : FILTERS, { ...item, order }, item))),
-    /** @param {import('./items.js').Comment} c */
-    removeComment: c => remove(COMMENTS, [c]),
+    /** a comment or template, gone for good (not in the bin) @param {string} coll @param {{ id: string }} x */
+    removeRec: (coll, x) => remove(coll, [x]),
     /** a whole task under its own id, as a new save (a restore brings one back) @param {Task} task */
     put: task => put(COLL, { ...task }, null),
     /** one record of any collection as the import made it (base: its saved copy, or null) @param {string} coll @param {Record<string, unknown>} rec @param {unknown} base */

@@ -4,7 +4,9 @@
 // records the app already has, so the same import twice gives the same records (every record keeps the source's id in
 // `extId`, and a second run updates those instead of adding copies).
 //
-// The mapping, in short: deleted, completed and archived things are left out; the source Inbox is this app's Inbox
+// The mapping, in short: deleted and archived things are left out, and so are finished tasks unless the caller passes the
+// finished history as `sync.completed` (screens/import.js fetches it): each of those comes over as a completed task with its
+// completion time (a finished repeat of a task that is still open too); the source Inbox is this app's Inbox
 // (merged, never a second one); colours keep their names (an unknown one is charcoal); priorities flip (the source's 4 is
 // the top one: ours = 5 - theirs); orders become 1..n among the siblings; task labels, which come as names, become label
 // ids (a missing label is made); a due day with a "Z" time is turned into this device's local time; a repeating task keeps
@@ -19,7 +21,7 @@ import { findRecur } from './recur.js';
 /** @typedef {{ projects: Write[], sections: Write[], labels: Write[], filters: Write[], tasks: Write[] }} Writes */
 /** @typedef {{ title: string, string: string }} Unparsed */
 /** @typedef {{ projects: number, sections: number, labels: number, tasks: number, recurring: number, filters: number,
- *   skipped: number, changed: number }} Counts  the first six are what the source holds that imports; changed: records that would be written */
+ *   skipped: number, changed: number, history: number }} Counts  the first six are what the source holds that imports; history: finished tasks that come over; changed: records that would be written */
 /** @typedef {{ counts: Counts, unparsed: Unparsed[], writes: Writes }} Mapped */
 
 const EMPTY = /** @type {Data} */ ({ tasks: [], projects: [], sections: [], labels: [], filters: [] });
@@ -234,9 +236,42 @@ export function mapImport(sync, { today = dayKey(), id = () => Math.random().toS
     put('tasks', sid, { ...fields, done: false, doneAt: null, ...(Number.isFinite(added) ? { createdAt: added } : {}) }, { id: taskIds.get(sid), keep: ['dayOrder', 'done', 'doneAt'] });
   }
 
+  // finished history (sync.completed, from the completed-by-date list): completed tasks with their completion time. Each is
+  // kept under the extId `done:<id>:<time>`, so a repeat of the same import adds nothing; a finished task the source no
+  // longer holds as open, and an earlier import brought over open, is updated in place instead of copied.
+  /** @type {Map<string, Record<string, any>>} */
+  const finished = new Map();
+  for (const t of list(sync?.completed)) {
+    const sid = ext(t.task_id ?? t.id), at = Date.parse(String(t.completed_at ?? ''));
+    if (!sid || !Number.isFinite(at) || t.is_deleted || !text(t.content, 500) || !projectIds.has(ext(t.project_id))) continue;
+    finished.set(`done:${sid}:${at}`.slice(0, 64), { ...t, _sid: sid, _at: at });
+  }
+  const history = [...finished.entries()].sort((x, y) => x[1]._at - y[1]._at || (x[0] < y[0] ? -1 : 1));
+  /** the saved copy an earlier import brought over as open, when the source no longer has the task open @param {string} sid */
+  const wasOpen = sid => (openIds.has(sid) ? null : known.tasks.get(sid) ?? null);
+  /** each finished copy's id: the open copy it updates, the one saved before, or a new one @type {Map<string, string>} */
+  const hid = new Map(history.map(([key, t]) => [key, wasOpen(t._sid)?.id ?? known.tasks.get(key)?.id ?? id()]));
+  /** the source task id -> our id of its latest finished copy @type {Map<string, string>} */
+  const latest = new Map(history.map(([key, t]) => [t._sid, /** @type {string} */ (hid.get(key))]));
+  let nHistory = 0;
+  history.forEach(([key, t], i) => {
+    const sid = t._sid, open = /** @type {Record<string, any> | null} */ (wasOpen(sid)), parentSid = ext(t.parent_id);
+    const parent = parentSid && parentSid !== sid ? (openIds.has(parentSid) ? taskIds.get(parentSid) : latest.get(parentSid)) ?? null : null;
+    const added = Date.parse(String(t.added_at ?? ''));
+    nHistory++;
+    put('tasks', open ? sid : key, {
+      title: text(t.content, 500).replace(/\s+/g, ' '), description: text(t.description, 16000) || null,
+      projectId: projectIds.get(ext(t.project_id)), sectionId: sectionIds.get(ext(t.section_id)) ?? null,
+      parentId: parent, order: i + 1, priority: Math.min(4, Math.max(1, 5 - (Number(t.priority) || 1))),
+      labels: [...new Set((Array.isArray(t.labels) ? t.labels : []).map(labelFor).filter(Boolean))].slice(0, 20),
+      due: null, deadline: null, collapsed: false, duration: null, done: true, doneAt: t._at,
+      ...(Number.isFinite(added) ? { createdAt: added } : {}),
+    }, { id: hid.get(key), keep: open?.done ? ['order', 'dayOrder', 'done', 'doneAt'] : ['order', 'dayOrder'] });
+  });
+
   const changed = Object.values(writes).reduce((n, w) => n + w.length, 0);
   return {
-    counts: { projects: nProjects, sections: sections.length, labels: nLabels, tasks: nTasks, recurring, filters: filters.length, skipped, changed },
+    counts: { projects: nProjects, sections: sections.length, labels: nLabels, tasks: nTasks, recurring, filters: filters.length, skipped, changed, history: nHistory },
     unparsed, writes,
   };
 }

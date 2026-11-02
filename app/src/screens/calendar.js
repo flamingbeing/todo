@@ -13,7 +13,8 @@ import { MORE } from '../icons-more.js';
 import { INBOX, REFUSED } from '../items.js';
 import { isTask, dayOrder, priorityOf, projectOf, labelsOf, placeText } from '../tasks.js';
 import { narrowTasks, sorter } from '../arrange.js';
-import { dayKey, timeKey, addDays, dueOf, minutesClock, minutesSpan } from '../dates.js';
+import { dayKey, timeKey, addDays, dueOf, minutesClock } from '../dates.js';
+import { minutesSpan } from '../dates-cal.js';
 import { colorHex } from '../colors.js';
 import { edgeScroll, edgeSpeed, shownSpan } from '../ui/edge-scroll.js';
 import { HOUR, columnCount, weekColumns, minutesOf, timeOf, yOf, minOf, snap, blockHeight, openAt, lanes, monthCells, dropPatch,

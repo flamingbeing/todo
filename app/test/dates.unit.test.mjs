@@ -1,7 +1,8 @@
 // dates.js: day maths, the tone and words of a due date, group headers. node --test app/test/dates.unit.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dayKey, timeKey, addDays, daysBetween, isDay, isTime, weekdayName, shortDate, dateTone, dayWords, deadlineLine, dueLine, dayTitle, timeText, minutesClock, minutesSpan, minutesText, weekOf, monthGrid, monthTitle } from '../src/dates.js';
+import { dayKey, timeKey, addDays, daysBetween, isDay, isTime, weekdayName, shortDate, dateTone, dayWords, deadlineLine, dueLine, dayTitle, timeText, minutesClock, minutesText, weekOf } from '../src/dates.js';
+import { minutesSpan, monthGrid, monthTitle } from '../src/dates-cal.js';
 
 const T = '2026-11-01';   // a Sunday
 

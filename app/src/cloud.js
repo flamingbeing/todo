@@ -32,7 +32,7 @@ import { emulator, configured, roleOf, needsClaims } from './roles.js';
 import { setHint } from './hint.js';
 import { OPTIONS, SETTINGS_COLL } from './options.js';
 import { dataModules } from './data-modules.js';
-import { COLL, RECORDS, PROJECTS, SECTIONS, LABELS, FILTERS, COMMENTS } from './items.js';
+import { COLL, RECORDS, PROJECTS, SECTIONS, LABELS, FILTERS, COMMENTS, TEMPLATES } from './items.js';
 import { taskOps, tasksGone } from './task-ops.js';
 
 export { usingEmulator } from './roles.js';
@@ -124,7 +124,7 @@ export async function start({ canReload = null }) {
       },
     }),
     sync({
-      colls: [...RECORDS, COMMENTS, SETTINGS_COLL, ...(dataModules.files ? [dataModules.files.coll] : [])], path: (/** @type {string} */ space, /** @type {string} */ coll) => ['spaces', space, coll],
+      colls: [...RECORDS, COMMENTS, TEMPLATES, SETTINGS_COLL, ...(dataModules.files ? [dataModules.files.coll] : [])], path: (/** @type {string} */ space, /** @type {string} */ coll) => ['spaces', space, coll],
       scope: () => SPACE, device: deviceName(), wake: true,
       // a delete writes the item's last version to the bin in the same transaction ({ id, kind, data, deletedAt }:
       // the other devices drop the item from it, and data keeps the deleted version)
@@ -162,7 +162,7 @@ export async function start({ canReload = null }) {
   let offFiles = null;
   /** @type {import('./items.js').Data} everything as last heard (data()) */
   let latest = { tasks: [], projects: [], sections: [], labels: [], filters: [], comments: [] };
-  const KEY = /** @type {Record<string, keyof import('./items.js').Data>} */ ({ [COLL]: 'tasks', [PROJECTS]: 'projects', [SECTIONS]: 'sections', [LABELS]: 'labels', [FILTERS]: 'filters', [COMMENTS]: 'comments' });
+  const KEY = /** @type {Record<string, keyof import('./items.js').Data>} */ ({ [COLL]: 'tasks', [PROJECTS]: 'projects', [SECTIONS]: 'sections', [LABELS]: 'labels', [FILTERS]: 'filters', [COMMENTS]: 'comments', [TEMPLATES]: 'templates' });
   let seq = 0;
   // the token Firestore has been told about: its own token listener (added when the SDK started, so before this one)
   // runs in the same notification and restarts its connection with the new token. A list listen sent before that goes
@@ -203,7 +203,7 @@ export async function start({ canReload = null }) {
     offSettings ??= app.settings.follow();   // the account's options, heard from other devices (listening needs the role)
     // one listen per collection; each change draws everything again (changed: the tasks that moved, for the rows' flash)
     let first = true;
-    offList ??= [...RECORDS, COMMENTS].map(coll => app.sync.watch(SPACE, coll, (/** @type {any[]} */ list, /** @type {{ changed?: string[] }} */ meta) => {
+    offList ??= [...RECORDS, COMMENTS, TEMPLATES].map(coll => app.sync.watch(SPACE, coll, (/** @type {any[]} */ list, /** @type {{ changed?: string[] }} */ meta) => {
       latest = { ...latest, [KEY[coll]]: list.filter(x => !x._deleted) };
       onData(latest, new Set(first || coll !== COLL ? [] : meta?.changed || []));
       if (coll === COLL) first = false;
