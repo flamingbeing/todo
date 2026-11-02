@@ -16,10 +16,11 @@ export function openMenu(anchor, items, o = {}) {
     // the core puts it under the button (or above when there is no room): here it always opens upward, from the button's left
     const menu = /** @type {HTMLElement | null} */ ((anchor.closest('dialog[open]') ?? document.body).querySelector(':scope > .td-menu-layer:last-of-type > .td-menu'));
     if (menu) {
-      const r = anchor.getBoundingClientRect(), m = menu.getBoundingClientRect();
-      const left = Math.max(8, Math.min(r.left, innerWidth - m.width - 8)), top = Math.max(8, r.top - m.height - 8);
+      // (offset sizes: the card may still be scaled by its opening animation, which getBoundingClientRect would measure)
+      const r = anchor.getBoundingClientRect(), mw = menu.offsetWidth, mh = menu.offsetHeight;
+      const left = Math.max(8, Math.min(r.left, innerWidth - mw - 8)), top = Math.max(8, r.top - mh - 8);
       menu.style.left = `${left}px`; menu.style.top = `${top}px`;
-      menu.style.transformOrigin = `${r.left + r.width / 2 - left}px ${m.height}px`;
+      menu.style.transformOrigin = `${r.left + r.width / 2 - left}px ${mh}px`;
     }
   }
   return close;
