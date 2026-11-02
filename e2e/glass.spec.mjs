@@ -22,19 +22,18 @@ const collapsed = page => page.evaluate(() => document.querySelector('.ui-bar')?
 test('glass by default; Solid in the switch takes it off, kept on reload and before the modules run', async ({ phone }) => {
   const page = await phone();
   await page.goto(APP, { waitUntil: 'domcontentloaded' });
-  await openSettings(page, 'Look');
+  await openSettings(page, 'Theme');
   const root = page.locator('html');
   await expect(root).toHaveClass(/\bglass\b/);
   await collapsed(page);
-  expect(await style(page, '.ui-bar', 'backdrop-filter')).toContain('blur');
-  await expect.poll(() => style(page, '.ui-bar', 'background-color')).toMatch(/(color\(srgb|oklab\(|rgba\().* \/ 0\.\d+\)/);   // see-through (the bar fades to it)
+  expect(await style(page, '.ui-bar', 'backdrop-filter')).toBe('none');   // (the top bar is always solid in this app)
 
   await page.getByLabel('Bars and sheets').selectOption('solid');
   await expect(root).not.toHaveClass(/\bglass\b/);
   await collapsed(page);
   expect(await style(page, '.ui-bar', 'backdrop-filter')).toBe('none');
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await openSettings(page, 'Look');
+  await openSettings(page, 'Theme');
   await expect(root).not.toHaveClass(/\bglass\b/);
   await expect(page.getByLabel('Bars and sheets')).toHaveValue('solid');
 
@@ -44,7 +43,7 @@ test('glass by default; Solid in the switch takes it off, kept on reload and bef
   await expect(root).not.toHaveClass(/\bglass\b/);
   await page.unroute('**/theme/index.js');
   await page.goto(APP, { waitUntil: 'domcontentloaded' });
-  await openSettings(page, 'Look');
+  await openSettings(page, 'Theme');
 
   await page.getByLabel('Bars and sheets').selectOption('glass');
   await expect(root).toHaveClass(/\bglass\b/);
@@ -86,8 +85,8 @@ for (const [name, pick] of MODES) test(`the sample in ${name}: axe on the bar, a
   for (let i = 1; i <= 14; i++) await page.evaluate(t => window.starter.add(t), `Sample item ${i} ${run}`);
   // (other tests add to the same list in parallel: wait for this test's last item, not a total)
   await expect(title(page, `Sample item 14 ${run}`)).toBeVisible();
-  await openSettings(page, 'Look');
-  await page.getByLabel('Theme').selectOption(pick.theme);
+  await openSettings(page, 'Theme');
+  await page.locator('#theme-pick').selectOption(pick.theme);
   await page.getByLabel('Dark style').selectOption(pick.dark);
   await page.getByLabel('Bars and sheets').selectOption(pick.material);
   await openToday(page);
@@ -102,7 +101,7 @@ for (const [name, pick] of MODES) test(`the sample in ${name}: axe on the bar, a
   await settled(page);
   expect(await AxeBuilder(page), `${name}: the item sheet`).toEqual([]);
   await byTool(page, () => page.screenshot({ path: info.outputPath(`glass-${name}-sheet.png`) }));
-  await page.locator('#task-sheet').getByRole('button', { name: 'Close' }).click();
+  await page.keyboard.press('Escape');
   await expect(page.locator('#task-sheet')).toBeHidden();
 });
 

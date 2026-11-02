@@ -1,5 +1,5 @@
 // The sizes the app is drawn at (1 pt = 1 CSS px, 3 device px on a phone): a two-line row is 74 pt, the checkbox 22,
-// the title starts at 50, the add button is 56, and a title-only row is 52. Light and dark keep the same sizes.
+// the title starts at 50, the add button is 68 (the reference's rounded square), and a title-only row is 52. Light and dark keep the same sizes.
 import { test, expect, signIn, synced, uniq, today, db } from './fixtures.mjs';
 
 const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
@@ -21,6 +21,6 @@ for (const scheme of ['light', 'dark']) {
     // (all three measured in one go, and again until they agree: a redraw mid-measure gives a row whose box has no size yet)
     await expect.poll(() => size(b), { timeout: 10_000 }).toEqual({ row: 74, check: [22, 22], titleX: 50 });
     const fab = await page.locator('#fab').evaluate(e => [e.getBoundingClientRect().width, e.getBoundingClientRect().height]);
-    expect(fab).toEqual([56, 56]);
+    expect(fab).toEqual([68, 68]);
   });
 }

@@ -17,15 +17,15 @@ import { openFiltersLabels } from './filters.js';
 import { colorHex } from '../colors.js';
 import { dayKey } from '../dates.js';
 import { byOrder, placeAt } from '../order.js';
-import { screens } from '../shell.js';
+import { screens, showPage } from '../shell.js';
 import { el, sheetHead } from './pick.js';
 
 /** @typedef {import('./views.js').Ctx} Ctx */
 const FOLD_KEY = 'browse:projects-folded';
 
 /** a Browse row: an icon at 16, the name at 56, a count and a chevron
- * @param {{ label: string, ic: import('app-ui/icons/lucide.js').IconNodes, color?: string, count?: number | null, depth?: number, run: () => void }} o */
-function row({ label, ic, color, count, depth, run }) {
+ * @param {{ label: string, ic: import('app-ui/icons/lucide.js').IconNodes, color?: string, count?: number | null, depth?: number, flat?: boolean, run: () => void }} o */
+function row({ label, ic, color, count, depth, flat, run }) {
   const li = el('li', '');
   const b = /** @type {HTMLButtonElement} */ (el('button', 'td-browse-row'));
   b.type = 'button';
@@ -34,7 +34,7 @@ function row({ label, ic, color, count, depth, run }) {
   if (color) i.style.color = color;
   b.append(i, el('span', 'td-browse-label', label));
   if (typeof count === 'number' && count > 0) b.append(el('span', 'td-browse-count', String(count)));
-  b.append(icon(ICONS.chevronRight, { class: 'td-browse-chevron' }));
+  if (!flat) b.append(icon(ICONS.chevronRight, { class: 'td-browse-chevron' }));
   b.addEventListener('click', run);
   li.append(b);
   return li;
@@ -76,19 +76,27 @@ export function drawBrowse(ctx, host) {
   gear.setAttribute('aria-label', 'Settings');
   gear.append(icon(ICONS.settings));
   gear.addEventListener('click', () => screens()?.push('#settings-page'));
-  top.replaceChildren(me, gear);
+  const bell = /** @type {HTMLButtonElement} */ (el('button', 'td-round'));
+  bell.type = 'button';
+  bell.id = 'browse-bell';
+  bell.setAttribute('aria-label', 'Notification settings');
+  bell.append(icon(MORE.bell));
+  bell.addEventListener('click', () => screens()?.push('#settings-page'));
+  const end = el('span', 'td-bar-browse-end');
+  end.append(bell, gear);
+  top.replaceChildren(me, end);
 
+  // Inbox, Today and Upcoming are tabs; Browse keeps the places that are not
   const places = card('Places', [
-    row({ label: 'Inbox', ic: ICONS.inbox, count: n(counts.get(INBOX) ?? 0), run: () => tab('inbox') }),
-    row({ label: 'Today', ic: ICONS.calendar, count: n(todayCount(data.tasks, today)), run: () => tab('today') }),
-    row({ label: 'Upcoming', ic: MORE.calendarDays, count: n(upcomingCount(data.tasks, today)), run: () => tab('upcoming') }),
-    row({ label: 'Filters & Labels', ic: MORE.layoutGrid, run: openFiltersLabels }),
-    row({ label: 'Completed', ic: ICONS.circleCheck, run: () => screens()?.push('#completed-page') }),
-    row({ label: 'Productivity', ic: MORE.trendingUp, run: () => screens()?.push('#productivity-page') }),
+    row({ label: 'Search', ic: MORE.search, flat: true, run: () => showPage('search-page') }),
+    row({ label: 'Filters & Labels', ic: MORE.layoutGrid, flat: true, run: openFiltersLabels }),
+    row({ label: 'Reporting', ic: MORE.trendingUp, flat: true, run: () => screens()?.push('#productivity-page') }),
+    row({ label: 'Completed', ic: ICONS.circleCheck, flat: true, run: () => screens()?.push('#completed-page') }),
   ]);
+  places.classList.add('is-flat');
 
   const projectRow = (/** @type {import('../items.js').Project} */ p, /** @type {number} */ depth) => row({
-    label: p.name, ic: ICONS.hash, color: colorHex(p.color), depth, count: n(counts.get(p.id) ?? 0), run: () => ctx.openProject(p.id) });
+    label: p.name, ic: ICONS.hash, color: colorHex(p.color), depth, flat: true, count: n(counts.get(p.id) ?? 0), run: () => ctx.openProject(p.id) });
 
   const parts = [places];
   const favs = byOrder(data.projects.filter(p => p.favorite && p.id !== INBOX && p.name));
@@ -99,8 +107,8 @@ export function drawBrowse(ctx, host) {
     const open = data.tasks.filter(t => isTask(t) && !t.done), qc = queryContext(ctx);
     parts.push(h, card('Favorites', [
       ...favs.map(p => projectRow(p, 0)),
-      ...favLabels.map(l => row({ label: l.name, ic: ICONS.tag, color: colorHex(l.color), count: n(open.filter(t => labelsOf(t, data.labels).includes(l)).length), run: () => ctx.openPlace('labels', l.id) })),
-      ...favFilters.map(f => { const c = countQuery(f.query, data.tasks, qc); return row({ label: f.name, ic: MORE.droplet, color: colorHex(f.color), count: n(c.error ? 0 : c.count), run: () => ctx.openPlace('filters', f.id) }); }),
+      ...favLabels.map(l => row({ label: l.name, ic: ICONS.tag, flat: true, color: colorHex(l.color), count: n(open.filter(t => labelsOf(t, data.labels).includes(l)).length), run: () => ctx.openPlace('labels', l.id) })),
+      ...favFilters.map(f => { const c = countQuery(f.query, data.tasks, qc); return row({ label: f.name, ic: MORE.droplet, flat: true, color: colorHex(f.color), count: n(c.error ? 0 : c.count), run: () => ctx.openPlace('filters', f.id) }); }),
     ]));
   }
 
@@ -110,23 +118,32 @@ export function drawBrowse(ctx, host) {
   const fold = /** @type {HTMLButtonElement} */ (el('button', 'td-browse-fold'));
   fold.type = 'button';
   fold.setAttribute('aria-expanded', String(!folded));
-  fold.append(el('span', '', 'My Projects'), icon(folded ? ICONS.chevronRight : ICONS.chevronDown, { class: 'td-browse-fold-icon' }));
+  fold.append(el('span', '', 'My Projects'), el('span', 'td-browse-chip', `${data.projects.filter(p => p.id !== INBOX && p.name).length}`));
   fold.addEventListener('click', () => { localStorage.setItem(FOLD_KEY, folded ? '0' : '1'); drawBrowse(ctx, host); });
   head.append(fold);
+  const tail = el('span', 'td-browse-head-end');
+  head.append(tail);
   if (ctx.canWrite()) {
     const add = /** @type {HTMLButtonElement} */ (el('button', 'td-icon-btn td-browse-add'));
     add.type = 'button';
     add.setAttribute('aria-label', 'Add project');
     add.append(icon(ICONS.plus));
     add.addEventListener('click', () => ctx.openProjectSheet({}));
-    head.append(add);
+    tail.append(add);
   }
+  const chev = /** @type {HTMLButtonElement} */ (el('button', 'td-icon-btn td-browse-chev'));
+  chev.type = 'button';
+  chev.tabIndex = -1;
+  chev.setAttribute('aria-hidden', 'true');
+  chev.append(icon(folded ? ICONS.chevronDown : ICONS.chevronUp));
+  chev.addEventListener('click', () => fold.click());
+  tail.append(chev);
   parts.push(head);
   if (!folded) {
     const tree = projectTree(data.projects);
     if (tree.length) {
       const rows = tree.map(({ project, depth }) => projectRow(project, depth));
-      if (ctx.canWrite()) rows.push(row({ label: 'Manage projects', ic: MORE.gripVertical, run: () => manageProjects(ctx) }));
+      if (ctx.canWrite()) { const m = row({ label: 'Manage projects', ic: MORE.pencil, flat: true, run: () => manageProjects(ctx) }); m.classList.add('is-manage'); rows.push(m); }
       parts.push(card('My Projects', rows));
     }
     else parts.push(el('p', 'td-browse-none', ctx.canWrite() ? 'No projects yet. Tap + to add one.' : 'No projects yet.'));

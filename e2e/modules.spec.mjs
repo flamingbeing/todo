@@ -32,7 +32,7 @@ test('sign-out keeps the phone’s data and unsent saves; the same account carri
   const t = uniq('kept');
   await page.context().setOffline(true);
   await add(page, t);
-  await openSettings(page);
+  await openSettings(page, 'Account');
   await page.click('#sign-out');
   await openToday(page);
   await expect(page.locator('#signed-out')).toBeVisible();
@@ -52,7 +52,7 @@ test('forget this device: refused while unsent, then wipes the phone', async ({ 
   await loadSettings(page);
   await page.context().setOffline(true);
   await add(page, uniq('unsent'));
-  await openSettings(page);
+  await openSettings(page, 'Account');
   await page.click('#sign-out');
   await openToday(page);
   await page.click('#forget');

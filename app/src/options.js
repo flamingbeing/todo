@@ -14,7 +14,7 @@ const goal = max => ({ scope: /** @type {const} */ ('device'), default: 0, clean
 const goals = (...n) => n.map(x => [x, x ? String(x) : 'No goal']);
 
 /** @type {[unknown, string][]} the tabs Home can be */
-const HOMES = [['inbox', 'Inbox'], ['today', 'Today'], ['upcoming', 'Upcoming'], ['search', 'Search'], ['browse', 'Browse']];
+const HOMES = [['inbox', 'Inbox'], ['today', 'Today'], ['upcoming', 'Upcoming'], ['browse', 'Browse']];
 
 /** @type {Record<string, import('app-ui/settings/types').OptionSpec>} */
 export const OPTIONS = {
@@ -53,19 +53,25 @@ const FEATURES = [
 /** The Settings pages (src/shell.js: @core/ui settingsScreen with its menu): a row is a switch for a yes/no option; icon,
  * sub and group are the page's row in the menu. */
 export const SETTING_SECTIONS = [
-  { title: 'General', icon: ICONS.settings, sub: 'Smart dates, swipes and the week', group: 'Tasks', rows: [
-    { key: 'smartDates', label: 'Smart date recognition', sub: 'Read dates, times and repeats as you type a task' },
-    { key: 'swipeRight', label: 'Swipe right', sub: 'This device', choices: SWIPE_CHOICES },
-    { key: 'swipeLeft', label: 'Swipe left', sub: 'This device', choices: SWIPE_CHOICES },
+  { title: 'General', icon: ICONS.settings, group: '', rows: [
     { key: 'home', label: 'Home view', sub: 'Where the app opens and Back returns to; Today if it is off the tab bar', choices: HOMES },
-    { key: 'dailyGoal', label: 'Daily goal', sub: 'Tasks a day. This device', choices: goals(0, 1, 3, 5, 10, 20) },
-    { key: 'weeklyGoal', label: 'Weekly goal', sub: 'Tasks a week. This device', choices: goals(0, 10, 20, 30, 50, 100) },
-    { key: 'reminders', label: 'Reminders', sub: 'Notify when a reminder is due. This device' },
-    { key: 'weekStart', label: 'Start of the week', sub: 'This device', choices: /** @type {[unknown, string][]} */ ([[1, 'Monday'], [0, 'Sunday']]) },
-  ] },
-  { title: 'Tasks', icon: ICONS.listChecks, sub: 'Counts and row size', group: 'Tasks', rows: [
-    { key: 'showCounts', label: 'Show task counts in Browse', sub: 'This device' },
+    { key: 'weekStart', label: 'Start the week on', sub: 'This device', choices: /** @type {[unknown, string][]} */ ([[1, 'Monday'], [0, 'Sunday']]) },
+    { key: 'swipeRight', label: 'Swipe to right', sub: 'This device', choices: SWIPE_CHOICES },
+    { key: 'swipeLeft', label: 'Swipe to left', sub: 'This device', choices: SWIPE_CHOICES },
     { key: 'bigRows', label: 'Larger rows', sub: 'This device' },
   ] },
-  { title: 'Features', icon: ICONS.listChecks, sub: 'Switch optional parts on or off', group: 'Advanced', visible: () => FEATURES.length > 0, rows: FEATURES },
+  { title: 'Navigation menu', icon: ICONS.listChecks, group: 'Personalization', find: 'browse counts', rows: [
+    { key: 'showCounts', label: 'Show task counts in Browse', sub: 'This device' },
+  ] },
+  { title: 'Quick Add', icon: ICONS.plus, group: 'Personalization', find: 'smart date recognition natural language', rows: [
+    { key: 'smartDates', label: 'Smart date recognition', sub: 'Read dates, times and repeats as you type a task' },
+  ] },
+  { title: 'Productivity', icon: ICONS.gauge, group: 'Productivity', find: 'goal daily weekly', rows: [
+    { key: 'dailyGoal', label: 'Daily goal', sub: 'Tasks a day. This device', choices: goals(0, 1, 3, 5, 10, 20) },
+    { key: 'weeklyGoal', label: 'Weekly goal', sub: 'Tasks a week. This device', choices: goals(0, 10, 20, 30, 50, 100) },
+  ] },
+  { title: 'Reminders', icon: ICONS.alarmClock, group: 'Productivity', find: 'notify notifications alert', rows: [
+    { key: 'reminders', label: 'Notify me', sub: 'Notify when a reminder is due. This device' },
+  ] },
+  { title: 'Features', icon: ICONS.listChecks, sub: 'Switch optional parts on or off', group: 'More', visible: () => FEATURES.length > 0, rows: FEATURES },
 ];

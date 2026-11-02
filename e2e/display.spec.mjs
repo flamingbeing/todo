@@ -12,8 +12,7 @@ async function openProject(page, name) {
   await expect(page.locator('#project-page')).toBeVisible();
 }
 async function display(page) {
-  await page.locator('#more-btn').click();
-  await page.getByRole('menuitem', { name: 'Display' }).click();
+  await page.locator('#display-btn').click();
   const sheet = page.locator('#display-sheet');
   await expect(sheet).toBeVisible();
   return sheet;
@@ -44,7 +43,7 @@ test('grouping by priority, by name descending, done tasks shown: kept per list,
   await choose(page, sheet, 'Sorting', 'Name');
   await choose(page, sheet, 'Direction', 'Descending');
   await sheet.locator('.td-display-done input').check();
-  await sheet.getByRole('button', { name: 'Done' }).click();
+  await sheet.getByRole('button', { name: /^(Done|Save)$/ }).click();
   const want = async p => {
     await expect(p.locator('#project .td-group-title')).toHaveText(['Priority 1', 'Priority 3']);
     await expect(p.locator('#project .td-group').nth(0).locator('.td-title')).toHaveText([`C ${u}`, `B ${u}`, `D ${u}`]);
@@ -97,7 +96,7 @@ test('Today and the Inbox offer List, Board and Calendar; Calendar is kept for t
     // Today is its day (no Agenda, Week or Month); the Inbox has all three
     await expect(sheet.getByRole('radiogroup', { name: 'Calendar' }).getByRole('radio')).toHaveText(tab === 'today' ? [] : ['Agenda', 'Week', 'Month']);
     await expect(sheet.locator('.td-display-done')).toBeVisible();
-    await sheet.getByRole('button', { name: 'Done' }).click();
+    await sheet.getByRole('button', { name: /^(Done|Save)$/ }).click();
     await expect(page.locator(`#${tab}-page .td-cv`)).toBeVisible();
   }
   await page.reload();
@@ -125,12 +124,12 @@ test('grouping and sorting by deadline: Overdue, each day, No deadline; nearest 
   await openProject(page, name);
   let sheet = await display(page);
   await choose(page, sheet, 'Sorting', 'Deadline');
-  await sheet.getByRole('button', { name: 'Done' }).click();
+  await sheet.getByRole('button', { name: /^(Done|Save)$/ }).click();
   await expect(page.locator('#project .td-title')).toHaveText([`C ${u}`, `E ${u}`, `A ${u}`, `D ${u}`, `B ${u}`]);
   sheet = await display(page);
   await choose(page, sheet, 'Grouping', 'Deadline');
   expect(await AxeBuilder(page)).toEqual([]);
-  await sheet.getByRole('button', { name: 'Done' }).click();
+  await sheet.getByRole('button', { name: /^(Done|Save)$/ }).click();
   await expect(page.locator('#project .td-group-title')).toHaveCount(4);
   await expect(page.locator('#project .td-group-title').first()).toHaveText('Overdue');
   await expect(page.locator('#project .td-group-title').last()).toHaveText('No deadline');

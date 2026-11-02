@@ -33,7 +33,7 @@ test('a member adds, edits and deletes; the delete lands in the bin', { tag: '@s
   await serverHas(t + ' edited');
 
   await page.locator('#task-sheet [aria-label="More"]').click();
-  await page.getByRole('menuitem', { name: 'Delete' }).click();
+  await page.getByRole('menuitem', { name: 'Delete task' }).click();
   await expect(page.locator('#task-sheet')).toBeHidden();
   await expect(page.locator('#today')).not.toContainText(t);
   await expect.poll(async () => (await db.list('spaces/_/bin')).some(b => b.data?.title === t + ' edited'), { timeout: 15_000 }).toBe(true);

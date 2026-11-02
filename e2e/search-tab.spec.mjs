@@ -2,7 +2,7 @@
 // what matches shows as Tasks, Projects, Labels and Filters; a search left with Enter is kept as recent on this
 // device, a tap runs it again and Clear forgets them. Passes axe.
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, db, openTab } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, db, openSearch } from './fixtures.mjs';
 
 const now = () => ({ createdAt: Date.now(), updatedAt: Date.now() });
 
@@ -16,7 +16,7 @@ test('results in groups, accents ignored, recent searches kept and cleared', asy
   await db.put(`spaces/_/labels/${lid}`, { name: `lab${w}`, color: 'red', order: Date.now(), favorite: false, ...now() });
   await db.put(`spaces/_/filters/${fid}`, { name: `Filter ${w}`, query: 'p1', color: 'red', order: Date.now(), favorite: false, ...now() });
   await synced(page);
-  await openTab(page, 'search');
+  await openSearch(page);
   const field = page.locator('#search-text');
   await expect(field).toBeFocused();
   await expect(field).toHaveAttribute('placeholder', 'Tasks, projects and more');
@@ -38,7 +38,7 @@ test('results in groups, accents ignored, recent searches kept and cleared', asy
   await expect(page.locator('#project-page')).toBeVisible();
   await expect(page.locator('#project-title')).toHaveText(`Proj ${w}`);
   await page.goBack();
-  await openTab(page, 'search');
+  await openSearch(page);
   await field.fill('');
   await page.getByRole('button', { name: 'Clear recent searches' }).click();
   await expect(page.locator('#search .td-search-h')).toHaveCount(0);

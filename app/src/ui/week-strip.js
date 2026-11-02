@@ -1,8 +1,8 @@
 // A list by day from today on (Upcoming, and a list's Agenda: screens/calendar.js): Overdue first (with Reschedule),
 // then each day with its tasks and an Add task row, more days drawn as the end comes near; over it the strip.
-// The strip (#upcoming-strip, or the Agenda's): the month of the week shown (a tap opens the month to pick a day) and Today, then
-// the week as seven days: the weekday's letter over the day's number, today's in the accent, the day picked
-// underlined, a dot under a day with tasks. A swipe sideways goes a week on or back (not before this week); a tap on
+// The strip (#upcoming-strip, or the Agenda's): the month and year of the week shown with a caret (a tap, or the handle
+// under the strip, opens five weeks in place; a day picked there closes it), then the week as seven days: the weekday's
+// letter over the day's number, today's in a filled accent circle, the day picked in a soft one. A swipe sideways goes a week on or back (not before this week); a tap on
 // a day scrolls the list to it, and scrolling the list moves the pick. A task dragged onto a day moves to it
 // (row-drag.js reads data-drop-day); a long press on a day opens the quick add dated that day. The week starts on the
 // day the setting says.
@@ -11,9 +11,9 @@ import { ICONS } from '../icons.js';
 import { MORE } from '../icons-more.js';
 import { isTask, dayOrder } from '../tasks.js';
 import { upcomingView, narrowTasks, sorter } from '../arrange.js';
-import { dayKey, addDays, daysBetween, weekOf, weekdayName, dueOf, dayTitle } from '../dates.js';
+import { dayKey, addDays, daysBetween, weekOf, weekdayName, dueOf, shortDate } from '../dates.js';
 import { monthGrid, monthTitle } from '../dates-cal.js';
-import { rowList, addRow, groupHead } from './row.js';
+import { rowList, groupHead } from './row.js';
 import { el, sheetHead } from '../screens/pick.js';
 import { underBar } from './stick.js';
 
@@ -46,10 +46,13 @@ export function drawDays(ctx, o) {
   }
   for (const day of v.days) {
     const g = document.createElement('section'); g.className = 'td-group td-day'; g.dataset.day = day.key;
-    const title = dayTitle(day.key, today);
+    // "Monday, 2 Nov • Today": an empty day's head is dimmed (it stays, so a task can be dropped on it; a new task for
+    // it comes from the + while the day is in sight, or a long press on the day in the strip)
+    const n = daysBetween(today, day.key);
+    const title = `${weekdayName(day.key)}, ${shortDate(day.key, today)}${n === 0 ? ' \u2022 Today' : n === 1 ? ' \u2022 Tomorrow' : ''}`;
+    g.classList.toggle('is-empty', !day.lines.length);
     g.append(groupHead(title));
     if (day.lines.length) g.append(rowList(day.lines, ctx.rows({ place: o.place, own: day.key }), title));
-    if (ctx.canWrite()) g.append(addRow('Add task', () => ctx.openQuickAdd({ projectId: o.projectId, due: { date: day.key } })));
     parts.push(g);
   }
   o.list.replaceChildren(...parts);
@@ -102,16 +105,24 @@ function build(host, s) {
   month.type = 'button';
   month.setAttribute('aria-haspopup', 'dialog');
   const monthName = el('span', 'td-month-name');
-  month.append(monthName, icon(ICONS.chevronDown, { class: 'td-month-chevron' }));
-  const todayBtn = /** @type {HTMLButtonElement} */ (el('button', 'td-text-btn td-strip-today', 'Today'));
-  todayBtn.type = 'button';
-  top.append(month, todayBtn);
+  const caret = icon(ICONS.chevronDown, { class: 'td-month-chevron' });
+  month.append(monthName, caret);
+  month.setAttribute('aria-expanded', 'false');
+  top.append(month);
   const view = el('div', 'td-week-view');
   view.dataset.swipeOwn = '';
   const week = el('div', 'td-week');
   week.setAttribute('role', 'group');
   view.append(week);
-  host.replaceChildren(top, view);
+  // five weeks from the one shown, drawn while the month is open
+  const grid = el('div', 'td-weeks');
+  grid.hidden = true;
+  const handle = /** @type {HTMLButtonElement} */ (el('button', 'td-strip-handle'));
+  handle.type = 'button';
+  handle.setAttribute('aria-label', 'Show more weeks');
+  handle.append(el('span', 'td-strip-grab'));
+  host.replaceChildren(top, view, grid, handle);
+  let open = false;
 
   const count = () => {
     /** @type {Map<string, number>} */
@@ -121,9 +132,36 @@ function build(host, s) {
   };
   s.draw = () => {
     const today = s.day, by = count();
-    monthName.textContent = monthTitle(s.pick >= s.week && s.pick <= addDays(s.week, 6) ? s.pick : s.week).replace(` ${today.slice(0, 4)}`, '');
-    month.setAttribute('aria-label', `${monthName.textContent}, pick a day`);
-    todayBtn.hidden = s.pick === today && s.week === weekOf(today, s.start);
+    monthName.textContent = monthTitle(s.pick >= s.week && s.pick <= addDays(s.week, 6) ? s.pick : s.week);
+    month.setAttribute('aria-label', `${monthName.textContent}, ${open ? 'close' : 'show'} the weeks`);
+    month.setAttribute('aria-expanded', String(open));
+    handle.setAttribute('aria-label', open ? 'Show one week' : 'Show more weeks');
+    host.classList.toggle('is-open', open);
+    view.hidden = open; grid.hidden = !open;
+    const flip = (/** @type {Element} */ c) => c.classList.toggle('is-up', open);
+    flip(caret);
+    if (open) {
+      const head = el('div', 'td-weeks-head');
+      head.setAttribute('aria-hidden', 'true');
+      for (let i = 0; i < 7; i++) head.append(el('span', '', LETTERS[(s.start + i) % 7]));
+      grid.replaceChildren(head, ...Array.from({ length: 5 }, (_, w) => {
+        const r = el('div', 'td-weeks-row');
+        r.setAttribute('role', 'group');
+        for (let i = 0; i < 7; i++) {
+          const key = addDays(s.week, w * 7 + i), b = /** @type {HTMLButtonElement} */ (el('button', 'td-wday td-wcell'));
+          b.type = 'button'; b.dataset.day = key;
+          if (key >= today) b.dataset.dropDay = key; else b.disabled = true;
+          b.classList.toggle('is-today', key === today);
+          b.setAttribute('aria-pressed', String(key === s.pick));
+          const first = key.endsWith('-01');
+          if (first) b.append(el('span', 'td-wcell-mon', MONTHS[+key.slice(5, 7) - 1].slice(0, 3)));
+          b.append(el('span', 'td-sr', `${weekdayName(key)} `), el('span', 'td-wday-num', String(+key.slice(8))), el('span', 'td-sr', ` ${MONTHS[+key.slice(5, 7) - 1]}`));
+          b.addEventListener('click', () => { open = false; go(key, true); });
+          r.append(b);
+        }
+        return r;
+      }));
+    }
     week.setAttribute('aria-label', `Week of ${+s.week.slice(8)} ${MONTHS[+s.week.slice(5, 7) - 1]}`);
     week.replaceChildren(...Array.from({ length: 7 }, (_, i) => {
       const key = addDays(s.week, i), n = by.get(key) ?? 0;
@@ -135,7 +173,7 @@ function build(host, s) {
       b.setAttribute('aria-pressed', String(key === s.pick));
       // (read as "Monday 26 October, 2 tasks": the letter is for the eye)
       const dot = el('span', 'td-wday-dot'), letter = el('span', 'td-wday-letter', LETTERS[new Date(`${key}T12:00:00Z`).getUTCDay()]);
-      dot.hidden = !n || key < today;
+      dot.hidden = true;
       letter.setAttribute('aria-hidden', 'true');
       b.append(letter, el('span', 'td-sr', `${weekdayName(key)} `), el('span', 'td-wday-num', String(+key.slice(8))),
         el('span', 'td-sr', ` ${MONTHS[+key.slice(5, 7) - 1]}${n ? `, ${n} task${n === 1 ? '' : 's'}` : ''}`), dot);
@@ -179,8 +217,13 @@ function build(host, s) {
   };
   addEventListener('scroll', onScroll, { passive: true, capture: true });
 
-  month.addEventListener('click', () => pickMonth(s, key => go(key, true)));
-  todayBtn.addEventListener('click', () => go(s.day, true));
+  const toggleOpen = () => { open = !open; s.draw(); };
+  month.addEventListener('click', toggleOpen);
+  // the handle: a tap, or a drag down (open) or up (close)
+  let hy = 0;
+  handle.addEventListener('pointerdown', e => { hy = e.clientY; });
+  handle.addEventListener('pointerup', e => { const dy = e.clientY - hy; if (Math.abs(dy) > 14) { if ((dy > 0) !== open) toggleOpen(); e.preventDefault(); } });
+  handle.addEventListener('click', e => { if (e.detail !== 0 && Math.abs(e.clientY - hy) > 14) return; toggleOpen(); });
 
   // a long press on a day (today on): the quick add, dated that day; the tap that ends it does not also pick the day
   /** @type {ReturnType<typeof setTimeout> | undefined} */

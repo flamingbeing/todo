@@ -9,8 +9,7 @@ const get = id => db.get(`spaces/_/tasks/${id}`);
 const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { title: id, projectId: 'inbox', priority: 4, done: false, ...now(), ...fields });
 
 async function display(page) {
-  await page.locator('#more-btn').click();
-  await page.getByRole('menuitem', { name: 'Display' }).click();
+  await page.locator('#display-btn').click();
   const sheet = page.locator('#display-sheet');
   await expect(sheet).toBeVisible();
   return sheet;
@@ -20,7 +19,7 @@ const choose = async (page, row, value) => {
   await sheet.getByRole('button', { name: new RegExp(`^${row}`) }).click();
   await page.locator('#pick-sheet').getByRole('option', { name: value, exact: true }).click();
   await expect(page.locator('#pick-sheet')).toBeHidden();
-  await sheet.getByRole('button', { name: 'Done' }).click();
+  await sheet.getByRole('button', { name: /^(Done|Save)$/ }).click();
   await expect(sheet).toBeHidden();
 };
 /** a project of its own, its page open */

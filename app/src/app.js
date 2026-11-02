@@ -1,5 +1,5 @@
 // The page's wiring: the shell and Settings page (shell.js), the kit's sync chip, the account block, and the screen
-// switch. The lists (screens/views.js) are the five tabs and the pages pushed over them, with the task sheet, quick add
+// switch. The lists (screens/views.js) are the four tabs and the pages pushed over them, with the task sheet, quick add
 // and the project sheet loading the first time they are needed.
 import { syncChip, syncButton, plural, loadState } from '@core/ui';
 import { start, usingEmulator, emulatorSignIn, lastSignedIn, keepList, keptList } from './cloud.js';

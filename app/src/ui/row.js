@@ -200,9 +200,16 @@ export function groupHead(title, { id, collapsed, onFold, onMore, onAdd, label }
   return h;
 }
 
-/** the list's own empty state: a soft circle with a check, a title and a hint @param {string} title @param {string} hint */
-export function emptyNote(title, hint) {
+/** the list's own empty state: a drawing (or a soft circle with a check), a title and a hint
+ * @param {string} title @param {string} hint @param {'inbox' | 'day'} [kind] */
+export function emptyNote(title, hint, kind) {
   const box = el('div', 'td-empty');
+  if (kind) {
+    box.classList.add('td-empty-big');
+    box.append(el('p', 'td-empty-title', title), el('p', 'td-empty-hint', hint));
+    void import('./empty-art.js').then(m => box.prepend(m.emptyArt(kind)));
+    return box;
+  }
   const art = el('span', 'td-empty-art');
   art.append(icon(ICONS.circleCheck));
   box.append(art, el('p', 'td-empty-title', title), el('p', 'td-empty-hint', hint));

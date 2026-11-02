@@ -6,23 +6,23 @@ import { APP as CONFIG } from '../app/src/config.js';
 test('theme and density switch: kept on this device, accessible in dark', async ({ phone }) => {
   const page = await phone();
   await page.goto(APP, { waitUntil: 'domcontentloaded' });
-  await openSettings(page, 'Look');
+  await openSettings(page, 'Theme');
   const root = page.locator('html');
   await expect(root).not.toHaveAttribute('data-theme');
   await expect(root).not.toHaveAttribute('data-density');
 
-  await page.getByLabel('Theme').selectOption('dark');
+  await page.locator('#theme-pick').selectOption('dark');
   await page.getByLabel('Density').selectOption('compact');
   await expect(root).toHaveAttribute('data-theme', 'dark');
   await expect(root).toHaveAttribute('data-density', 'compact');
   expect(await AxeBuilder(page)).toEqual([]);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await openSettings(page, 'Look');
+  await openSettings(page, 'Theme');
   await expect(root).toHaveAttribute('data-theme', 'dark');
   await expect(page.getByLabel('Density')).toHaveValue('compact');
 
-  await page.getByLabel('Theme').selectOption('auto');
+  await page.locator('#theme-pick').selectOption('auto');
   await expect(root).not.toHaveAttribute('data-theme');
 });
 
@@ -31,7 +31,7 @@ const cssVar = (page, name) => page.evaluate(n => getComputedStyle(document.docu
 test('look and dark style: applied before the page is ready, kept on reload, OLED is black', async ({ phone }) => {
   const page = await phone();
   await page.goto(APP, { waitUntil: 'domcontentloaded' });
-  await openSettings(page, 'Look');
+  await openSettings(page, 'Theme');
   const root = page.locator('html');
   const lightBg = await cssVar(page, '--bg');
   await page.locator('#preset-pick').selectOption('eye');
@@ -39,7 +39,7 @@ test('look and dark style: applied before the page is ready, kept on reload, OLE
   expect(await cssVar(page, '--bg')).toBe('#efe6d2');   // the look's sepia ground
   expect(await cssVar(page, '--leading')).toBe('1.65');
 
-  await page.getByLabel('Theme').selectOption('dark');
+  await page.locator('#theme-pick').selectOption('dark');
   await page.getByLabel('Dark style').selectOption('oled');
   await expect(root).toHaveAttribute('data-dark', 'oled');
   expect(await cssVar(page, '--bg')).toBe('#000000');
@@ -47,7 +47,7 @@ test('look and dark style: applied before the page is ready, kept on reload, OLE
 
   // (module scripts run before DOMContentLoaded: the chosen look is there from the first frame)
   await page.goto(APP, { waitUntil: 'domcontentloaded' });
-  await openSettings(page, 'Look');
+  await openSettings(page, 'Theme');
   expect(await cssVar(page, '--bg')).toBe('#000000');
   await expect(page.locator('#preset-pick')).toHaveValue('eye');
   await expect(page.getByLabel('Dark style')).toHaveValue('oled');
@@ -59,24 +59,24 @@ test('look and dark style: applied before the page is ready, kept on reload, OLE
   expect(await cssVar(page, '--bg')).toBe('#000000');
   await page.unroute('**/theme/index.js');
   await page.goto(APP, { waitUntil: 'domcontentloaded' });
-  await openSettings(page, 'Look');
+  await openSettings(page, 'Theme');
 
   await page.locator('#preset-pick').selectOption('default');
-  await page.getByLabel('Theme').selectOption('light');
+  await page.locator('#theme-pick').selectOption('light');
   expect(await cssVar(page, '--bg')).toBe(lightBg);
 });
 
 test('accent: a picked colour is kept on this device, Reset goes back to the look\'s', async ({ phone }) => {
   const page = await phone();
   await page.goto(APP, { waitUntil: 'domcontentloaded' });
-  await openSettings(page, 'Look');
+  await openSettings(page, 'Theme');
   const reset = page.getByRole('button', { name: 'Reset colour' });
   await expect(reset).toBeHidden();
   await expect(page.locator('#accent-pick')).toHaveValue(CONFIG.accent);   // the app's (config.js)
   await page.locator('#accent-pick').fill('#c2417a');
   await expect(reset).toBeVisible();
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await openSettings(page, 'Look');
+  await openSettings(page, 'Theme');
   await expect(page.locator('#accent-pick')).toHaveValue('#c24179');   // (snapped to 6 bits a channel)
   expect(await cssVar(page, '--accent')).not.toBe('');
   await page.getByRole('button', { name: 'Reset colour' }).click();
@@ -91,7 +91,7 @@ const LOOKS = ['default', 'flat', 'soft', 'paper', 'navy', 'black', 'contrast', 
 test('the look picker offers every look', async ({ phone }) => {
   const page = await phone();
   await page.goto(APP, { waitUntil: 'domcontentloaded' });
-  await openSettings(page, 'Look');
+  await openSettings(page, 'Theme');
   const looks = await page.locator('#preset-pick').locator('option').evaluateAll(os => os.map(o => /** @type {HTMLOptionElement} */ (o).value));
   expect(looks).toEqual(LOOKS);
 });
@@ -100,10 +100,10 @@ for (const look of LOOKS) {
   test(`look ${look} passes axe in light, dark and OLED`, async ({ phone }) => {
     const page = await phone();
     await page.goto(APP, { waitUntil: 'domcontentloaded' });
-    await openSettings(page, 'Look');
+    await openSettings(page, 'Theme');
     await page.locator('#preset-pick').selectOption(look);
     for (const [theme, dark] of [['light', 'dark'], ['dark', 'dark'], ['dark', 'oled']]) {
-      await page.getByLabel('Theme').selectOption(theme);
+      await page.locator('#theme-pick').selectOption(theme);
       await page.getByLabel('Dark style').selectOption(dark);
       expect(await AxeBuilder(page), `${look} ${theme} ${dark}`).toEqual([]);
     }

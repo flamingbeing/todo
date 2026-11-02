@@ -277,6 +277,12 @@ export const openTab = async (page, name) => {
   }).toPass({ timeout: 15_000 });
 };
 export const openToday = page => openTab(page, 'today');
+// Search is not on the tab bar: it is the first row in Browse
+export const openSearch = async page => {
+  await openTab(page, 'browse');
+  await page.locator('#browse .td-browse-row').filter({ hasText: /^Search/ }).click();
+  await expect(page.locator('#search-page')).toBeVisible();
+};
 export const clickOpens = async (button, dialog) => { await button.dispatchEvent('click'); await expect(dialog).toBeVisible(); };
 // (and the quick add and task sheet loaded, which the page fetches straight after its first draw: a test may go offline next)
 export const synced = async page => {

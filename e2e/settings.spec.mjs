@@ -4,12 +4,27 @@
 import { test, expect, signIn, signInAgain, synced, openSettings, openToday, openTab } from './fixtures.mjs';
 import AxeBuilder from './axe.mjs';
 
-const open = (page, title = 'Tasks') => openSettings(page, title);
+const open = (page, title = 'General') => openSettings(page, title);
+const openCounts = page => openSettings(page, 'Navigation menu');
 const big = page => page.getByRole('switch', { name: /Larger rows/ });
 const count = page => page.getByRole('switch', { name: /Show task counts/ });
-// the Inbox row's count on Browse (drawn once Browse has opened; it follows the option from then on)
-const shown = page => page.locator('#browse .td-browse-row', { hasText: 'Inbox' }).locator('.td-browse-count');
-const browse = async page => { await page.evaluate(() => window.starter.add('counted')); await openTab(page, 'browse'); };
+// a project row's count on Browse (drawn once Browse has opened; it follows the option from then on)
+const shown = page => page.locator('#browse .td-browse-row', { hasText: 'Counted' }).locator('.td-browse-count');
+// (a project "Counted" with a task in it; the other phone, signed into the same account, finds both)
+const browse = async page => {
+  await openTab(page, 'browse');
+  if (!await page.locator('#browse .td-browse-row', { hasText: 'Counted' }).count()) {
+    await page.locator('#browse .td-browse-add').click();
+    await page.fill('#project-sheet .td-project-name', 'Counted');
+    await page.press('#project-sheet .td-project-name', 'Enter');
+    await expect(page.locator('#project-title')).toHaveText('Counted');
+    await page.locator('#fab').click();
+    await page.fill('#add-sheet .td-add-title', 'counted #Counted');
+    await page.press('#add-sheet .td-add-title', 'Enter');
+    await page.keyboard.press('Escape');
+    await openTab(page, 'browse');
+  }
+};
 const note = page => page.locator('.ui-settings-status');
 
 test('device values stay on this device: Larger rows and the counts do not reach the account\'s other phone', async ({ phone }) => {
@@ -17,10 +32,11 @@ test('device values stay on this device: Larger rows and the counts do not reach
   const { email } = await signIn(a, 'member');
   await synced(a);
   await browse(a);
-  await open(a);
+  await openCounts(a);
   await expect(a.locator('#settings-host')).toContainText('Show task counts in Browse');
-  await big(a).check();
   await count(a).check();
+  await open(a);
+  await big(a).check();
   await openToday(a);
   await expect(a.locator('.ui-screens')).toHaveClass(/big/);
   await expect(shown(a)).toHaveCount(1);
@@ -33,6 +49,7 @@ test('device values stay on this device: Larger rows and the counts do not reach
   await expect(shown(b)).toHaveCount(0);
   await open(b);
   await expect(big(b)).not.toBeChecked();
+  await openCounts(b);
   await expect(count(b)).not.toBeChecked();
 });
 
@@ -41,7 +58,7 @@ test('the device value survives sign-out and a reload', async ({ phone }) => {
   const { email } = await signIn(a, 'member');
   await open(a);
   await big(a).check();
-  await openSettings(a);
+  await openSettings(a, 'Account');
   await a.click('#sign-out');
   await openToday(a);
   await expect(a.locator('#signed-out')).toBeVisible();
@@ -56,7 +73,7 @@ test('a settings file: exported, imported on another account, bad keys dropped',
   const a = await phone();
   await signIn(a, 'member');
   await synced(a);
-  await open(a);
+  await openCounts(a);
   await count(a).check();
   await open(a, 'Settings file');
   const [download] = await Promise.all([a.waitForEvent('download'), a.getByRole('button', { name: 'Export' }).click()]);
@@ -71,11 +88,13 @@ test('a settings file: exported, imported on another account, bad keys dropped',
   const bad = { ...file, settings: { ...file.settings, showCounts: true, bigRows: true, nope: 1 } };
   await b.setInputFiles('.ui-settings input[type=file]', { name: 'settings.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(bad)) });
   await expect(note(b)).toContainText('Imported: 0 changes, 3 left out');
+  await openCounts(b);   // (the device options sit on the Navigation menu page)
   await expect(count(b)).not.toBeChecked();
+  await open(b);
   await expect(big(b)).not.toBeChecked();
   await b.setInputFiles('.ui-settings input[type=file]', { name: 'x.json', mimeType: 'application/json', buffer: Buffer.from('not json') });
   await expect(note(b)).toContainText('not JSON');
-  await expect(count(b)).not.toBeChecked();
+  await expect(big(b)).not.toBeChecked();
 });
 
 test('the Settings page passes axe', async ({ phone }) => {
@@ -94,7 +113,7 @@ test('a direct switch from one account to another shows the new account\'s own o
   await signIn(a, 'member');                      // account A
   await synced(a);
   await browse(a);
-  await open(a);
+  await openCounts(a);
   await count(a).check();
   await openToday(a);
   // straight from A to B, no sign-out in between
@@ -104,7 +123,7 @@ test('a direct switch from one account to another shows the new account\'s own o
   await expect.poll(() => a.evaluate(() => window.starter.ready)).toBe(true);
   await a.reload({ waitUntil: 'domcontentloaded' });
   await expect(a.locator('#list-view')).toBeVisible();
-  await open(a);
+  await openCounts(a);
   await expect(count(a)).not.toBeChecked();
 });
 

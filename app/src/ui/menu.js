@@ -12,9 +12,9 @@ let closeOpen = null;
 /**
  * @param {HTMLElement} anchor  the button it opens from (its aria-expanded follows)
  * @param {(MenuItem | null)[]} items  null: a divider
- * @param {{ label?: string }} [o]  label: the menu's name for screen readers
+ * @param {{ label?: string, sheet?: boolean, note?: string }} [o]  label: the menu's name for screen readers; sheet: a panel docked at the bottom (icons first) with note as its first line instead of a list by the button
  */
-export function openMenu(anchor, items, { label = '' } = {}) {
+export function openMenu(anchor, items, { label = '', sheet = false, note = '' } = {}) {
   closeOpen?.();
   const layer = document.createElement('div'), veil = document.createElement('div'), menu = document.createElement('div');
   layer.className = 'ui-menu-layer is-open td-menu-layer';
@@ -39,6 +39,15 @@ export function openMenu(anchor, items, { label = '' } = {}) {
     b.addEventListener('click', () => { close(); void item.run(); });
     return b;
   });
+  if (sheet) {
+    menu.classList.add('td-menu-sheet');
+    const head = document.createElement('div');
+    head.className = 'td-menu-note';
+    const bar = document.createElement('div');
+    bar.className = 'td-menu-grab';
+    head.textContent = note;
+    menu.append(bar, ...(note ? [head] : []));
+  }
   menu.append(...buttons);
   layer.append(veil, menu);
   // in the top layer, inside an open sheet when it opens from one: a modal sheet leaves the rest of the page inert
@@ -50,10 +59,12 @@ export function openMenu(anchor, items, { label = '' } = {}) {
 
   // under the button, kept on screen; above it when there is no room below
   const r = anchor.getBoundingClientRect(), m = menu.getBoundingClientRect();
+  if (!sheet) {
   const left = Math.max(8, Math.min(r.right - m.width, innerWidth - m.width - 8));
   const below = r.bottom + 6, top = below + m.height > innerHeight - 8 ? Math.max(8, r.top - m.height - 6) : below;
   menu.style.left = `${left}px`; menu.style.top = `${top}px`;
   menu.style.transformOrigin = `${r.left + r.width / 2 - left}px ${top > r.top ? 0 : m.height}px`;
+  }
 
   const onKey = (/** @type {KeyboardEvent} */ e) => {
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
