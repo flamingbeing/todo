@@ -41,7 +41,12 @@ test('placeInTree: pulled right it indents under the line above, one level at mo
   const deep = placeInTree(tree, 3, 5);
   assert.deepEqual([deep.depth, deep.parentId, deep.index], [2, 'a2', 0]);
   assert.equal(placeInTree(tree, 6, 1, 4).depth, 0, 'its own subtasks would go past the deepest level');
-  assert.equal(placeInTree([L('a', 0, { collapsed: true })], 1, 1).depth, 0, 'not into a folded task');
+  assert.equal(placeInTree([{ ...L('a', 0, { collapsed: true }), kids: 1 }], 1, 1).depth, 0, 'not into a folded task');
+  // a parent starts folded (tree.js isOpen: only collapsed === false shows its subtasks), so unset folds too, like the display
+  assert.equal(placeInTree([{ ...L('a', 0), kids: 2 }], 1, 1).depth, 0, 'not into a parent that was never opened');
+  assert.equal(placeInTree([{ ...L('a', 0, { collapsed: null }), kids: 2 }], 1, 1).depth, 0, 'null folds as well');
+  assert.equal(placeInTree([{ ...L('a', 0, { collapsed: false }), kids: 2 }], 1, 1).depth, 1, 'into an opened parent');
+  assert.equal(placeInTree([{ ...L('a', 0), kids: 0 }], 1, 1).depth, 1, 'a task with no subtasks takes its first');
 });
 
 test('placeInTree: pulled left it outdents, but not above the line below', () => {

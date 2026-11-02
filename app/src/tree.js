@@ -56,7 +56,8 @@ export function canNest(task, parent, tasks) {
 }
 
 /**
- * The lines a list draws: each top task, then its open subtasks under it (deeper each level), unless it is collapsed.
+ * The lines a list draws: each top task, then, only for a parent that was opened (collapsed === false), its open
+ * subtasks under it (deeper each level). A parent starts folded: its row shows the "1/4" count and a chevron to open it.
  * kids and doneKids count a task's own children, done or not (its "1/4").
  * @template {Node} T @param {T[]} tops  the top tasks, in order @param {T[]} all  every task (their subtasks among them)
  * @param {{ open?: (t: T) => boolean }} [o]  which subtasks show (default: not done)
@@ -69,11 +70,14 @@ export function flatten(tops, all, { open = t => !t.done } = {}) {
     seen.add(t.id);
     const mine = kids.get(t.id) ?? [];
     out.push({ task: t, depth, kids: mine.length, doneKids: mine.filter(k => k.done).length });
-    if (!t.collapsed && depth < MAX_DEPTH) for (const k of mine) if (open(k)) add(k, depth + 1);
+    if (t.collapsed === false && depth < MAX_DEPTH) for (const k of mine) if (open(k)) add(k, depth + 1);
   };
   for (const t of tops) add(t, 0);
   return out;
 }
+
+/** whether a parent's subtasks show in a list: only after its chevron opened them (collapsed is false), never by default @param {{ collapsed?: boolean | null }} t */
+export const isOpen = t => t.collapsed === false;
 
 /** the subtask count a row shows, "1/4", or '' with none @param {{ kids: number, doneKids: number }} line */
 export const countText = line => (line.kids ? `${line.doneKids}/${line.kids}` : '');

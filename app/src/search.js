@@ -34,3 +34,6 @@ export const remember = (recent, text) => {
   const v = String(text ?? '').trim().slice(0, 200);
   return v ? [v, ...recent.filter(x => fold(x) !== fold(v))].slice(0, 10) : recent.slice(0, 10);
 };
+
+// (rememberPlace lives in recent.js, so the first screen does not load this file)
+export { rememberPlace } from './recent.js';

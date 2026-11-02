@@ -5,6 +5,8 @@
 // "evening", "mid jan", "end of month", "in 3 days", "+3 days"), then the chrono library for the rest ("next friday",
 // "dec 5", "at 5pm"). Each part found is a token with where it sits in the text, so the editor can colour it and the
 // chip can clear it; a range the person cleared (ignore) stays text. With smart dates off only #, /, @, % and p count.
+// dueWords is the way back: the words that read as a given date (a day picked in the Date sheet is written into the name
+// as "11 Nov 4pm", "tomorrow", "every workday", and only when parse reads them back as that same date).
 // Pure: the chrono and rrule libraries are passed in by the caller, which loads them lazily.
 import { addDays, dayKey, timeKey, weekdayOf, isDay } from './dates.js';
 import { findRecur, timeOf, firstDay, firstDayPlain, TIME_RE } from './recur.js';
@@ -321,4 +323,40 @@ export function shiftRanges(was, now, ranges) {
   while (b < was.length - a && b < now.length - a && was[was.length - 1 - b] === now[now.length - 1 - b]) b++;
   const cutEnd = was.length - b, delta = now.length - was.length;
   return ranges.flatMap(r => (r.end <= a ? [r] : r.start >= cutEnd ? [{ start: r.start + delta, end: r.end + delta }] : []));
+}
+
+const MONTH_WORDS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** "4pm", "4:30pm", "12am" @param {string} hhmm */
+const clockWord = hhmm => {
+  const h = +hhmm.slice(0, 2), m = hhmm.slice(3, 5);
+  return `${h % 12 || 12}${m === '00' ? '' : `:${m}`}${h < 12 ? 'am' : 'pm'}`;
+};
+
+/**
+ * The words that say a date, to write into a name: "today", "tomorrow", "11 Nov" ("11 Nov 2027" in another year), then the
+ * time ("4pm"), or the repeat's own words ("every workday"). Only words that parse reads back as the same day, time and
+ * rule come out (null otherwise, or without the libraries that read them), so the words and the date stay one thing.
+ * @param {import('./dates.js').Due} due @param {ParseContext} [ctx] @returns {string | null}
+ */
+export function dueWords(due, ctx = {}) {
+  const now = ctx.now ?? new Date(), today = dayKey(now);
+  const time = due.time ? clockWord(due.time) : '';
+  /** @type {string[]} */
+  let options;
+  if (due.rrule) {
+    const s = (due.string ?? '').trim();
+    if (!s) return null;
+    options = time ? [`${s} ${time}`, `${s} at ${time}`, s] : [s];
+  } else {
+    const [y, m, d] = due.date.split('-').map(Number);
+    const day = due.date === today ? 'today' : due.date === addDays(today, 1) ? 'tomorrow' : `${d} ${MONTH_WORDS[m - 1]}${y === +today.slice(0, 4) ? '' : ` ${y}`}`;
+    options = [time ? `${day} ${time}` : day];
+  }
+  for (const text of options) {
+    const p = parse(text, { now, chrono: ctx.chrono, RRule: ctx.RRule, smartDates: true });
+    const got = p.due;
+    if (!got || p.title || got.date !== due.date || (got.time ?? '') !== (due.time ?? '') || (got.rrule ?? '') !== (due.rrule ?? '')) continue;
+    return text;
+  }
+  return null;
 }

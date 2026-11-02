@@ -1,7 +1,7 @@
 // dates.js: day maths, the tone and words of a due date, group headers. node --test app/test/dates.unit.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dayKey, timeKey, addDays, daysBetween, isDay, isTime, weekdayName, shortDate, dateTone, dayWords, deadlineLine, dueLine, dayTitle, timeText, minutesClock, minutesText, weekOf } from '../src/dates.js';
+import { dayKey, timeKey, addDays, daysBetween, isDay, isTime, weekdayName, shortDate, dateTone, dayWords, deadlineLine, dueLine, dayTitle, dayHeading, timeText, minutesClock, minutesText, weekOf } from '../src/dates.js';
 import { minutesSpan, monthGrid, monthTitle } from '../src/dates-cal.js';
 
 const T = '2026-11-01';   // a Sunday
@@ -61,6 +61,11 @@ test('a row’s date line: the time joins the words; the group’s own day is no
   assert.match(minutesSpan(10 * 60, 10 * 60 + 45), /10:00\D+10:45|10:00.*10:45/, 'a block\'s span');
   assert.match(new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(2000, 0, 1, 13, 30)), /^1:30\sPM$/, 'en-US: the format the calendar spec checks');
   assert.equal(dueLine({ date: 'soon' }, T), null);
+});
+
+test('the single day heading over Today: "Monday, 2 Nov", the year only in another one', () => {
+  assert.equal(dayHeading('2026-11-02', '2026-11-02'), 'Monday, 2 Nov');
+  assert.equal(dayHeading('2027-01-01', '2026-11-02'), 'Friday, 1 Jan 2027');
 });
 
 test('group headers: "1 Nov · Today · Sunday", "2 Nov · Tomorrow · Monday", "3 Nov · Tuesday"', () => {

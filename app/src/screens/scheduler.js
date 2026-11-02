@@ -1,12 +1,14 @@
-// The scheduler (#schedule-sheet): Cancel, "Schedule" and Done at the top; a text field that reads typed dates as they
-// are typed ("fri 5pm", "every monday": parse.js); the shortcut rows (Today, Tomorrow, Later this week, This weekend,
-// Next week, No date), each with its weekday; a month calendar running on for half a year, with a dot under the days
-// that have tasks, the chosen day's "Mon 4 Nov · 5 tasks due" and a bar of its tasks in their projects' colours; then
-// the Time row and the Repeat row (its menu of ready rules, and Custom: based on the scheduled or the completed date,
-// every N days, weeks, months or years, on which weekdays, and when it ends). A shortcut row sets the date at once;
-// a day in the calendar, a time or a repeat waits for Done. With dateOnly (a deadline) the Time and Repeat rows are left out.
-// A dated task also gets Postpone (the next day, its time and repeat kept: a repeating one moves this time only), and a
-// task whose duration is given gets the Duration row (None, 15 min to 3 h, or minutes typed), which Done hands back.
+// The date sheet (#schedule-sheet): a plain "Date" title (left, under the grab handle) and a small red Save pill floating at
+// the bottom right; a pill field with a calendar icon that reads typed dates as they are typed ("fri 5pm", "every
+// monday": parse.js) and shows the date short ("11 Nov", "every workday"); the shortcut rows (Today, Tomorrow, This
+// weekend, Next week, and No date once there is one), each with its weekday ("Mon (9 Nov)" for Next week); a month
+// calendar running on for half a year, with a dot under the days that have tasks, the chosen day's "Mon 4 Nov · 5 tasks
+// due" and a bar of its tasks in their projects' colours; then one hairline panel of compact rows: Add time, Repeat (its
+// menu of ready rules, and Custom: based on the scheduled or the completed date, every N days, weeks, months or years,
+// on which weekdays, and when it ends). A shortcut row sets the date at once; a day in the calendar, a time or a repeat
+// waits for Save. The sheet dismisses by swipe or scrim, changing nothing. With dateOnly (a deadline) the Add time and
+// Repeat rows are left out. A task whose duration is given gets the Duration row (None, 15 min to 3 h, or minutes
+// typed), which Save hands back, unless the caller keeps it in its own menu (durationRow: false).
 import { icon } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { INBOX } from '../items.js';
@@ -19,8 +21,9 @@ import { openMenu } from '../ui/menu.js';
 import { el } from './pick.js';
 
 /** @typedef {import('../dates.js').Due} Due */
-/** @typedef {{ data?: import('../items.js').Data, weekStart?: number, dateOnly?: boolean, duration?: number | null }} ScheduleOptions
- * dateOnly: the Deadline sheet, a day and nothing else (no time, no repeat); duration: the task's (null: none), for the Duration row */
+/** @typedef {{ data?: import('../items.js').Data, weekStart?: number, dateOnly?: boolean, duration?: number | null, durationRow?: boolean, clearable?: boolean }} ScheduleOptions
+ * dateOnly: the Deadline sheet, a day and nothing else (no time, no repeat); duration: the task's (null: none), for the Duration row
+ * (durationRow false: handed back as it was, no row); clearable: No date even with no date given (several tasks, some dated) */
 /** the Duration menu's lengths, in minutes */
 export const DURATIONS = [15, 30, 45, 60, 90, 120, 180];
 
@@ -33,12 +36,14 @@ let libs = null;
 
 /** @param {string} key "Mon 4 Nov" */
 const dayLong = key => `${DAYS[weekdayOf(key)]} ${+key.slice(8, 10)} ${MONTHS[+key.slice(5, 7) - 1]}`;
+/** @param {string} key "11 Nov" */
+const dayShort = key => `${+key.slice(8, 10)} ${MONTHS[+key.slice(5, 7) - 1]}`;
 /** @param {string} label @param {string} [cls] */
 const textButton = (label, cls = '') => { const b = /** @type {HTMLButtonElement} */ (el('button', cls, label)); b.type = 'button'; return b; };
 
 /**
  * Opens the scheduler for a date (null: none yet); done gets the new date, or null for "No date", and the duration
- * (with o.duration). Cancel or Esc changes nothing.
+ * (with o.duration). Swipe, scrim or Esc changes nothing.
  * @param {Due | null | undefined} due @param {(due: Due | null, duration?: number | null) => unknown} done @param {ScheduleOptions} [o]
  */
 export function pickDate(due, done, o = {}) {
@@ -53,16 +58,16 @@ export function pickDate(due, done, o = {}) {
   let dur = o.duration ?? null;
   const finish = (/** @type {Due | null} */ v) => { d.close(); void done(v && o.dateOnly ? { date: v.date } : v, ...(hasDur ? [dur] : [])); };
 
-  // ---- the head
+  // ---- the head: the title, and Save floating over the content
   const head = el('div', 'td-sheet-head td-sched-head');
-  const cancel = textButton('Cancel', 'td-text-btn');
-  cancel.addEventListener('click', () => d.close());
-  const h = el('h2', 'td-sheet-title', o.dateOnly ? 'Deadline' : 'Schedule');
+  const h = el('h2', 'td-sheet-title td-sched-title', o.dateOnly ? 'Deadline' : 'Date');
   h.id = 'schedule-sheet-title';
   d.setAttribute('aria-labelledby', h.id);
-  const ok = textButton('Done', 'td-text-btn td-text-btn-strong');
+  head.append(h);
+  const ok = textButton('Save', 'td-sched-save');
   ok.addEventListener('click', () => finish(typed ?? pending));
-  head.append(cancel, h, ok);
+  const saveBar = el('div', 'td-sched-save-bar');
+  saveBar.append(ok);
 
   // ---- the text field
   const words = Object.assign(document.createElement('input'), { type: 'text', className: 'td-sched-text', autocomplete: 'off', enterKeyHint: 'done',
@@ -82,7 +87,7 @@ export function pickDate(due, done, o = {}) {
   words.addEventListener('input', read);
   words.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (typed || words.value.trim()) finish(typed ?? pending); } });
   /** what the field shows for the date as it stands */
-  const shownWords = () => (pending ? (pending.rrule && pending.string ? pending.string : `${dayLong(pending.date)}${pending.time ? ` ${timeText(pending.time)}` : ''}`) : '');
+  const shownWords = () => (pending ? (pending.rrule && pending.string ? pending.string : `${dayShort(pending.date)}${pending.time ? ` ${timeText(pending.time)}` : ''}`) : '');
   /** @param {Due} v */
   const sayDue = v => `${dayLong(v.date)}${v.time ? ` ${timeText(v.time)}` : ''}${v.rrule ? ` · ${describe({ rrule: v.rrule, fromDone: v.fromDone })}` : ''}`;
 
@@ -94,23 +99,21 @@ export function pickDate(due, done, o = {}) {
   /** @type {[string, import('app-ui/icons/lucide.js').IconNodes, string, string | null][]} */
   const quick = [
     ['Today', ICONS.calendar, 'today', today], ['Tomorrow', MORE.sun, 'tomorrow', addDays(today, 1)],
-    ...(wd >= 1 && wd <= 3 ? [/** @type {[string, import('app-ui/icons/lucide.js').IconNodes, string, string | null]} */ (['Later this week', MORE.calendarRange, 'week', addDays(today, 2)])] : []),
-    ['This weekend', MORE.sofa, 'weekend', sat], ['Next week', MORE.calendarArrowUp, 'week', mon], [o.dateOnly ? 'No deadline' : 'No date', MORE.circleSlash, 'none', null],
+    ['This weekend', MORE.sofa, 'weekend', sat], ['Next week', MORE.calendarArrowUp, 'week', mon],
+    // (No date only once there is a date to take off)
+    ...(dueOf(due) || o.clearable ? [/** @type {[string, import('app-ui/icons/lucide.js').IconNodes, string, string | null]} */ ([o.dateOnly ? 'No deadline' : 'No date', MORE.circleSlash, 'none', null])] : []),
   ];
-  // Postpone: the day after the task's own (tomorrow at the earliest, so an overdue one comes forward)
-  const was = dueOf(due);
-  if (timed && was) { const n = addDays(was.date, 1); quick.splice(-1, 0, ['Postpone', MORE.redo2, 'none', n > today ? n : addDays(today, 1)]); }
   const rows = el('ul', 'td-sched-quick');
   rows.setAttribute('aria-label', 'Quick dates');
   for (const [label, ic, tone, date] of quick) {
-    if (label === 'Today' && pending?.date === today) continue;
     const li = el('li', ''), b = /** @type {HTMLButtonElement} */ (el('button', 'td-choice td-sched-row'));
     b.type = 'button';
     const i = icon(ic, { class: 'td-choice-icon' });
     i.dataset.tone = tone;
     b.append(i, el('span', 'td-choice-label', label));
-    if (date) b.append(el('span', 'td-choice-side', DAYS[weekdayOf(date)]));
-    b.addEventListener('click', () => finish(date ? { ...(label === 'Postpone' ? was : pending ?? {}), date } : null));
+    // the weekday at the right; Next week also says its date: "Mon (9 Nov)"
+    if (date) b.append(el('span', 'td-choice-side', `${DAYS[weekdayOf(date)]}${label === 'Next week' ? ` (${dayShort(date)})` : ''}`));
+    b.addEventListener('click', () => finish(date ? { ...(pending ?? {}), date } : null));
     li.append(b);
     rows.append(li);
   }
@@ -194,7 +197,8 @@ export function pickDate(due, done, o = {}) {
   const timeIn = Object.assign(document.createElement('input'), { type: 'time', className: 'td-sched-time-in' });
   timeIn.setAttribute('aria-label', 'Time');
   const timeSide = el('span', 'td-choice-side');
-  timeRow.append(icon(MORE.clock, { class: 'td-choice-icon' }), el('span', 'td-choice-label', 'Time'), timeSide, icon(ICONS.chevronRight, { class: 'td-sched-chev' }), timeIn);
+  const timeLabel = el('span', 'td-choice-label', 'Add time');
+  timeRow.append(icon(MORE.clock, { class: 'td-choice-icon' }), timeLabel, timeSide, timeIn);
   timeIn.addEventListener('change', () => {
     pending = { ...(pending ?? { date: today }) };
     if (timeIn.value) pending.time = timeIn.value; else delete pending.time;
@@ -209,7 +213,7 @@ export function pickDate(due, done, o = {}) {
   const repeatRow = /** @type {HTMLButtonElement} */ (el('button', 'td-choice td-sched-row'));
   repeatRow.type = 'button';
   const repeatSide = el('span', 'td-choice-side');
-  repeatRow.append(icon(ICONS.repeat, { class: 'td-choice-icon' }), el('span', 'td-choice-label', 'Repeat'), repeatSide, icon(ICONS.chevronRight, { class: 'td-sched-chev' }));
+  repeatRow.append(icon(ICONS.repeat, { class: 'td-choice-icon' }), el('span', 'td-choice-label', 'Repeat'), repeatSide);
   repeatRow.setAttribute('aria-haspopup', 'menu');
   repeatLi.append(repeatRow);
   // the duration: a menu of lengths, or Custom's minutes typed in a row under it
@@ -217,7 +221,7 @@ export function pickDate(due, done, o = {}) {
   durRow.type = 'button';
   durRow.setAttribute('aria-haspopup', 'menu');
   const durSide = el('span', 'td-choice-side');
-  durRow.append(icon(MORE.hourglass, { class: 'td-choice-icon' }), el('span', 'td-choice-label', 'Duration'), durSide, icon(ICONS.chevronRight, { class: 'td-sched-chev' }));
+  durRow.append(icon(MORE.hourglass, { class: 'td-choice-icon' }), el('span', 'td-choice-label', 'Duration'), durSide);
   durLi.append(durRow);
   const minLi = el('li', 'td-sched-min');
   const minIn = Object.assign(document.createElement('input'), { type: 'number', min: '1', max: '1440', inputMode: 'numeric', className: 'td-sched-min-in', placeholder: '50' });
@@ -231,7 +235,7 @@ export function pickDate(due, done, o = {}) {
     ...[null, ...DURATIONS].map(n => ({ label: n ? minutesText(n) : 'None', checked: dur === n, run: () => { dur = n; minLi.hidden = true; drawRows(); } })),
     { label: 'Custom', checked: !!dur && !DURATIONS.includes(dur), run: () => { minLi.hidden = false; minIn.value = dur ? String(dur) : ''; minIn.focus(); } },
   ], { label: 'Duration' }));
-  more.append(timeLi, ...(hasDur ? [durLi, minLi] : []), repeatLi);
+  more.append(timeLi, ...(hasDur && o.durationRow !== false ? [durLi, minLi] : []), repeatLi);
   /** a rule set from the menu or the custom screen @param {string | null} rrule @param {string} [label] @param {boolean} [fromDone] */
   const setRule = (rrule, label = '', fromDone = false) => {
     const day = pending?.date ?? today;
@@ -254,11 +258,12 @@ export function pickDate(due, done, o = {}) {
     ], { label: 'Repeat' });
   });
   const drawRows = () => {
-    timeSide.textContent = pending?.time ? timeText(pending.time) : 'None';
+    // (a value only once set: no "None", no chevron)
+    timeSide.textContent = pending?.time ? timeText(pending.time) : '';
     timeIn.value = pending?.time ?? '';
     timeX.hidden = !pending?.time;
-    repeatSide.textContent = pending?.rrule ? describe({ rrule: pending.rrule, fromDone: pending.fromDone }) : 'None';
-    durSide.textContent = dur ? minutesText(dur) : 'None';
+    repeatSide.textContent = pending?.rrule ? describe({ rrule: pending.rrule, fromDone: pending.fromDone }) : '';
+    durSide.textContent = dur ? minutesText(dur) : '';
   };
 
   // ---- the custom repeat screen
@@ -340,8 +345,10 @@ export function pickDate(due, done, o = {}) {
   };
 
   const field = el('div', 'td-sched-field');
-  field.append(words, hint);
-  const main = o.dateOnly ? [head, field, rows, cal] : [head, field, rows, cal, more];
+  const pill = el('div', 'td-sched-pill');
+  pill.append(icon(ICONS.calendar, { class: 'td-sched-pill-icon' }), words);
+  field.append(pill, hint);
+  const main = o.dateOnly ? [head, field, rows, cal, saveBar] : [head, field, rows, cal, more, saveBar];
   body.replaceChildren(...main);
   words.value = shownWords();
   drawRows();

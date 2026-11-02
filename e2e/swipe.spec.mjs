@@ -21,14 +21,14 @@ test('right completes, with Undo; a short swipe springs back', async ({ phone })
   await expect(page.locator(`${rowOf(t)} .td-swipe-band`)).toHaveCount(0);
   expect((await db.get(`spaces/_/tasks/${t}`))?.done).toBe(false);
 
-  // mid-swipe: the green band
+  // mid-swipe: the teal band
   await page.evaluate(sel => {
     const el = /** @type {HTMLElement} */ (document.querySelector(sel)), r = el.getBoundingClientRect(), x = r.left + 60, y = r.top + r.height / 2;
     const t = /** @type {HTMLElement} */ (el.querySelector('.td-row-main'));
     t.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 42, pointerType: 'touch', isPrimary: true, clientX: x, clientY: y, buttons: 1 }));
     for (const dx of [10, 30, 60, 90]) t.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 42, pointerType: 'touch', isPrimary: true, clientX: x + dx, clientY: y, buttons: 1 }));
   }, rowOf(t));
-  await expect(page.locator(`${rowOf(t)} .td-swipe-band[data-side="right"]`)).toHaveCSS('background-color', 'rgb(5, 133, 39)');
+  await expect(page.locator(`${rowOf(t)} .td-swipe-band[data-side="right"]`)).toHaveCSS('background-color', 'rgb(11, 122, 117)');
   await page.waitForTimeout(250);   // (stopped before the lift: no fling)
   await page.evaluate(sel => {
     const el = /** @type {HTMLElement} */ (document.querySelector(sel)), r = el.getBoundingClientRect();

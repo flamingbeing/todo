@@ -1,4 +1,4 @@
-// The page's shell (index.html: .ui-shell, the kit's bar, the four tabs, side bar and drawer) and the Settings page: the
+// The page's shell (index.html: .ui-shell, the kit's bar, the tabs, side bar and drawer) and the Settings page: the
 // kit's settingsScreen with the options (options.js) and its About rows, and what the options do to the tabs.
 // Settings is a screen pushed from Browse (its gear). It opens on a menu: a search box, the tabs taken off the bar (one
 // tap away), then a row per page; Back closes a page. The Tab bar page arranges the tabs (the kit's tabArranger; the
@@ -6,6 +6,7 @@
 import { startGestures, adaptiveShell, settingsScreen, createTransients, tabArranger, arrangeTabs, applyTabs, tabPages, tabBack, toaster, CLOSE_MS } from '@core/ui';
 import { themeSwitch } from '@core/theme';
 import { APP } from './config.js';
+import { timeText } from './dates.js';
 import { $ } from './dom.js';
 import { ICONS } from './icons.js';
 import { SETTING_SECTIONS } from './options.js';
@@ -19,6 +20,7 @@ import { modules } from './modules.js';
 
 // The Settings menu's headings, in this order; a page whose group is not listed goes under 'More' (last), so a new
 // page is never left out and a recipe never edits this list
+const pad2 = (/** @type {number} */ n) => String(n).padStart(2, '0');
 const SETTINGS_GROUPS = ['', 'Personalization', 'Productivity', 'More'];
 // (a page whose visible() is false now is left out: the kit keeps a group's heading even when all its pages are hidden,
 // so an Advanced with no features showed an empty heading; a key-gated page stays, as it can turn on live)
@@ -31,8 +33,9 @@ const byGroup = sections => sections
   .map(s => (SETTINGS_GROUPS.includes(s.group ?? '') ? s : { ...s, group: 'More' }))
   .sort((a, b) => SETTINGS_GROUPS.indexOf(a.group ?? '') - SETTINGS_GROUPS.indexOf(b.group ?? '') || pageRank(a.title) - pageRank(b.title));
 
-// Browse always stays on the bar: Settings opens from it (the tabs off the bar are listed at the top of its menu)
-const TAB_RULES = { fixed: ['browse'] };
+// Browse always stays on the bar: Settings opens from it (the tabs off the bar are listed at the top of its menu). Search
+// starts off the bar (it is a page pushed from Browse) and can be switched on in Settings > Navigation bar
+const TAB_RULES = { fixed: ['browse'], offByDefault: ['search'] };
 
 /** @type {any} */
 let kit = null;
@@ -93,7 +96,8 @@ export function startShell() {
 
 /** @type {(page: HTMLElement) => void} set by startShell */
 let goTo = () => {};
-/** a tab page by its id, from a row in Browse (a page that is not on the bar, like Search) @param {string} id */
+/** a tab page by its id (Search's Recently visited: Inbox, Today, Upcoming, even one taken off the bar); a screen pushed over the
+ * tabs goes first @param {string} id */
 export function showPage(id) {
   const page = document.getElementById(id);
   if (page) goTo(page);
@@ -190,6 +194,23 @@ export function settingsPage(app) {
     return () => { repaints.delete(draw); };
   };
 
+  // About's own rows: Sync status ("Last synced 14:05", from the sync's own state; none in a static app) and Privacy policy and
+  // Terms (only when APP.privacyUrl / APP.termsUrl are set in config.js; links, not buttons)
+  let lastSynced = 0;
+  const syncText = () => (lastSynced ? `Last synced ${timeText(`${pad2(new Date(lastSynced).getHours())}:${pad2(new Date(lastSynced).getMinutes())}`)}` : 'Not synced yet');
+  const status$ = /** @type {any} */ (app).status$;
+  const paintSync = () => {
+    for (const r of document.querySelectorAll('#settings-host .ui-about-extra')) {
+      if (r.querySelector('.ui-row-main')?.textContent === 'Sync status') { const v = r.querySelector('.ui-setting-value'); if (v) v.textContent = syncText(); }
+    }
+  };
+  const links = /** @type {[string, unknown][]} */ ([['Privacy policy', /** @type {any} */ (APP).privacyUrl], ['Terms of service', /** @type {any} */ (APP).termsUrl]]);
+  const aboutRows = [
+    ...(typeof status$ === 'function' ? [{ label: 'Sync status', value: syncText() }] : []),
+    ...links.filter(([, u]) => typeof u === 'string' && /^https:\/\//.test(u)).map(([label, u]) => ({ label, href: /** @type {string} */ (u), value: 'Open' })),
+  ];
+  if (typeof status$ === 'function') status$.call(app, (/** @type {any} */ st) => { if (st.state === 'synced' && !st.unsent) { lastSynced = Date.now(); paintSync(); } });
+
   settingsScreen($('settings-host'), {
     settings,
     menu: { steps, top: offBar, onPage, search: false },
@@ -213,8 +234,9 @@ export function settingsPage(app) {
       // the recipes' own pages (an empty slot adds none)
       ...Object.values(modules.settingsPages ?? {}).flatMap(slot => { const section = slot?.({ app }); return section ? [section] : []; }),
     ]),
-    about: { name: APP.title || APP.name, update: app.update },
+    about: { name: APP.title || APP.name, update: app.update, rows: aboutRows },
   });
+  paintSync();
 
   // what the options do to the page, now and whenever one changes (here or on another device)
   const apply = () => {

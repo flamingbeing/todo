@@ -23,8 +23,13 @@ export const cleanComment = text => String(text ?? '').trim().slice(0, MAX);
 /** a task's comments, oldest first @param {Comment[] | undefined} all @param {string} taskId */
 export const commentsOf = (all, taskId) => (all ?? []).filter(c => c.taskId === taskId).sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
 
-/** "2 Nov, 14:05" @param {number | undefined} at */
-export const when = at => at ? new Date(at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '';
+/** "2 Nov 14:05": day, short month, 24-hour clock, in the person's time zone (the English month, as the dates elsewhere) @param {number | undefined} at */
+export const when = at => {
+  if (!at) return '';
+  const x = new Date(at), pad = (/** @type {number} */ n) => String(n).padStart(2, '0');
+  return `${x.getDate()} ${MONTHS[x.getMonth()]} ${pad(x.getHours())}:${pad(x.getMinutes())}`;
+};
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /**
  * The section for one open task sheet. fill(ctx, taskId) draws (again) whenever the data changes; what is being typed

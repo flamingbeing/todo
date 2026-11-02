@@ -1,9 +1,15 @@
 // Quick add (#add-sheet), docked above the keyboard: the task's name, where words that set something are marked as
 // they are typed ("tomorrow 4 pm", "p1", "#Work", "@errand", "every monday": parse.js) on a peach ground drawn by a
-// layer behind the field, the description, chips for the date, priority and labels (each with an x to clear it), the
-// project at the foot and a round send button. A chip set by hand wins over the words; clearing a chip the words set
-// leaves the words as plain text. Typing #, /, @ or % suggests the names known. It starts with what the page shown
-// suggests and stays open after each add, cleared, for the next task; an unsent name is kept as a draft. Pasting two or
+// layer behind the field, the description (always there, under the name), chips for the date, priority, reminders, labels,
+// deadline and duration (each with an x to clear it, but the date's: its words are the date), the project at the foot and
+// a round send button (grey until the name has text). A chip set by hand wins over the words; clearing a chip the words
+// set leaves the words as plain text. A day picked in the Date sheet is written into the name as highlighted words
+// ("11 Nov", "every workday") when they read back as that same date; editing or deleting the words changes the date.
+// The "+" chip's menu stacks upward: Priority, Reminders, Labels, Deadline, Duration. Typing # opens a floating card of
+// "My Projects" (Inbox first) above the sheet; the Inbox chip opens the same card; /, @ and % suggest inline. The
+// placeholder is a different example each time the sheet opens. It starts with what the page shown
+// suggests and stays open after each add, cleared, for the next task (opened for a sub-task, from the task sheet's "Add sub-task", it closes
+// after the one add); an unsent name is kept as a draft. Pasting two or
 // more lines offers to add one task per line.
 import { APP } from '../config.js';
 import { icon, draftSlot, confirmModal, plural } from '@core/ui';
@@ -12,10 +18,11 @@ import { MORE } from '../icons-more.js';
 import { INBOX, REFUSED } from '../items.js';
 import { placeText } from '../tasks.js';
 import { dueLine, deadlineLine, dayKey, minutesText } from '../dates.js';
+import { LEADS, cleanReminders, leadShort, dueMs } from '../reminders.js';
 import { colorHex } from '../colors.js';
 import { byOrder } from '../order.js';
 import { projectTree } from '../arrange.js';
-import { parse, shiftRanges } from '../parse.js';
+import { parse, shiftRanges, dueWords } from '../parse.js';
 import { dateLibs } from '../recur.js';
 import { openMenu } from '../ui/menu.js';
 import { el } from './pick.js';
@@ -27,6 +34,16 @@ import { pickLabels, onIds } from './labels.js';
 /** @typedef {import('../dates.js').Due} Due */
 /** @typedef {import('../parse.js').Parsed} Parsed */
 
+/** a different example in the name's box each time the sheet opens */
+const EXAMPLES = ['e.g. Read history chapter 5 in 10 days', 'e.g. Go to the market Saturday morning', 'Replace lightbulb tomorrow at 3pm',
+  'Join student sports club Tuesday p3', 'Discuss thesis tomorrow morning p2'];
+let lastExample = -1;
+const nextExample = () => {
+  let i = Math.floor(Math.random() * EXAMPLES.length);
+  if (i === lastExample) i = (i + 1) % EXAMPLES.length;
+  lastExample = i;
+  return EXAMPLES[i];
+};
 const PRIORITY_COLOR = ['', 'var(--td-p1)', 'var(--td-p2)', 'var(--td-p3)', 'var(--td-text-2)'];
 const d = () => /** @type {HTMLDialogElement} */ (document.getElementById('add-sheet'));
 /** @type {Awaited<ReturnType<typeof dateLibs>> | null} */
@@ -53,7 +70,7 @@ export function openQuickAdd(ctx, start, hold = null) {
   const settings = ctx.app.settings;
   const smart = () => { try { return settings.get('smartDates') !== false; } catch { return true; } };
   /** what the person set by hand (a chip or the foot): it wins over the words */
-  const manual = /** @type {{ due?: Due | null, priority?: number, labels?: string[], deadline?: string | null, duration?: number | null, place?: { projectId: string, sectionId: string | null } }} */ ({});
+  const manual = /** @type {{ due?: Due | null, priority?: number, labels?: string[], deadline?: string | null, duration?: number | null, reminders?: number[], place?: { projectId: string, sectionId: string | null } }} */ ({});
   /** where the page shown says a task goes, and its date (a group's "+": its priority or label too) */
   const base = { projectId: start.projectId ?? INBOX, sectionId: start.sectionId ?? null, parentId: start.parentId ?? null, due: start.due ?? null, order: typeof start.order === 'number' ? start.order : undefined,
     priority: start.priority, labels: start.labels };
@@ -67,13 +84,12 @@ export function openQuickAdd(ctx, start, hold = null) {
   const field = el('div', 'td-qa-field');
   const mirror = el('div', 'td-qa-mirror');
   mirror.setAttribute('aria-hidden', 'true');
-  const title = Object.assign(document.createElement('textarea'), { className: 'td-add-title', placeholder: 'e.g. Water the plants Friday at 5pm', maxLength: 500,
+  const title = Object.assign(document.createElement('textarea'), { className: 'td-add-title', placeholder: nextExample(), maxLength: 500,
     rows: 1, autocomplete: 'off', enterKeyHint: 'send', spellcheck: true });
   title.setAttribute('aria-label', 'Task name');
   field.append(mirror, title);
   const desc = Object.assign(document.createElement('textarea'), { className: 'td-add-desc', placeholder: 'Description', rows: 1, maxLength: 16000 });
   desc.setAttribute('aria-label', 'Description');
-  desc.hidden = true;
   const grow = (/** @type {HTMLTextAreaElement} */ t) => { t.style.height = 'auto'; t.style.height = `${t.scrollHeight}px`; };
   desc.addEventListener('input', () => { grow(desc); keep(); });
 
@@ -121,6 +137,7 @@ export function openQuickAdd(ctx, start, hold = null) {
       deadline: manual.deadline !== undefined ? manual.deadline : parsed.deadline ?? start.deadline ?? null,
       // minutes: set by hand, else typed ("for 45 min"), else a calendar slot's while the task keeps that slot's time
       duration: manual.duration !== undefined ? manual.duration : parsed.duration ?? (start.duration && (manual.due ?? base.due)?.time ? start.duration : null),
+      reminders: manual.reminders ?? /** @type {number[]} */ ([]),
     };
   };
   /** the words of a kind leave the marks (they stay text) @param {string[]} kinds */
@@ -140,10 +157,10 @@ export function openQuickAdd(ctx, start, hold = null) {
   /** @param {{ box: HTMLElement, x: HTMLButtonElement }} c @param {boolean} set @param {(() => void) | null} clear */
   const setX = (c, set, clear) => {
     c.box.classList.toggle('is-set', set);
-    c.x.hidden = !set;
+    c.x.hidden = !set || !clear;   // (no clear: the words are the way to change it)
     c.x.onclick = clear && (() => { clear(); reparse(); title.focus(); });
   };
-  const dateC = chip('Date'), prioC = chip('Priority'), labelC = chip('Labels'), deadC = chip('Deadline'), durC = chip('Duration');
+  const dateC = chip('Date'), prioC = chip('Priority'), labelC = chip('Labels'), deadC = chip('Deadline'), durC = chip('Duration'), remC = chip('Reminders');
   const dateChip = dateC.main, prioChip = prioC.main, labelChip = labelC.main;
   const drawChips = () => {
     const v = value(), today = dayKey(), line = v.due ? dueLine(v.due, today) : null;
@@ -151,7 +168,8 @@ export function openQuickAdd(ctx, start, hold = null) {
     if (v.due?.rrule) dateChip.append(icon(ICONS.repeat, { class: 'td-chip-repeat' }));
     dateChip.setAttribute('aria-label', line ? `Date: ${line.text}${v.due?.rrule ? ', repeating' : ''}` : 'Date');
     if (line) dateC.box.dataset.tone = line.tone; else delete dateC.box.dataset.tone;
-    setX(dateC, !!line, () => { if (fromWords(['date', 'recur'])) unmark(['date', 'recur']); manual.due = base.due ? null : undefined; });
+    // (a date the words give has no x: editing or deleting the words changes it)
+    setX(dateC, !!line, fromWords(['date', 'recur']) ? null : () => { manual.due = base.due ? null : undefined; });
     const flag = icon(MORE.flag, { class: `td-flag${v.priority < 4 ? ' is-filled' : ''}` });
     flag.style.color = PRIORITY_COLOR[v.priority];
     prioChip.replaceChildren(flag, el('span', '', v.priority === 4 ? 'Priority' : `P${v.priority}`));
@@ -173,11 +191,26 @@ export function openQuickAdd(ctx, start, hold = null) {
     durC.main.setAttribute('aria-label', mins ? `Duration: ${mins}` : 'Duration');
     setX(durC, !!mins, () => { unmark(['duration']); manual.duration = null; });
     durC.box.hidden = !mins;
+    const rem = v.reminders;
+    remC.main.replaceChildren(icon(MORE.bell), el('span', '', rem.length ? [...rem].sort((a, b) => a - b).map(leadShort).join(', ') : 'Reminders'));
+    remC.main.setAttribute('aria-label', rem.length ? `Reminders: ${rem.map(leadShort).join(', ')}` : 'Reminders');
+    setX(remC, rem.length > 0, () => { delete manual.reminders; });
+    remC.box.hidden = !rem.length;
   };
+  // reminders: tick the leads wanted (before the due time; a date with no time counts as 09:00), once there is a date
+  const openReminders = (/** @type {HTMLElement} */ at) => {
+    const v = value();
+    if (dueMs({ due: v.due }) === null) { ctx.toast('Set a date first'); return; }
+    const has = cleanReminders(v.reminders);
+    openMenu(at, LEADS.map(([lead, label]) => ({ label, icon: MORE.bell, checked: has.includes(lead),
+      run: () => { manual.reminders = cleanReminders(has.includes(lead) ? has.filter(x => x !== lead) : [...has, lead]); reparse(); title.focus(); } })),
+    { label: 'Reminders', title: 'Reminders', pop: true });
+  };
+  remC.main.addEventListener('click', () => openReminders(remC.main));
   /** @param {number | null} n */
   const setDuration = n => { unmark(['duration']); manual.duration = n; reparse(); title.focus(); };
   const openDuration = (/** @type {HTMLElement} */ at) => openMenu(at, [null, ...DURATIONS].map(n => ({ label: n ? minutesText(n) : 'None', icon: MORE.hourglass,
-    checked: (value().duration ?? null) === n, run: () => setDuration(n) })), { label: 'Duration' });
+    checked: (value().duration ?? null) === n, run: () => setDuration(n) })), { label: 'Duration', ...(at === moreChip ? { pop: true } : {}) });
   durC.main.addEventListener('click', () => openDuration(durC.main));
   /** @param {string | null | undefined} date */
   const deadlineOf = date => (date ? { date } : null);
@@ -185,14 +218,39 @@ export function openQuickAdd(ctx, start, hold = null) {
     unmark(['deadline']); manual.deadline = d?.date ?? null; reparse(); title.focus();
   }, { data: ctx.data(), weekStart: Number(settings.get('weekStart') ?? 1), dateOnly: true });
   deadC.main.addEventListener('click', openDeadline);
-  dateChip.addEventListener('click', () => pickDate(value().due, (due, duration) => {
-    unmark(['date', 'recur']); manual.due = due;
+  /** a picked date (null: none) goes into the name as words that read back as it; else the chip alone holds it @param {Due | null} due */
+  const writeDate = async due => {
+    if (!libs) { try { libs = await dateLibs(); } catch { /* the words are not read without them */ } }
+    const old = title.value, own = parsed.tokens.filter(t => t.kind === 'date' || t.kind === 'recur');
+    const words = due ? dueWords(due, context()) : null;
+    if (due && !words) { unmark(['date', 'recur']); manual.due = due; return; }
+    // the old date's words go, the new ones take the first one's place (else the front: "11 Nov call mum")
+    let next = old, at = 0;
+    for (const t of [...own].reverse()) { next = next.slice(0, t.start) + next.slice(t.end); at = t.start; }
+    if (!own.length) at = 0;
+    else next = next.replace(/\s{2,}/g, ' ');
+    if (words) next = `${next.slice(0, at)}${words}${next.slice(at) ? ' ' : ''}${next.slice(at).replace(/^\s+/, '')}`;
+    next = next.replace(/^\s+/, '');
+    title.value = next;
+    delete manual.due;
+    reparse();
+    // (an old "tomorrow" that was cleared stays text; a clash with other words leaves the chip to hold the date)
+    const got = parsed.due;
+    const same = due ? !!got && got.date === due.date && (got.time ?? '') === (due.time ?? '') && (got.rrule ?? '') === (due.rrule ?? '') : !parsed.due;
+    if (!same) { title.value = old; reparse(); unmark(['date', 'recur']); manual.due = due; return; }
+    if (!due && base.due) manual.due = null;
+    const end = title.value.length;
+    title.setSelectionRange(end, end);
+  };
+  dateChip.addEventListener('click', () => pickDate(value().due, async (due, duration) => {
+    await writeDate(due);
     if (duration !== undefined && duration !== value().duration) { unmark(['duration']); manual.duration = duration; }
     reparse(); title.focus();
-  }, { data: ctx.data(), weekStart: Number(settings.get('weekStart') ?? 1), duration: value().duration }));
-  prioChip.addEventListener('click', () => openMenu(prioChip, [1, 2, 3, 4].map(p => ({
+  }, { data: ctx.data(), weekStart: Number(settings.get('weekStart') ?? 1), duration: value().duration, durationRow: false }));
+  const openPriority = (/** @type {HTMLElement} */ at) => openMenu(at, [1, 2, 3, 4].map(p => ({
     label: `Priority ${p}`, icon: MORE.flag, color: PRIORITY_COLOR[p], checked: value().priority === p,
-    run: () => { unmark(['priority']); manual.priority = p; reparse(); title.focus(); } })), { label: 'Priority' }));
+    run: () => { unmark(['priority']); manual.priority = p; reparse(); title.focus(); } })), { label: 'Priority', ...(at === moreChip ? { pop: true } : {}) });
+  prioChip.addEventListener('click', () => openPriority(prioChip));
   // the labels: the picker (from the chip, or the "…" chip's menu); typed @names count too
   const openLabels = () => {
     const known = ctx.data().labels, ticks = new Map();
@@ -207,33 +265,50 @@ export function openQuickAdd(ctx, start, hold = null) {
   labelChip.addEventListener('click', openLabels);
   const moreChip = button('td-chip td-chip-more', 'More options');
   moreChip.append(icon(ICONS.plus));
-  const showDesc = () => { desc.hidden = false; desc.focus(); };
-  moreChip.addEventListener('click', () => openMenu(moreChip, [{ label: 'Description', icon: ICONS.listTree, run: showDesc },
-    { label: 'Priority', icon: MORE.flag, run: () => prioChip.click() },
+  // (the description is always under the name; the menu stacks upward, the icon left of each label, no ticks)
+  moreChip.addEventListener('click', () => openMenu(moreChip, [
+    { label: 'Priority', icon: MORE.flag, run: () => openPriority(moreChip) },
+    { label: 'Reminders', icon: MORE.bell, run: () => openReminders(moreChip) },
     { label: 'Labels', icon: ICONS.tag, run: openLabels }, { label: 'Deadline', icon: ICONS.target, run: openDeadline },
-    { label: 'Duration', icon: MORE.hourglass, run: () => openDuration(moreChip) }], { label: 'More options' }));
+    { label: 'Duration', icon: MORE.hourglass, run: () => openDuration(moreChip) }], { label: 'More options', pop: true }));
 
-  // names as they are typed after #, /, @ or %
+  // names as they are typed after #, /, @ or %: # opens a floating "My Projects" card above the sheet (Inbox first, a short
+  // list that scrolls, the sheet stays put); /, @ and % list inline
   const list = el('div', 'td-suggest');
-  list.setAttribute('role', 'listbox');
-  list.setAttribute('aria-label', 'Suggestions');
+  const items = el('div', 'td-suggest-items');
+  items.setAttribute('role', 'listbox');
+  items.setAttribute('aria-label', 'Suggestions');
+  const head = el('div', 'td-suggest-head', 'My Projects');
+  list.append(head, items);
   list.hidden = true;
+  /** the card sits above the sheet, at its left edge (it is fixed, so the sheet's height does not move) */
+  const placeCard = () => {
+    const r = d().getBoundingClientRect();
+    list.style.left = `${r.left + 8}px`; list.style.width = `${Math.min(r.width - 16, 320)}px`;
+    list.style.bottom = `${innerHeight - r.top + 8}px`;
+  };
   const suggest = () => {
     const before = title.value.slice(0, title.selectionStart ?? title.value.length);
     const m = /(?:^|\s)([#/@%])([^\s#@%/]*)$/.exec(before);
     const data = ctx.data();
-    /** @type {{ name: string, icon: import('app-ui/icons/lucide.js').IconNodes, color?: string }[]} */
+    /** @type {{ name: string, icon: import('app-ui/icons/lucide.js').IconNodes, color?: string, inbox?: boolean }[]} */
     let names = [];
     if (m && document.activeElement === title) {
       const word = m[2].toLowerCase();
       const pid = value().projectId;
-      const all = m[1] === '#' ? byOrder(data.projects.filter(p => p.id !== INBOX)).map(p => ({ name: p.name, icon: ICONS.hash, color: colorHex(p.color) }))
+      const all = m[1] === '#' ? [{ name: 'Inbox', icon: ICONS.inbox, inbox: true }, ...byOrder(data.projects.filter(p => p.id !== INBOX)).map(p => ({ name: p.name, icon: ICONS.hash, color: colorHex(p.color) }))]
         : m[1] === '/' ? byOrder(data.sections.filter(s => s.projectId === pid)).map(s => ({ name: s.name, icon: ICONS.listTree }))
           : byOrder(data.labels).map(l => ({ name: l.name, icon: ICONS.tag }));
-      names = all.filter(x => x.name.toLowerCase().includes(word) && x.name.toLowerCase() !== word).slice(0, 6);
+      names = all.filter(x => x.name.toLowerCase().includes(word) && x.name.toLowerCase() !== word);
+      if (m[1] !== '#') names = names.slice(0, 6);
     }
+    const card = !!m && m[1] === '#';
     list.hidden = !names.length;
-    list.replaceChildren(...names.map(n => {
+    list.classList.toggle('is-card', card);
+    head.hidden = !card;
+    items.setAttribute('aria-label', card ? 'My Projects' : 'Suggestions');
+    if (card && names.length) placeCard();
+    items.replaceChildren(...names.map(n => {
       const b = /** @type {HTMLButtonElement} */ (el('button', 'td-suggest-item'));
       b.type = 'button';
       b.setAttribute('role', 'option');
@@ -245,9 +320,19 @@ export function openQuickAdd(ctx, start, hold = null) {
       b.addEventListener('pointerdown', e => e.preventDefault());
       b.addEventListener('click', () => {
         const at = title.selectionStart ?? title.value.length, from = at - (m?.[2].length ?? 0);
+        if (n.inbox) {
+          // Inbox is no word of the name: the typed "#" goes and the task is set to the Inbox
+          const cut = Math.max(0, from - 1);
+          title.value = `${title.value.slice(0, cut)}${title.value.slice(at).replace(/^\s+/, '')}`;
+          title.setSelectionRange(cut, cut);
+          unmark(['project', 'section']); manual.place = { projectId: INBOX, sectionId: null };
+          reparse(); keep(); title.focus();
+          return;
+        }
         const next = `${title.value.slice(0, from)}${n.name} ${title.value.slice(at)}`;
         title.value = next;
         title.setSelectionRange(from + n.name.length + 1, from + n.name.length + 1);
+        delete manual.place;
         reparse(); keep(); title.focus();
       });
       return b;
@@ -265,22 +350,19 @@ export function openQuickAdd(ctx, start, hold = null) {
     place.setAttribute('aria-label', `Project: ${words}`);
   };
   place.addEventListener('click', () => {
-    // "My Projects": a small popup above the row (Inbox, then each project with its sections)
+    // "My Projects": a card above the chip (Inbox, then each project; the sections are picked with "/")
     const data = ctx.data(), now = value();
     const set = (/** @type {{ projectId: string, sectionId: string | null }} */ to) => { unmark(['project', 'section']); manual.place = to; reparse(); title.focus(); };
-    const secs = (/** @type {string} */ pid) => byOrder(data.sections.filter(s => s.projectId === pid)).map(s => ({ label: s.name, icon: ICONS.listTree,
-      checked: now.projectId === pid && now.sectionId === s.id, run: () => set({ projectId: pid, sectionId: s.id }) }));
-    openMenu(place, [{ label: 'Inbox', icon: ICONS.inbox, checked: now.projectId === INBOX && !now.sectionId, run: () => set({ projectId: INBOX, sectionId: null }) },
-      ...secs(INBOX),
-      ...projectTree(data.projects.map(x => ({ ...x, collapsed: false }))).flatMap(({ project: p }) => [{ label: p.name, icon: ICONS.hash, color: colorHex(p.color),
-        checked: now.projectId === p.id && !now.sectionId, run: () => set({ projectId: p.id, sectionId: null }) }, ...secs(p.id)])], { label: 'My Projects' });
+    openMenu(place, [{ label: 'Inbox', icon: ICONS.inbox, checked: now.projectId === INBOX, run: () => set({ projectId: INBOX, sectionId: null }) },
+      ...projectTree(data.projects.map(x => ({ ...x, collapsed: false }))).map(({ project: p }) => ({ label: p.name, icon: ICONS.hash, color: colorHex(p.color),
+        checked: now.projectId === p.id, run: () => set({ projectId: p.id, sectionId: null }) }))], { label: 'My Projects', title: 'My Projects', pop: true });
   });
   const send = /** @type {HTMLButtonElement} */ (el('button', 'td-send'));
   send.type = 'submit';
   send.setAttribute('aria-label', 'Add task');
   send.append(icon(MORE.arrowUp));
-  const ready = () => { send.disabled = !parsed.title; };
-  chips.append(moreChip, place, dateC.box, prioC.box, labelC.box, deadC.box, durC.box, send);
+  const ready = () => { send.disabled = !parsed.title; };   // (grey while the name is empty, see .td-send)
+  chips.append(moreChip, place, dateC.box, prioC.box, remC.box, labelC.box, deadC.box, durC.box, send);
 
   // (the FAB dropped between two rows gives the first task that place; the next ones go to the end)
   const atDrop = (/** @type {{ projectId: string, sectionId: string | null, parentId: string | null }} */ v) => {
@@ -302,11 +384,11 @@ export function openQuickAdd(ctx, start, hold = null) {
     }
     return ctx.app.addTask({ title: p.title, description: about || undefined, projectId: v.projectId, sectionId: v.sectionId, parentId: v.parentId,
       priority: v.priority, labels: ids.length ? [...new Set(ids)] : undefined, due: v.due ?? undefined, deadline: v.deadline ?? undefined, order: atDrop(v),
-      duration: v.duration ?? undefined });
+      duration: v.duration ?? undefined, reminders: v.reminders.length && v.due ? v.reminders : undefined });
   };
   const clearAll = () => {
-    title.value = ''; desc.value = ''; desc.style.height = ''; desc.hidden = true; ignore = []; was = '';
-    for (const k of /** @type {const} */ (['due', 'priority', 'labels', 'deadline', 'duration'])) delete manual[k];
+    title.value = ''; desc.value = ''; desc.style.height = ''; ignore = []; was = '';
+    for (const k of /** @type {const} */ (['due', 'priority', 'labels', 'deadline', 'duration', 'reminders'])) delete manual[k];
     try { draft.clear(); } catch { /* storage blocked */ }
     reparse();
   };
@@ -319,6 +401,7 @@ export function openQuickAdd(ctx, start, hold = null) {
     title.focus();
     const refused = await addOne(p, v, about);
     if (refused) ctx.toast(refused === 'A task needs a title' ? refused : REFUSED);
+    else if (start.parentId && sheet.open) sheet.close();   // (a sub-task: one add, back to the task sheet behind)
   });
   title.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); form.requestSubmit(); return; }
@@ -370,7 +453,7 @@ export function openQuickAdd(ctx, start, hold = null) {
     was = title.value;
   }
   reparse();
-  if (desc.value) { desc.hidden = false; grow(desc); }
+  if (desc.value) grow(desc);
   if (!sheet.open) sheet.showModal();
   if (hold) hold.handTo(title); else title.focus();
   title.setSelectionRange(title.value.length, title.value.length);

@@ -1,5 +1,5 @@
 // Swiping a task row sideways (app-ui's drag, as 'cards' in the arbiter, so a page swipe stands down over a row): the
-// row slides over a coloured band with the action's icon, green with a check for Complete and violet with a calendar
+// row slides over a coloured band with the action's icon, teal with a check for Complete and orange with a calendar
 // for Schedule (red with a bin for Delete), as chosen per device in Settings > General. Past about a third of the row
 // (a tick there), or flung that way, the action runs; short of it the row springs back. Nothing swipes in select mode,
 // while a row is held up for a drag, or for a person who may only read. A board's cards swipe too when Settings > General
@@ -10,8 +10,8 @@ import { MORE } from '../icons-more.js';
 
 /** @typedef {'complete' | 'schedule' | 'delete' | 'none'} Swipe */
 const LOOK = /** @type {Record<Exclude<Swipe, 'none'>, { color: string, ic: import('app-ui/icons/lucide.js').IconNodes }>} */ ({
-  complete: { color: '#058527', ic: ICONS.check },
-  schedule: { color: '#692EC2', ic: ICONS.calendar },
+  complete: { color: '#0B7A75', ic: ICONS.check },
+  schedule: { color: '#C2570A', ic: ICONS.calendar },
   delete: { color: '#DC4C3E', ic: MORE.trash2 },
 });
 const FLING = 0.6;   // px/ms

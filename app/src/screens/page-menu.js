@@ -29,7 +29,7 @@ export function pageMenu(ctx, more, o) {
     ...(o.tree ? [{ label: 'Add section', icon: MORE.circlePlus, run: () => o.newSection(o.pid) }] : []),
     ...(named && place ? [{ label: `Edit ${word}`, icon: MORE.pencil, run: () => o.named(m => m.openNamedSheet(ctx, place.kind, named)) }] : []),
     ...(o.tree ? [{ label: `Copy link to ${own?.name ?? 'Inbox'}`, icon: MORE.link, run: async () => {
-      try { await navigator.clipboard.writeText(projectLink(o.pid)); ctx.toast('Link copied'); } catch { ctx.toast('Could not copy the link'); }
+      try { await navigator.clipboard.writeText(projectLink(o.pid)); ctx.toast('Project link copied.'); } catch { ctx.toast('Could not copy the link'); }
     } }] : []),
     { label: 'Select tasks', icon: MORE.squareCheck, run: () => o.select(o.host) },
     ...(own ? [null, { label: 'Delete project', icon: MORE.trash2, danger: true, run: () => { void ctx.removeProject(own); } }] : []),

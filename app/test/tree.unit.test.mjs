@@ -33,8 +33,9 @@ test('nesting: no loops, and never deeper than the limit', () => {
   assert.equal(canNest(chain[0], chain[0], list), false);
 });
 
-test('flatten: each top task then its open subtasks, deeper each level; collapsed hides; counts include done', () => {
-  const all = [t('a'), t('a1', 'a', { order: 1 }), t('a2', 'a', { order: 2, done: true }), t('a11', 'a1'), t('b', null, { collapsed: true }), t('b1', 'b')];
+test('flatten: a parent starts folded; opened (collapsed false) it shows its open subtasks, deeper each level; counts include done', () => {
+  const all = [t('a', null, { collapsed: false }), t('a1', 'a', { order: 1, collapsed: false }), t('a2', 'a', { order: 2, done: true }), t('a11', 'a1'), t('b', null, { collapsed: true }), t('b1', 'b'), t('c'), t('c1', 'c')];
+  assert.deepEqual(flatten([all[6]], all).map(l => l.task.id), ['c'], 'folded by default');
   const lines = flatten([all[0], all[4]], all);
   assert.deepEqual(lines.map(l => [l.task.id, l.depth]), [['a', 0], ['a1', 1], ['a11', 2], ['b', 0]]);
   assert.equal(countText(lines[0]), '1/2');

@@ -2,7 +2,7 @@
 // node --test app/test/parse.unit.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parse, titleOf, shiftRanges } from '../src/parse.js';
+import { parse, titleOf, shiftRanges, dueWords } from '../src/parse.js';
 import * as chrono from '../public/vendor/chrono-node/2.10.3/chrono.js';
 import { RRule } from '../public/vendor/rrule/2.8.1/rrule.js';
 
@@ -275,4 +275,17 @@ test('a time range: 10am-11:15am, 10-11am, from 2 to 3pm: the start and how long
   assert.equal(p('Read pages 3-4').title, 'Read pages 3-4', 'no colon, no am/pm: words');
   assert.equal(p('Call 555-1234').duration, null);
   assert.equal(p('a tmr 10am-11am', { smartDates: false }).duration, null, 'smart dates off');
+});
+
+test('dueWords: the words for a picked date read back as that date, else none', () => {
+  const back = (/** @type {any} */ d) => { const w = dueWords(d, ctx); return [w, w && due(w)]; };
+  assert.deepEqual(back({ date: '2026-11-01' }), ['today', { date: '2026-11-01' }]);
+  assert.deepEqual(back({ date: '2026-11-02' }), ['tomorrow', { date: '2026-11-02' }]);
+  assert.deepEqual(back({ date: '2026-11-11' }), ['11 Nov', { date: '2026-11-11' }]);
+  assert.deepEqual(back({ date: '2026-11-11', time: '16:30' }), ['11 Nov 4:30pm', { date: '2026-11-11', time: '16:30' }]);
+  assert.equal(dueWords({ date: '2027-02-03' }, ctx), '3 Feb 2027');
+  const rule = due('every workday');
+  assert.equal(dueWords(rule, ctx), 'every workday');
+  // without the libraries that read a date, no words (the chip holds it)
+  assert.equal(dueWords({ date: '2026-11-11' }, { now }), null);
 });

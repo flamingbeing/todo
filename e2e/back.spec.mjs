@@ -1,6 +1,6 @@
 // Back with tabs: switching tabs adds at most one Back step; Back on another tab goes to the Home view (Today unless set
 // in Settings > General), Back there asks once, then leaves the app.
-import { test, expect, signIn, openTab, openSearch, openSettings, APP } from './fixtures.mjs';
+import { test, expect, signIn, openTab, openSettings, APP } from './fixtures.mjs';
 
 test('tabs A -> B -> C add at most one Back step; Back goes Home, then (asked once) out of the app', async ({ phone }) => {
   const page = await phone();
@@ -10,7 +10,7 @@ test('tabs A -> B -> C add at most one Back step; Back goes Home, then (asked on
   const appUrl = page.url();
 
   await openTab(page, 'upcoming');
-  await openSearch(page);
+  await openTab(page, 'inbox');
   await openTab(page, 'browse');
   expect(await page.evaluate(() => history.length)).toBeLessThanOrEqual(start + 1);
 

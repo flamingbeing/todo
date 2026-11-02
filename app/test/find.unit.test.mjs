@@ -2,7 +2,7 @@
 // node --test app/test/find.unit.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { searchAll, wordsOf, hasAll, remember } from '../src/search.js';
+import { searchAll, wordsOf, hasAll, remember, rememberPlace } from '../src/search.js';
 
 const data = {
   tasks: [
@@ -45,4 +45,10 @@ test('recent searches: newest first, no repeats, ten at most', () => {
   assert.deepEqual(remember(['milk', 'bank'], 'Bank'), ['Bank', 'milk']);
   assert.deepEqual(remember(['a'], '  '), ['a']);
   assert.equal(remember(Array.from({ length: 12 }, (_, i) => `s${i}`), 'new').length, 10);
+});
+
+test('rememberPlace: newest first, no repeats, at most 6', () => {
+  assert.deepEqual(rememberPlace(['inbox', 'today'], 'today'), ['today', 'inbox']);
+  assert.deepEqual(rememberPlace(['a'], ''), ['a']);
+  assert.equal(rememberPlace(Array.from({ length: 9 }, (_, i) => `p${i}`), 'new').length, 6);
 });

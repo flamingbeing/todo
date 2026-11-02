@@ -97,5 +97,8 @@ export function dayTitle(key, today) {
   return [shortDate(key, today), n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : '', weekdayName(key)].filter(Boolean).join(' · ');
 }
 
+/** the single heading over a day's list when nothing is overdue: "Monday, 2 Nov" @param {string} key @param {string} today */
+export const dayHeading = (key, today) => `${weekdayName(key)}, ${shortDate(key, today)}`;
+
 /** the first day of key's week (weekStart 1: Monday, 0: Sunday) @param {string} key @param {number} [weekStart] */
 export const weekOf = (key, weekStart = 1) => addDays(key, -((weekdayOf(key) - weekStart + 7) % 7));

@@ -1,6 +1,8 @@
 // Quick add: the words that set a date, priority, project, section, label or repeat are marked as typed and fill the
 // chips; Enter adds and keeps the sheet open; a chip's x leaves the words as text; # suggests projects; an unsent name
-// is kept; two pasted lines become two tasks once asked. The sheet passes axe. "for 45 min" sets a duration.
+// is kept; two pasted lines become two tasks once asked. The sheet passes axe. "for 45 min" sets a duration. A day picked
+// in the Date sheet is written into the name as words, # opens the My Projects card above the sheet, the + menu stacks
+// upward with Reminders, and the send button is grey until the name has text.
 import AxeBuilder from './axe.mjs';
 import { test, expect, signIn, synced, uniq, today, db } from './fixtures.mjs';
 
@@ -46,6 +48,7 @@ test('a repeat, a label and a project by name; # suggests the projects', async (
   const t = uniq('standup');
   await page.locator(name).pressSequentially(`${t} every monday @meet #${pname.slice(0, 4)}`);
   const pick = page.locator('#add-sheet .td-suggest-item').filter({ hasText: pname });
+  await expect(page.locator('#add-sheet .td-suggest-head')).toHaveText('My Projects');
   await expect(pick).toBeVisible();
   expect(await AxeBuilder(page)).toEqual([]);
   await pick.click();
@@ -117,4 +120,57 @@ test('"for 45 min" is marked, shows the Duration chip, and the task gets the min
   await expect(page.locator('#add-sheet .td-hl[data-kind="duration"]')).toHaveCount(0);
   await page.press(name, 'Enter');
   await expect.poll(async () => (await task(`${u} for 1 hour`))?.duration, { timeout: 15_000 }).toBe(30);
+});
+
+test('a day picked in the Date sheet is written into the name; the + menu; Inbox from the # card; a grey send', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  await synced(page);
+  await openAdd(page);
+  const add = page.locator('#add-sheet');
+  // the description is always there; the send button is grey and disabled with no name
+  await expect(add.locator('.td-add-desc')).toBeVisible();
+  await expect(add.locator('.td-send')).toBeDisabled();
+  const t = uniq('write');
+  await page.fill(name, t);
+  await expect(add.locator('.td-send')).toBeEnabled();
+  await add.locator('.td-chip-main[aria-label^="Date"]').click();
+  const sheet = page.locator('#schedule-sheet');
+  await expect(sheet).toBeVisible();
+  await sheet.locator(`.td-cal-day[data-day="${day(9)}"]`).click();
+  await sheet.locator('.td-sched-save').click();
+  // the date's words lead the name, marked, and the chip has no x
+  const words = await page.locator(name).inputValue();
+  expect(words.endsWith(` ${t}`)).toBe(true);
+  await expect(add.locator('.td-hl')).toHaveCount(1);
+  await expect(add.locator('.td-chip-x[aria-label="Clear date"]')).toBeHidden();
+  // editing the words changes the date: taking them away leaves the page's own date
+  await page.fill(name, t);
+  await expect(add.locator('.td-hl')).toHaveCount(0);
+  // the + menu: Priority, Reminders, Labels, Deadline, Duration (no Description, no ticks)
+  await add.locator('.td-chip-more').click();
+  await expect(page.getByRole('menuitem')).toHaveText(['Priority', 'Reminders', 'Labels', 'Deadline', 'Duration']);
+  await page.keyboard.press('Escape');
+  // # opens the card above the sheet, Inbox first
+  await page.locator(name).pressSequentially(' #');
+  const card = add.locator('.td-suggest.is-card');
+  await expect(card).toBeVisible();
+  await expect(card.locator('.td-suggest-item').first()).toHaveText('Inbox');
+  const c = await card.boundingBox(), a = await add.boundingBox();
+  expect(c.y + c.height).toBeLessThanOrEqual(a.y);
+});
+
+test('a reminder set from the + menu is saved with the task', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  await synced(page);
+  await openAdd(page);
+  const t = uniq('remind');
+  await page.fill(name, `${t} tomorrow 4 pm`);
+  await page.locator('#add-sheet .td-chip-more').click();
+  await page.getByRole('menuitem', { name: 'Reminders' }).click();
+  await page.getByRole('menuitemradio', { name: '30 minutes before' }).click();
+  await expect(page.locator('#add-sheet .td-chip-main[aria-label^="Reminders"]')).toHaveAttribute('aria-label', 'Reminders: 30m');
+  await page.press(name, 'Enter');
+  await expect.poll(async () => (await task(t))?.reminders, { timeout: 15_000 }).toEqual([30]);
 });
