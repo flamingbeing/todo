@@ -271,6 +271,7 @@ export async function start({ canReload = null }) {
       /** @param {string} uid */
       remove: uid => membersCall('DELETE', uid),
     },
+    idToken: async () => (await fa.currentUser?.getIdToken().catch(() => '')) || undefined,
     // Sign-out keeps this device's copy and unsent saves. -> how many are still unsent (they send at the next sign-in)
     async signOut() { await app.auth.signOut(); return unsent; },
   };

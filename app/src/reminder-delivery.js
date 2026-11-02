@@ -1,7 +1,7 @@
 // Showing reminders on this device (loaded only when the per-device option "Reminders" is on; app.js). While the app is open
 // or backgrounded, a timer and every data change ask reminders.js what is due; each is shown once through the service
 // worker's notification (Notification API), so a tap opens the task (sw.js notificationclick). A closed app cannot show them:
-// that needs Web Push (push.js, STATUS.md "Next"). Permission is asked only by `enable()`, from the Settings switch.
+// the Worker's Web Push does (push-wire.js, worker/push.js). Permission is asked only by `enable()`, from the Settings switch.
 import { dueNow, nextAt, bodyOf } from './reminders.js';
 
 const SENT_KEY = 'td-reminders-sent';
