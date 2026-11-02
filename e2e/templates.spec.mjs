@@ -35,7 +35,8 @@ test('save a project as a template and make a new project from it', async ({ pho
   const copies = () => db.list('spaces/_/tasks').then(l => l.filter(t => t.title === t1 || t.title === t2).filter(t => t.projectId !== pid));
   await expect.poll(async () => (await copies()).length, { timeout: 15_000 }).toBe(2);
   const tasks = await copies();
-  expect((await db.list('spaces/_/sections')).filter(x => x.projectId === tasks[0].projectId).map(x => x.name)).toEqual(['Phase one']);
+  // (the sections' writes may land after the tasks')
+  await expect.poll(async () => (await db.list('spaces/_/sections')).filter(x => x.projectId === tasks[0].projectId).map(x => x.name), { timeout: 15_000 }).toEqual(['Phase one']);
   expect(tasks.every(t => !t.done && !t.due)).toBe(true);
   expect(tasks.find(t => t.title === t2).parentId).toBeTruthy();
   expect(tasks.find(t => t.title === t1).parentId).toBeNull();
