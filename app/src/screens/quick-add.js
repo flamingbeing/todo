@@ -489,7 +489,9 @@ export function openQuickAdd(ctx, start, hold = null) {
   const onKeyboard = (/** @type {Event} */ e) => {
     if (/** @type {CustomEvent} */ (e).detail?.open !== false || !sheet.open || innerWidth !== width) return;
     const at = document.activeElement;
-    if (at instanceof HTMLTextAreaElement && form.contains(at)) sheet.close();
+    // Android blurs the field as the keyboard hides (focus lands on body/null), so that closes too; a chip, picker or menu keeps it
+    const idle = !at || at === document.body || at === sheet;
+    if (idle || (at instanceof HTMLTextAreaElement && form.contains(at))) { lazy.loaded('morph')?.aim(sheet); sheet.close(); }
   };
   document.documentElement.addEventListener('ui-keyboard', onKeyboard);
   const unwatch = () => document.documentElement.removeEventListener('ui-keyboard', onKeyboard);

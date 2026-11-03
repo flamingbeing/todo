@@ -7,7 +7,8 @@ test('a completion under Today, the kind filter, the Productivity link', async (
   const page = await phone();
   await signIn(page, 'member');
   const t = uniq('rep-done');
-  await db.put(`spaces/_/tasks/${t}`, { title: t, projectId: 'inbox', order: Date.now(), priority: 4, done: true, doneAt: Date.now(), createdAt: Date.now() - 60_000, updatedAt: Date.now() });
+  // created 1 s back, not 60: parallel tests add rows to the same space and a minute of them can page the "added" row out
+  await db.put(`spaces/_/tasks/${t}`, { title: t, projectId: 'inbox', order: Date.now(), priority: 4, done: true, doneAt: Date.now(), createdAt: Date.now() - 1000, updatedAt: Date.now() });
   await synced(page);
   await openTab(page, 'browse');
   await page.locator('#browse').getByRole('button', { name: 'Reporting' }).click();

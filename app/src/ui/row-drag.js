@@ -160,8 +160,9 @@ export function dragRows(host, ctx, o) {
   const sc = () => scrollerOf(host);
   const top = (/** @type {Element} */ x) => (x === document.scrollingElement || x === document.documentElement ? scrollY : x.scrollTop);
 
+  let busy = false;
   const down = (/** @type {PointerEvent} */ e) => {
-    if (p || !e.isPrimary || e.button > 0 || !o.can() || !kindOf(host, o)) return;
+    if (p || busy || !e.isPrimary || e.button > 0 || !o.can() || !kindOf(host, o)) return;
     const t = /** @type {Element} */ (e.target);
     const row = /** @type {HTMLElement | null} */ (t.closest('.td-row'));
     if (!row || !host.contains(row) || t.closest('.td-check, .td-fold') || row.classList.contains('is-done') || row.classList.contains('is-complete')) return;
@@ -243,7 +244,8 @@ export function dragRows(host, ctx, o) {
     if (g !== q.gap || depth !== q.depth) haptic('tick');
     q.gap = g; q.depth = depth;
     q.line?.show(g, depth);
-    if (!b) slide(q, g);
+    // Today/Upcoming (days): rows stay put, only the line overlays (the reference does not shift them)
+    if (!b && kind !== 'days') slide(q, g);
     if (kind === 'days') {
       const cell = /** @type {HTMLElement | undefined} */ (document.elementsFromPoint(q.fx, q.fy).find(n => n instanceof HTMLElement && n.dataset.dropDay)) ?? null;
       if (cell !== lit) { lit?.classList.remove('is-drop'); lit = cell; lit?.classList.add('is-drop'); if (cell) haptic('tick'); }
@@ -299,8 +301,7 @@ export function dragRows(host, ctx, o) {
     cancelHold();
     const was = p;
     p = null;
-    delete host.dataset.holding;
-    if (!was.lifted) return;
+    if (!was.lifted) { delete host.dataset.holding; return; }
     // the click that follows the let-go is the drag's, not the row's
     const eat = (/** @type {MouseEvent} */ c) => { c.preventDefault(); c.stopPropagation(); };
     host.addEventListener('click', eat, { capture: true, once: true });
@@ -309,9 +310,31 @@ export function dragRows(host, ctx, o) {
     vert.stop(); side.stop();
     host.style.scrollSnapType = '';
     const r = was.row;
-    was.line?.remove();
     was.zone?.remove();
     unslide();
+    // days lists: the card glides the last stretch to the line (200 ms ease-out), then the line cuts and the edit applies
+    if (was.moved && was.gap && !was.over && e.type !== 'pointercancel' && kindOf(host, o) === 'days' && !host.hasAttribute('data-sorted')
+      && !document.elementsFromPoint(e.clientX, e.clientY).some(n => n instanceof HTMLElement && n.dataset.dropDay)
+      && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const m = /translate\((-?[\d.]+)px, (-?[\d.]+)px\)/.exec(r.style.transform);
+      if (m) {
+        const delta = was.gap.y - r.getBoundingClientRect().top;
+        // (busy until the glide ends: no new press on a row still moving; the drop highlight goes out at once)
+        busy = true;
+        lit?.classList.remove('is-drop'); lit = null;
+        const glides = [r, ...was.kids].flatMap(n => {
+          const from = n.style.transform, t = /translate\((-?[\d.]+)px, (-?[\d.]+)px\)/.exec(from);
+          if (!t) return [];
+          const to = from.replace(t[0], `translate(${t[1]}px, ${Number(t[2]) + delta}px)`);
+          return [n.animate([{ transform: from }, { transform: to }], { duration: 200, easing: 'cubic-bezier(0,0,.2,1)', fill: 'forwards' })];
+        });
+        try { await Promise.all(glides.map(a => a.finished)); } catch { /* cancelled */ }
+        for (const n of [r, ...was.kids]) for (const a of n.getAnimations()) a.cancel();
+        busy = false;
+      }
+    }
+    delete host.dataset.holding;
+    was.line?.remove();
     const task = ctx.data().tasks.find(t => t.id === r.dataset.id);
     if (!task || e.type === 'pointercancel') { settleRow(r, was.kids); return; }
     if (!was.moved) { settleRow(r, was.kids); o.menu(task, r); return; }

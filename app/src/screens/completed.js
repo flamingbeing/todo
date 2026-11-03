@@ -39,6 +39,7 @@ export function drawCompleted(ctx, host, empty) {
       box.append(icon(ICONS.check, { class: 'td-check-mark' }));
       box.addEventListener('click', async () => { if (await ctx.app.tick(t, false)) ctx.toast(REFUSED); });
       const main = /** @type {HTMLButtonElement} */ (el('button', 'td-row-main'));
+      main.setAttribute('data-press-parent', '');
       main.type = 'button';
       main.append(el('span', 'td-title', t.title));
       const at = typeof t.doneAt === 'number' ? new Date(t.doneAt) : null;

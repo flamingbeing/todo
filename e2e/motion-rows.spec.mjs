@@ -78,10 +78,31 @@ test('a pressed row shades whole and square, not as a pill on its words', async 
     const row = document.querySelector(sel), main = row.querySelector('.td-row-main');
     const bg0 = getComputedStyle(row).backgroundColor;
     main.setAttribute('data-pressed', '');
-    const out = { bg0, bg: getComputedStyle(row).backgroundColor, shadow: getComputedStyle(main).boxShadow };
+    const out = { bg0, bg: getComputedStyle(row).backgroundColor, shadow: getComputedStyle(main).boxShadow, parent: main.hasAttribute('data-press-parent') };
     main.removeAttribute('data-pressed');
     return out;
   }, rowIn('project', a));
   expect(seen.bg).not.toBe(seen.bg0);
   expect(seen.shadow).toBe('none');
+  expect(seen.parent, 'the words hand their press to the row (app-ui data-press-parent)').toBe(true);
+});
+
+// any press paint the kit adds later (shade, ripple, scale) must land on the row, never as a pill on the words (owner 3 Nov:
+// the pill came back three times, each time from a new kit press effect on the words' rounded button)
+test('a real touch on a row paints nothing on its words: the ripple and tint are on the row', async ({ phone }) => {
+  const page = await phone();
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await signIn(page, 'member');
+  const [a] = await project(page, 'ripple');
+  const sel = rowIn('project', a);
+  await press(page, sel, { hold: 200, at: [250, 20] });
+  const seen = await page.evaluate(sel => {
+    const row = document.querySelector(sel), main = row.querySelector('.td-row-main'), m = getComputedStyle(main), r = getComputedStyle(row);
+    return { mainImage: m.backgroundImage, mainShadow: m.boxShadow, mainRipple: main.getAttribute('data-ripple'), rowImage: r.backgroundImage };
+  }, sel);
+  await letGo(page);
+  expect(seen.mainRipple).toBe(null);
+  expect(seen.mainImage).toBe('none');
+  expect(seen.mainShadow).toBe('none');
+  expect(seen.rowImage).toMatch(/radial-gradient/);
 });
