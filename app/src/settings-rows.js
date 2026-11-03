@@ -1,6 +1,7 @@
 // The Settings pages' rows (screens/settings.js builds the screen with them, the first time Settings opens): a row is a switch
 // for a yes/no option, a picker for one with choices; icon, sub and group are the page's row in the menu. The options
 // themselves are in options.js (every one here is this device's).
+import { ICONS } from './icons.js';
 import { MORE } from './icons-more.js';
 import { HOMES, LEAD_MINUTES } from './options.js';
 
@@ -40,7 +41,7 @@ export const SETTING_SECTIONS = [
     { heading: 'Advanced' },
     { key: 'bigRows', label: 'Larger rows' },
   ] },
-  { title: 'Navigation menu', icon: MORE.menu, group: 'Personalization', find: 'browse counts menu items hide', rows: [
+  { title: 'Navigation menu', icon: ICONS.menu, group: 'Personalization', find: 'browse counts menu items hide', rows: [
     { key: 'showCounts', label: 'Show task count', sub: 'Visible in Browse' },
     { heading: 'Menu items' },
   ] },
