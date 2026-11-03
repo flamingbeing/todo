@@ -960,9 +960,6 @@ body {
 .td-cv-pick-place { flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--td-text-2); }
 
 /* ---- slice 4: Today's summary under the title ("5 tasks · 2 h 30 min") */
-.td-day-sum { display: flex; align-items: center; gap: 6px; margin: -4px 0 6px; padding-inline: 16px; font-size: 13px; color: var(--td-text-3); }
-.td-day-sum:empty { display: none; }
-.td-day-sum .ui-icon { width: 14px; height: 14px; flex: none; }
 .td-sched-min { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 16px 0 52px; }
 .td-sched-min[hidden] { display: none; }
 .td-sched-min .td-choice-label { flex: 1; font-size: 16px; }

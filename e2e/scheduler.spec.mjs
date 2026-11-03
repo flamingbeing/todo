@@ -139,11 +139,11 @@ test('Duration: a length from the menu or typed minutes waits for Save; the row 
   await expect.poll(async () => (await db.get(`spaces/_/tasks/${t}`))?.duration, { timeout: 15_000 }).toBe(50);
   await page.keyboard.press('Escape');
   await expect(page.locator('#today .td-row').filter({ hasText: t })).toContainText(/10:00\s?AM–10:50\s?AM/);
-  // Today's summary counts every open task due by today ("17 tasks"), other tests' tasks too (the data is shared): it
-  // matches the data
+  // Today's count (the bar's subtitle, shown once) counts every open task due by today ("17 tasks"), other tests' tasks
+  // too (the data is shared): it matches the data
   const sum = async () => (await db.list('spaces/_/tasks')).filter(x => x.title && !x.done && x.due?.date && x.due.date <= day(0)).length;
   const shown = async () => {
-    const m = (await page.locator('#today-sum').textContent() ?? '').match(/^\s*(\d+) tasks?\s*$/);
+    const m = (await page.locator('.ui-bar-title').getAttribute('data-sub') ?? '').match(/^\s*(\d+) tasks?\s*$/);
     return m ? Number(m[1]) : null;
   };
   await expect.poll(async () => { const [want, got] = [await sum(), await shown()]; return `${got}` === `${want}` || `page ${got}, data ${want}`; }, { timeout: 15_000 }).toBe(true);

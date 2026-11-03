@@ -4,8 +4,7 @@
 // Completed load the first time they are needed (lazyModules), then in idle moments after the first screen; so do
 // Filters & Labels, Search's results, a project's board, the Display sheet and Upcoming's week strip.
 // Display's choices (grouping, order, what shows) are kept per list on this device (the option "display").
-import { conflictSheet, refusedList, toaster, undoToast, loadState, lazyModules, glide, holdKeyboard, captured, icon, plural } from '@core/ui';
-import { ICONS } from '../icons.js';
+import { conflictSheet, refusedList, toaster, undoToast, loadState, lazyModules, glide, holdKeyboard, captured, plural } from '@core/ui';
 import { COLL, REFUSED, INBOX, itemText } from '../items.js';
 import { projectView, todayView, isTask, placeText, projectOf, priorityOf, cleanDisplay, plainDisplay } from '../tasks.js';
 import { dayKey, dayTitle, dayHeading, dueLine } from '../dates.js';
@@ -437,9 +436,7 @@ export function views(app) {
   };
   const paintToday = () => {
     const today = drawnDay = dayKey(), d = disp('today');
-    // under the title: how many tasks are open for today (overdue too)
-    const open = filtered().filter(t => isTask(t) && !t.done && !!t.due?.date && t.due.date <= today);
-    $('today-sum').replaceChildren(...(open.length ? [icon(ICONS.circleCheck), plural(open.length, 'task')] : []));
+    // (the open count, overdue too, shows once: the bar's subtitle, as on the Inbox)
     if (inCal('today')) { shownToday = []; drawCal('today', $('today'), $('today-empty'), filtered().filter(t => !!t.due?.date), { projectId: INBOX }); return; }
     const host = $('today'), base = { projectId: INBOX, due: { date: today } }, ts = filtered().filter(t => { const k = t.due?.date; return !!k && (t.done ? k === today : k <= today); });
     host.toggleAttribute('data-sorted', d.sort !== 'manual');
