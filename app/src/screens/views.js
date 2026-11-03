@@ -355,10 +355,12 @@ export function views(app) {
 
   /** a flat list in Display's groups (board.js draws them); none: the empty note's words when no task shows
    * @param {HTMLElement} into @param {HTMLElement} empty @param {Task[]} tasks @param {import('../tasks.js').Display} d
-   * @param {import('../ui/row.js').RowContext} c @param {AddContext} base @param {[string, string, ('inbox' | 'day')?]} none */
-  const groups = (into, empty, tasks, d, c, base, none) => {
+   * @param {import('../ui/row.js').RowContext} c @param {AddContext} base @param {[string, string, ('inbox' | 'day')?]} none
+   * @param {boolean} [byDay] a day's list (Today): kept in the day's own order (dayOrder) whatever the grouping */
+  const groups = (into, empty, tasks, d, c, base, none, byDay = false) => {
     into.dataset.grouped = d.group;
-    void lazy.withMod('board', m => { empty.replaceChildren(...(!m.drawGroups(ctx, { into, tasks, d, c, base, resched }) && canWrite ? [emptyNote(none[0], none[1], none[2])] : [])); });
+    into.toggleAttribute('data-by-day', byDay);
+    void lazy.withMod('board', m => { empty.replaceChildren(...(!m.drawGroups(ctx, { into, tasks, d, c, base, resched, byDay }) && canWrite ? [emptyNote(none[0], none[1], none[2])] : [])); });
   };
   /** Overdue's Reschedule: every task in it to one day @param {HTMLElement} sec @param {Task[]} tasks */
   const resched = (sec, tasks) => {
@@ -382,7 +384,7 @@ export function views(app) {
     host.toggleAttribute('data-sorted', d.sort !== 'manual');
     if (d.layout === 'board') { groupBoard(host, $('today-empty'), ts, d, d.group, base, 'Today'); return; }
     host.classList.remove('td-board'); host.removeAttribute('data-swipe-own');
-    if (!plainDisplay(d, 'today')) { groups(host, $('today-empty'), ts, d, rowCtx({ place: true }), base, ['What do you need to get done today?', 'By default, tasks added here will be scheduled for today.\nTap + to add a task.', 'day']); return; }
+    if (!plainDisplay(d, 'today')) { groups(host, $('today-empty'), ts, d, rowCtx({ place: true }), base, ['What do you need to get done today?', 'By default, tasks added here will be scheduled for today.\nTap + to add a task.', 'day'], true); return; }
     delete host.dataset.grouped;
     const v = todayView(filtered(), today);
     const parts = [];

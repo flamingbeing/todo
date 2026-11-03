@@ -863,7 +863,12 @@ body {
 }
 .td-cv-block.is-done, .td-cv-chip.is-done { opacity: .55; }
 .td-cv-block.is-done .td-cv-block-title, .td-cv-chip.is-done { text-decoration: line-through; }
-.td-cv-ghost { opacity: .5; background: none !important; border: 1px dashed var(--td-text-3); pointer-events: none; left: 1px; width: calc(100% - 3px); }
+.td-cv-ghost { opacity: .5; background: none !important; border: 1px dashed var(--td-text-3); left: 1px; width: calc(100% - 3px); color: inherit; font: inherit; text-align: start; cursor: pointer; }
+/* a block's foot: dragged, its duration (a mouse at once, a finger after a hold); the end time shows while it moves */
+.td-cv-resize { position: absolute; left: 0; right: 0; bottom: 0; height: 10px; cursor: ns-resize; touch-action: pan-y; }
+.td-cv-block.is-resizing { z-index: 6; box-shadow: 0 6px 16px rgb(0 0 0 / .18); }
+.td-cv-block.is-resizing .td-cv-resize::before { content: ""; position: absolute; left: 50%; bottom: 3px; width: 24px; height: 4px; margin-left: -12px; border-radius: 2px; background: var(--td-text-3); }
+.td-cv-block.is-resizing .td-cv-resize::after { content: attr(data-end); position: absolute; right: 2px; bottom: 6px; padding: 0 4px; border-radius: 4px; background: #db4e3f; color: #fff; font-size: 11px; font-weight: 600; line-height: 16px; pointer-events: none; }
 .td-cv-block.is-lifted, .td-cv-chip.is-lifted { z-index: 6; pointer-events: none; box-shadow: 0 10px 24px rgb(0 0 0 / .2), 0 1px 4px rgb(0 0 0 / .12); }
 .is-drop.td-cv-allday-cell, .is-drop.td-cv-cell, .is-drop.td-cv-head { background: color-mix(in srgb, var(--td-accent) 12%, transparent); }
 .td-cv-drop { position: absolute; z-index: 5; top: -1px; left: 0; right: 0; height: 2px; background: #db4e3f; pointer-events: none; }

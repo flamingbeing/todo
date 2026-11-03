@@ -393,3 +393,11 @@ test('a delete\'s tasks (their files go with them): a task with every subtask, a
     assert.deepEqual(sorted(s.saves.filter(([c, r]) => c === 'tasks' && r._deleted).map(([, r]) => r)), want, kind);
   }
 });
+
+test("Today grouped by none or priority keeps the day's own order (dayOrder), not the project order", () => {
+  const list = () => [t('a', { due: { date: T }, dayOrder: 3 }), t('b', { due: { date: T }, dayOrder: 1 }), t('c', { due: { date: T }, dayOrder: 2 })];
+  const g = (/** @type {any} */ o, /** @type {any} */ manual) => groupTasks(list(), D(o), { projects: [], labels: [], today: T, ...(manual ? { manual } : {}) }).map(x => titles(x.tasks));
+  assert.deepEqual(g({ group: 'none' }), [['a', 'b', 'c']]);
+  assert.deepEqual(g({ group: 'none' }, dayOrder), [['b', 'c', 'a']]);
+  assert.deepEqual(g({ group: 'priority' }, dayOrder), [['b', 'c', 'a']]);
+});
