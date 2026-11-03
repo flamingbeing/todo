@@ -31,6 +31,8 @@ export function pageMenu(ctx, more, o) {
     ...(o.tree ? [{ label: `Copy link to ${own?.name ?? 'Inbox'}`, icon: MORE.link, run: async () => {
       try { await navigator.clipboard.writeText(projectLink(o.pid)); ctx.toast('Project link copied.'); } catch { ctx.toast('Could not copy the link'); }
     } }] : []),
+    ...(own ? [{ label: 'Comments', icon: MORE.messageSquare, run: () => ctx.openProjectComments(own) }] : []),
+    ...(own ? [{ label: 'View activity', icon: MORE.activity, run: () => ctx.openActivity({ project: own }) }] : []),
     { label: 'Select tasks', icon: MORE.squareCheck, run: () => o.select(o.host) },
     ...(own ? [null, { label: 'Delete project', icon: MORE.trash2, danger: true, run: () => { void ctx.removeProject(own); } }] : []),
     ...(named && place ? [null, { label: `Delete ${word}`, icon: MORE.trash2, danger: true, run: () => o.named(async m => { if (await m.removeNamed(ctx, place.kind, named)) o.pop(); }) }] : []),

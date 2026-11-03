@@ -26,6 +26,14 @@ export const OPTIONS = {
   tabs: { scope: 'device', default: { order: [], hidden: [] }, clean: cleanTabs },
   // quick add and the scheduler read dates, times and repeats in the words typed (this device)
   smartDates: { scope: 'device', default: true },
+  // quick add: a new task goes to the top of its list instead of the end (this device)
+  addToTop: { scope: 'device', default: false },
+  // quick add's "+" menu: which actions it offers (this device; all on, as before)
+  qaPriority: { scope: 'device', default: true },
+  qaReminders: { scope: 'device', default: true },
+  qaLabels: { scope: 'device', default: true },
+  qaDeadline: { scope: 'device', default: true },
+  qaDuration: { scope: 'device', default: true },
   // what a row does when swiped right or left (this device): 'complete', 'schedule', 'delete' or 'none'
   swipeRight: { scope: 'device', default: 'complete', clean: v => (SWIPES.includes(String(v)) ? v : 'complete') },
   swipeLeft: { scope: 'device', default: 'schedule', clean: v => (SWIPES.includes(String(v)) ? v : 'schedule') },
@@ -65,8 +73,15 @@ export const SETTING_SECTIONS = [
   { title: 'Navigation menu', icon: ICONS.listChecks, group: 'Personalization', find: 'browse counts', rows: [
     { key: 'showCounts', label: 'Show task counts in Browse', sub: 'This device' },
   ] },
-  { title: 'Quick Add', icon: ICONS.plus, group: 'Personalization', find: 'smart date recognition natural language', rows: [
+  { title: 'Quick Add', icon: ICONS.plus, group: 'Personalization', find: 'smart date recognition natural language add top bottom actions', rows: [
     { key: 'smartDates', label: 'Smart date recognition', sub: 'Read dates, times and repeats as you type a task' },
+    { key: 'addToTop', label: 'Add new tasks to the top', sub: 'Instead of the end of the list. This device' },
+    { heading: 'Quick Add actions' },
+    { key: 'qaPriority', label: 'Priority', sub: 'This device' },
+    { key: 'qaReminders', label: 'Reminders', sub: 'This device' },
+    { key: 'qaLabels', label: 'Labels', sub: 'This device' },
+    { key: 'qaDeadline', label: 'Deadline', sub: 'This device' },
+    { key: 'qaDuration', label: 'Duration', sub: 'This device' },
   ] },
   { title: 'Productivity', icon: ICONS.gauge, group: 'Productivity', find: 'goal daily weekly', rows: [
     { key: 'dailyGoal', label: 'Daily goal', sub: 'Tasks a day. This device', choices: goals(0, 1, 3, 5, 10, 20) },

@@ -52,6 +52,8 @@ if (linked || linkedProject) history.replaceState(history.state, '', location.pa
  * @property {(id: string) => void} openProject
  * @property {(o?: AddContext, hold?: { handTo: (f: HTMLElement) => void } | null) => void} openQuickAdd  hold: the keyboard held by the tap (holdKeyboard)
  * @property {(o?: { project?: import('../items.js').Project, parentId?: string }) => void} openProjectSheet
+ * @property {(what: { task: Task } | { project: import('../items.js').Project }) => void} openActivity
+ * @property {(p: import('../items.js').Project) => void} openProjectComments
  * @property {(t: Task, row?: HTMLElement | null) => void} complete
  * @property {(p: import('../items.js').Project) => Promise<boolean>} removeProject  asks first; true once asked and said yes
  * @property {(o?: Partial<import('../ui/row.js').RowContext>) => import('../ui/row.js').RowContext} rows
@@ -107,6 +109,7 @@ export function views(app) {
     strip: () => import('../ui/week-strip.js'),
     select: () => import('./select.js'),
     menus: () => import('./page-menu.js'),
+    activity: () => import('./activity.js'),
     calendar: () => import('./calendar.js'),
     marks: () => import('../markdown.js'),
     section: () => import('./section-page.js'),
@@ -121,6 +124,8 @@ export function views(app) {
     app, data: () => data, canWrite: () => canWrite, toast, undo, files, user: () => user,
     openTask: t => { void lazy.withMod('sheet', m => m.openTask(ctx, t)); },
     openQuickAdd: (o, hold = null) => { if (canWrite) void lazy.withMod('add', m => m.openQuickAdd(ctx, o ?? addContext(), hold)); },
+    openActivity: what => { void lazy.withMod('activity', m => m.openActivity(ctx, what)); },
+    openProjectComments: p => { void lazy.withMod('activity', m => m.openProjectComments(ctx, p)); },
     openProjectSheet: o => { if (canWrite) void lazy.withMod('projectSheet', m => m.openProjectSheet(ctx, o)); },
     openProject: id => {
       projectId = id;
@@ -463,6 +468,7 @@ export function views(app) {
     if (tabPage !== top) paint(tabPage);
     for (const s of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.ui-screen.is-beside'))) paint(s.id);
     void lazy.loaded('sheet')?.redraw(ctx);
+    void lazy.loaded('activity')?.redraw(ctx);
     changed = new Set();
   };
 
