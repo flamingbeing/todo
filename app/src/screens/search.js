@@ -88,7 +88,7 @@ function visited(ctx) {
     if (k === 'inbox') return [tab(ICONS.inbox, 'Inbox', 'inbox')];
     if (k === 'today') return [tab(MORE.sun, 'Today', 'today')];
     if (k === 'upcoming') return [tab(ICONS.calendar, 'Upcoming', 'upcoming')];
-    if (k === 'filters') return [{ ic: MORE.layoutGrid, name: 'Filters & Labels', color: '', run: () => screens()?.push('#filters-page') }];
+    if (k === 'filters') return [{ ic: MORE.layoutGrid, name: 'Filters & Labels', color: '', run: () => screens()?.push('#filters-page', { motion: 'fade' }) }];
     if (kind === 'project') { const p = data.projects.find(x => x.id === id); return p ? [{ ic: ICONS.hash, name: p.name, color: colorHex(p.color), run: () => ctx.openProject(id) }] : []; }
     if (kind === 'labels' || kind === 'filters') {
       const x = (kind === 'labels' ? data.labels : data.filters).find((/** @type {{ id: string }} */ y) => y.id === id);

@@ -231,4 +231,4 @@ export function drawPlace(ctx, place, host, empty, d, cal) {
 }
 
 /** opens Filters & Labels */
-export const openFiltersLabels = () => screens()?.push('#filters-page');
+export const openFiltersLabels = () => screens()?.push('#filters-page', { motion: 'fade' });
