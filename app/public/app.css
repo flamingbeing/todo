@@ -607,6 +607,8 @@ button:is(.td-group-title, .td-add-row, .td-suggest-item, .td-sched-row, .td-bro
 .td-swipe-icon { width: 24px; height: 24px; stroke-width: 2.5; opacity: 0; transform: scale(.8); transition: transform .15s ease-out; }
 .td-row.is-lifted { z-index: 6; border-radius: 12px !important; background: var(--td-held); box-shadow: 0 6px 20px rgb(0 0 0 / .18), 0 1px 3px rgb(0 0 0 / .12); }
 .td-row.is-lifted::after { display: none; }
+@media (prefers-reduced-motion: no-preference) { .td-row.is-lifted.is-compact { transition: translate 66ms linear; } }
+.td-row.is-lifted.is-compact { width: calc(100% - 60px); translate: 60px 0; }   /* (a compact card riding right of the finger's start, like the reference) */
 .td-drop-clip { position: fixed; left: 0; top: 0; height: 100%; overflow: hidden; z-index: 20; pointer-events: none; }
 .td-drop-line { position: absolute; left: 0; top: 0; height: 2px; border-radius: 1px; background: var(--td-drop); opacity: 0; }
 .td-drop-line::before { content: ""; position: absolute; left: -3.5px; top: -2.5px; width: 7px; height: 7px; border-radius: 50%; background: var(--td-drop); }

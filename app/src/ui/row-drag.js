@@ -231,6 +231,8 @@ export function dragRows(host, ctx, o) {
     const skip = new Set([String(row().dataset.id), ...q.kids.map(k => String(k.dataset.id))]);
     if (b || !q.gaps) q.gaps = gapsOf(host, skip, kind === 'tree' && !b, q.from);
     const sx = b ? host.scrollLeft - q.sx : 0, sy = top(sc()) - q.sy;
+    // Upcoming and Today (the reference): once it moves, the card is a compact one, 60 pt narrower, riding right (a 66 ms ease)
+    if (kind === 'days' && !row().classList.contains('is-compact')) row().classList.add('is-compact');
     row().style.transform = `translate(${dx + sx}px, ${dy + sy}px) scale(${LIFT})${b ? ' rotate(2deg)' : ''}`;
     for (const k of q.kids) k.style.transform = `translate(${dx}px, ${dy + sy}px)`;
     // over Today's postpone place: no line
@@ -340,7 +342,7 @@ export function dragRows(host, ctx, o) {
     if (!was.moved) { settleRow(r, was.kids); o.menu(task, r); return; }
     const g = was.gap;
     // (where it was: nothing to save)
-    r.style.transform = ''; r.classList.remove('is-lifted');
+    r.style.transform = ''; r.classList.remove('is-lifted', 'is-compact');
     for (const k of was.kids) { k.style.transform = ''; k.style.opacity = ''; }
     // let go on a day of the week strip (Upcoming): that day; a list in Display's own order keeps its order
     const cell = /** @type {HTMLElement | undefined} */ (document.elementsFromPoint(e.clientX, e.clientY).find(n => n instanceof HTMLElement && n.dataset.dropDay));
@@ -390,7 +392,7 @@ const LIFT = 1.03;
 /** a lifted row back to its size, its subtasks unfaded @param {HTMLElement} r @param {HTMLElement[]} kids */
 function settleRow(r, kids) {
   const g = LIFT - 1;
-  r.classList.remove('is-lifted');
+  r.classList.remove('is-lifted', 'is-compact');
   void glide([[r, k => ({ transform: `scale(${1 + g * k})` })], ...kids.map(n => /** @type {[HTMLElement, (k: number) => Keyframe]} */ (
     [n, k => ({ opacity: String(1 - 0.65 * k) })]))], 1, 0).done.then(() => letGo([r, ...kids]));
 }
