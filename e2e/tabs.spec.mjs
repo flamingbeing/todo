@@ -7,6 +7,9 @@ test('a tab taken off the bar is one tap away in Settings and stays off', async 
   await page.goto(APP, { waitUntil: 'domcontentloaded' });
   const search = page.locator('.ui-tabbar [data-tab-id="upcoming"]');
   await expect(search).toBeVisible();
+  // the current tab's icon sits in a 56 x 32 pill
+  const pill = page.locator('.ui-tabbar .ui-tab[aria-current="page"] .ui-tab-icon');
+  await expect.poll(() => pill.evaluate(e => [Math.round(e.getBoundingClientRect().width), Math.round(e.getBoundingClientRect().height)])).toEqual([56, 32]);
 
   await openSettings(page, 'Navigation bar');
   await expect(page.getByRole('switch', { name: 'On the tab bar: Browse' })).toBeDisabled();   // Browse (and Settings in it) stays

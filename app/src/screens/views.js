@@ -68,6 +68,12 @@ if (linked || linkedProject) history.replaceState(history.state, '', location.pa
  */
 /** @typedef {{ projectId?: string, sectionId?: string | null, parentId?: string | null, due?: import('../dates.js').Due | null, deadline?: string | null, order?: number, duration?: number, priority?: number, labels?: string[] }} AddContext */
 
+// the empty lists' own words and drawings (row.js emptyNote): the Inbox, and a project or list with no tasks
+/** @type {[string, string, 'inbox']} */
+const INBOX_EMPTY = ['Your Inbox is clear', 'Tasks added without a project land here.\nSort them into projects whenever it suits you.', 'inbox'];
+/** @type {[string, string, 'project']} */
+const PROJECT_EMPTY = ['No tasks yet', 'Tap + to add the first one.', 'project'];
+
 /** @param {import('../items.js').ItemsApp} app */
 export function views(app) {
   let canWrite = false;
@@ -160,7 +166,8 @@ export function views(app) {
     }
     if (row) {
       await new Promise(r => setTimeout(r, 150));
-      if (!next) await glide([[row, x => ({ opacity: String(1 - x), transform: `translateX(${x * 12}px)` })]], 0, 1).done;
+      // (the ring has filled and its check drawn, 150 ms: app.css; then the row fades, and the list drawn again closes the gap)
+      if (!next) { row.classList.add('is-leaving'); await glide([[row, x => ({ opacity: String(1 - x), transform: `translateX(${x * 12}px)` })]], 0, 1).done; }
     }
     const party = app.settings.get('goalParty') ? await lazy.need('party') : null;
     const before = party ? party.doneToday(data.tasks) : 0;
@@ -340,7 +347,7 @@ export function views(app) {
     into.toggleAttribute('data-swipe-own', board);
     into.toggleAttribute('data-sorted', d.sort !== 'manual');
     if (board) { void lazy.withMod('board', m => m.drawBoard(ctx, pid, into, empty, d)); return; }
-    if (d.group !== 'none') { groups(into, empty, filtered().filter(t => projectOf(t) === pid), d, rowCtx({ place: d.group === 'project' }), { projectId: pid }, ['Nothing here yet', 'Tap + to add a task']); return; }
+    if (d.group !== 'none') { groups(into, empty, filtered().filter(t => projectOf(t) === pid), d, rowCtx({ place: d.group === 'project' }), { projectId: pid }, PROJECT_EMPTY); return; }
     delete into.dataset.grouped;
     // (a sort or a filter: its maths comes with board.js, the page is drawn again once it has)
     const plain = plainDisplay(d, 'inbox'), m = lazy.loaded('board');
@@ -353,7 +360,7 @@ export function views(app) {
       sec.className = 'td-group td-section';
       sec.dataset.id = s.id;
       const head = naming?.sectionId === s.id ? nameField(s.name, s, pid)
-        : groupHead(s.name, { collapsed: !!s.collapsed, label: s.name, onFold: canWrite ? () => { void app.foldSection(s, !s.collapsed); } : undefined,
+        : groupHead(s.name, { collapsed: !!s.collapsed, label: s.name, count: lines.filter(l => !l.depth && !l.task.done).length, onFold: canWrite ? () => { void app.foldSection(s, !s.collapsed); } : undefined,
           onMore: canWrite ? b => sectionMenu(s, b) : undefined });
       sec.append(head);
       if (!s.collapsed) {
@@ -366,12 +373,12 @@ export function views(app) {
     if (naming && !naming.sectionId && !naming.after && naming.projectId === pid) parts.push(nameField('', null, pid));
     into.replaceChildren(...parts);
     const none = !v.loose.length && v.sections.every(x => !x.lines.length);
-    empty.replaceChildren(...(none && !v.sections.length && canWrite ? [pid === INBOX ? emptyNote('Capture now, plan later', 'The Inbox is where new tasks wait until you know where they belong.\nClear your mind now, organize when you are ready.', 'inbox') : emptyNote('Nothing here yet', 'Tap + to add a task')] : []));
+    empty.replaceChildren(...(none && !v.sections.length && canWrite ? [pid === INBOX ? emptyNote(...INBOX_EMPTY) : emptyNote(...PROJECT_EMPTY)] : []));
   };
 
   /** a flat list in Display's groups (board.js draws them); none: the empty note's words when no task shows
    * @param {HTMLElement} into @param {HTMLElement} empty @param {Task[]} tasks @param {import('../tasks.js').Display} d
-   * @param {import('../ui/row.js').RowContext} c @param {AddContext} base @param {[string, string, ('inbox' | 'day')?]} none
+   * @param {import('../ui/row.js').RowContext} c @param {AddContext} base @param {[string, string, import('../ui/empty-art.js').ArtKind?]} none
    * @param {boolean} [byDay] a day's list (Today): kept in the day's own order (dayOrder) whatever the grouping */
   const groups = (into, empty, tasks, d, c, base, none, byDay = false) => {
     into.dataset.grouped = d.group;
@@ -390,6 +397,13 @@ export function views(app) {
   /** the tasks the search recipe's filter leaves (all of them without it) */
   const filtered = () => /** @type {Task[]} */ (filter?.pick(data.tasks) ?? data.tasks);
 
+  /** Today's empty words: all done (something was ticked today) or a free day @returns {[string, string, 'day' | 'done']} */
+  const todayEmpty = () => {
+    const today = dayKey();
+    return data.tasks.some(t => t.done && typeof t.doneAt === 'number' && dayKey(new Date(t.doneAt)) === today)
+      ? ['All done for today', 'Every task for today is ticked off.\nTap + if something new comes up.', 'done']
+      : ['A free day so far', 'Tasks dated today show up here.\nTap + to add one.', 'day'];
+  };
   const paintToday = () => {
     const today = drawnDay = dayKey(), d = disp('today');
     // under the title: how many tasks are open for today (overdue too)
@@ -400,7 +414,7 @@ export function views(app) {
     host.toggleAttribute('data-sorted', d.sort !== 'manual');
     if (d.layout === 'board') { groupBoard(host, $('today-empty'), ts, d, d.group, base, 'Today'); return; }
     host.classList.remove('td-board'); host.removeAttribute('data-swipe-own');
-    if (!plainDisplay(d, 'today')) { groups(host, $('today-empty'), ts, d, rowCtx({ place: true }), base, ['What do you need to get done today?', 'By default, tasks added here will be scheduled for today.\nTap + to add a task.', 'day'], true); return; }
+    if (!plainDisplay(d, 'today')) { groups(host, $('today-empty'), ts, d, rowCtx({ place: true }), base, todayEmpty(), true); return; }
     delete host.dataset.grouped;
     const v = todayView(filtered(), today);
     const parts = [];
@@ -417,7 +431,7 @@ export function views(app) {
       parts.push(g);
     }
     host.replaceChildren(...parts);
-    $('today-empty').replaceChildren(...(!v.today.length && !v.overdue.length && canWrite ? [emptyNote('What do you need to get done today?', 'By default, tasks added here will be scheduled for today.\nTap + to add a task.', 'day')] : []));
+    $('today-empty').replaceChildren(...(!v.today.length && !v.overdue.length && canWrite ? [emptyNote(...todayEmpty())] : []));
     shownToday = [...v.overdue, ...v.today].map(l => l.task);
   };
   /** @type {Task[]} */
@@ -452,6 +466,8 @@ export function views(app) {
   };
   /** draws a page if the data changed since it was last drawn @param {string} id */
   const paint = id => {
+    // (the Display button's dot: this list's display is not its default; plainDisplay is the diff)
+    if (id === top) { const v = viewOf(); display.classList.toggle('has-dot', !display.hidden && !plainDisplay(disp(v), v)); }
     if (fresh.has(id)) return;
     fresh.add(id);
     if (id === 'today-page' || id === 'inbox-page' || id === 'upcoming-page') applied(id.slice(0, -5), id.slice(0, -5));

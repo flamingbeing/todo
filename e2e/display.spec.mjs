@@ -36,6 +36,7 @@ test('grouping by priority, by name descending, done tasks shown: kept per list,
   await synced(page);
   await openProject(page, name);
   await expect(page.locator('#project .td-title')).toHaveText([`B ${u}`, `A ${u}`, `C ${u}`]);
+  await expect(page.locator('#display-btn')).not.toHaveClass(/has-dot/);   // (the dot: this list's view is not the plain one)
   const sheet = await display(page);
   await expect(sheet.getByRole('button', { name: /^Grouping/ })).toContainText('None');
   expect(await AxeBuilder(page)).toEqual([]);
@@ -50,6 +51,7 @@ test('grouping by priority, by name descending, done tasks shown: kept per list,
     await expect(p.locator('#project .td-row.is-complete .td-title')).toHaveText(`D ${u}`);
   };
   await want(page);
+  await expect(page.locator('#display-btn')).toHaveClass(/has-dot/);
   await page.reload();
   await expect(page.locator('#list-view')).toBeVisible();
   await synced(page);

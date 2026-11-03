@@ -1,5 +1,5 @@
-// The sizes the app is drawn at (1 pt = 1 CSS px, 3 device px on a phone): a two-line row is 74 pt, the checkbox 22,
-// the title starts at 50, the add button is 68 (the reference's rounded square), and a title-only row is 52. The task
+// The sizes the app is drawn at (1 pt = 1 CSS px, 3 device px on a phone): a two-line row is 73 pt, the checkbox 20 at
+// x 16, the title starts at 48, the add button is 68 (the reference's rounded square), and a title-only row is 52. The task
 // sheet: a 44 pt head with 28 pt round buttons, the ring 22 at x 19, the title and row text at x 56, rows 48.5 apart.
 // Light and dark keep the same sizes.
 import { test, expect, signIn, synced, uniq, today, db, clickOpens } from './fixtures.mjs';
@@ -16,14 +16,23 @@ for (const scheme of ['light', 'dark']) {
     await synced(page);
     const size = async t => page.locator('#today .td-row').filter({ hasText: t }).evaluate(row => {
       const r = row.getBoundingClientRect(), c = row.querySelector('.td-check').getBoundingClientRect(), n = row.querySelector('.td-title').getBoundingClientRect();
-      return { row: Math.round(r.height * 10) / 10, check: [c.width, c.height], titleX: Math.round(n.x - r.x) };
+      return { row: Math.round(r.height * 10) / 10, check: [c.width, c.height], checkX: Math.round(c.x - r.x), titleX: Math.round(n.x - r.x) };
     });
     // (a dated task shows its time on the meta line, which makes it the two-line row)
     // (once it has settled: a row drawn anew as other tests' tasks arrive slides in from no height)
     // (all three measured in one go, and again until they agree: a redraw mid-measure gives a row whose box has no size yet)
-    await expect.poll(() => size(b), { timeout: 10_000 }).toEqual({ row: 74, check: [22, 22], titleX: 50 });
+    await expect.poll(() => size(b), { timeout: 10_000 }).toEqual({ row: 73, check: [20, 20], checkX: 16, titleX: 48 });
     const fab = await page.locator('#fab').evaluate(e => [e.getBoundingClientRect().width, e.getBoundingClientRect().height]);
     expect(fab).toEqual([68, 68]);
+    // dark: the page, the group's one card and the text are the reference's exact greys; light rows are flat
+    // (polled: the colours ease in when the scheme flips)
+    const look = () => page.locator('#today .td-row').filter({ hasText: b }).evaluate(row => ({
+      page: getComputedStyle(document.body).backgroundColor,
+      card: getComputedStyle(row.closest('.td-rows')).backgroundColor,
+      text: getComputedStyle(row.querySelector('.td-title')).color,
+    }));
+    if (scheme === 'dark') await expect.poll(look).toEqual({ page: 'rgb(32, 32, 32)', card: 'rgb(39, 39, 39)', text: 'rgb(255, 255, 255)' });
+    else await expect.poll(async () => (await look()).card).toBe('rgba(0, 0, 0, 0)');
   });
 }
 

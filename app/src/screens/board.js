@@ -59,7 +59,7 @@ export function drawBoard(ctx, pid, host, below, d) {
   if (d.group !== 'none') {
     // a project grouped by Display: its groups as columns
     const n = drawGroupBoard(ctx, { host, below, tasks: ctx.data().tasks.filter(t => projectOf(t) === pid), d, group: d.group, base: { projectId: pid }, title: '' });
-    if (!n && ctx.canWrite()) below.prepend(emptyNote('Nothing here yet', 'Tap + to add a task'));
+    if (!n && ctx.canWrite()) below.prepend(emptyNote('No tasks yet', 'Tap + to add the first one.', 'project'));
     return;
   }
   delete host.dataset.grouped;
@@ -111,7 +111,7 @@ export function drawBoard(ctx, pid, host, below, d) {
   }
   host.replaceChildren(...cols);
   const none = !v.loose.length && v.sections.every(x => !x.lines.length);
-  below.replaceChildren(...(none && !v.sections.length && canWrite ? [emptyNote('Nothing here yet', 'Tap + to add a task')] : []));
+  below.replaceChildren(...(none && !v.sections.length && canWrite ? [emptyNote('No tasks yet', 'Tap + to add the first one.', 'project')] : []));
   dotsFor(host, below, cols.length);
 }
 

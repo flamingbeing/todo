@@ -4,19 +4,25 @@
    get them too; light-dark() follows the theme the kit sets on <html>. */
 body {
   margin: 0;
-  --td-text: light-dark(#202020, #e0e0e0);
-  --td-text-2: light-dark(#666, #a0a0a0);
-  --td-text-3: light-dark(#767676, #959595);
-  --td-hair: light-dark(#e6e6e6, #3d3d3d);
-  --td-ground: light-dark(#fff, #1e1e1e);
-  --td-grouped: light-dark(#f9f5f2, #1e1e1e);
-  --td-sheet: light-dark(#f6f3ee, #282828);
-  --td-card: light-dark(#fff, #282828);
-  /* a task row's card on the page ground: a step lighter than the ground in dark, a step darker in light */
-  --td-row-bg: light-dark(#f6f3ef, #282828);
-  --td-peach: light-dark(#fde7d9, rgb(220 76 62 / .28));
-  --td-selected: light-dark(#f0f0f0, #333);
+  --td-text: light-dark(#202020, #fff);
+  --td-text-2: light-dark(#666, #b9b9b9);
+  --td-text-3: light-dark(#767676, #8e8e8e);
+  --td-hair: light-dark(#efefef, #3b3b3b);
+  --td-ground: light-dark(#fff, #202020);
+  --td-grouped: light-dark(#f9f5f2, #202020);
+  --td-sheet: light-dark(#f6f3ee, #272727);
+  --td-card: light-dark(#fff, #272727);
+  /* the card a group's rows sit on in dark (light: rows on the page ground, hairlines between) */
+  --td-row-bg: light-dark(#fff, #272727);
+  --td-peach: light-dark(#fde7d9, #58252c);
+  --td-selected: light-dark(#f0f0f0, #3d3d3d);
   --td-chip: light-dark(#f5f5f5, #404040);
+  --td-chip-page: light-dark(#f5f5f5, #2f2f2f);
+  /* the tab bar's ground, an Upcoming day after today's head, the lit tab's pill, a held row */
+  --td-bar: light-dark(#f6f5f4, #262626);
+  --td-day-dim: light-dark(#666, #848484);
+  --td-tab-pill: light-dark(#fbe9e6, #462326);
+  --td-held: light-dark(#fff, #2f2f2f);
   --td-accent: var(--accent, #dc4c3e);
   /* a filled control with white on it (the + button, Done, send, chosen days): the accent in light; in dark the theme's
      accent is a light tint (white on it about 2:1), so the fill is that hue at full colour and mid lightness (white on
@@ -29,16 +35,16 @@ body {
   --td-p2-fill: light-dark(#fdf3e7, color-mix(in srgb, #eb8909 18%, transparent));
   --td-p3-fill: light-dark(#e9f1fc, color-mix(in srgb, #246fe0 18%, transparent));
   --td-d-overdue: light-dark(#c0392f, #f07468);
-  --td-d-today: light-dark(#2f7f06, #4fb02a);
+  --td-d-today: light-dark(#058527, #25a35a);
   --td-d-tomorrow: light-dark(#9a5700, #d88a2e);
   --td-d-week: light-dark(#692ec2, #b08cf2);
   --td-d-weekend: light-dark(#1f63c9, #64a0f5);
   --td-d-later: light-dark(#6b6b6b, #a0a0a0);
   --td-tabbar-h: 49px;
   /* dragging: the drop line, Today's postpone place, a board card's edge */
-  --td-drop: #db4e3f;
+  --td-drop: var(--td-accent);
   --td-postpone: light-dark(#efefed, #2a2a2a);
-  --td-card-edge: light-dark(#efefef, #3d3d3d);
+  --td-card-edge: light-dark(#efefef, #3b3b3b);
   /* the kit's own parts in these colours */
   --bg: var(--td-ground);
   --surface: var(--td-card);
@@ -144,11 +150,27 @@ button.td-group-title { display: flex; align-items: center; gap: 6px; width: 100
 .td-group-chevron { width: 18px !important; height: 18px !important; color: var(--td-text-3); margin-inline-start: -2px; }
 .td-group-more { color: var(--td-text-3); }
 
-/* a task row: the box at 16, the words at 50, the hairline from 50 */
-/* (a task row is a card: 12 px corners, a step off the ground, 12 px from the sides, 6 px between, no divider lines; a sub-task
-   row steps in 24 px per level. In the task sheet's Sub-tasks, which has a card of its own, a row is flat with the hairline) */
-.td-row { position: relative; display: flex; align-items: flex-start; min-height: 52px; margin: 0 12px 6px calc(12px + var(--depth, 0) * 24px);
-  border-radius: 12px; background: var(--td-row-bg); }
+/* a task row: the ring 20 at x 16, the words at x 48, a hairline under it from x 48 to the edge; a sub-task steps in 24 px a
+   level. In dark a group's rows sit on one card (radius 10, 16 px in from the sides; --td-inset, set below), its last row
+   without the line. In the task sheet's Sub-tasks, which has a card of its own, a row keeps its own sizes. */
+:root[data-theme="dark"] { --td-inset: 16px; --td-card-r: 10px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --td-inset: 16px; --td-card-r: 10px; } }
+.td-row { position: relative; display: flex; align-items: flex-start; min-height: 48px; margin: 0; padding-inline-start: calc(var(--depth, 0) * 24px); }
+.td-list:not(.td-board) .td-rows { margin-inline: var(--td-inset, 0px); border-radius: var(--td-card-r, 0px); background: light-dark(transparent, var(--td-row-bg)); }
+.td-list:not(.td-board) .td-rows > .td-row:first-child { border-start-start-radius: var(--td-card-r, 0px); border-start-end-radius: var(--td-card-r, 0px); }
+.td-list:not(.td-board) .td-rows > .td-row:last-child { border-end-start-radius: var(--td-card-r, 0px); border-end-end-radius: var(--td-card-r, 0px); }
+.td-list:not(.td-board) .td-row::after { content: ""; position: absolute; left: calc(48px + var(--depth, 0) * 24px); right: 0; bottom: 0; border-bottom: .5px solid var(--td-hair); pointer-events: none; }
+.td-list:not(.td-board) .td-rows > .td-row:last-child::after { border-color: light-dark(var(--td-hair), transparent); }
+.td-list .td-row > .td-check { width: 20px; height: 20px; margin: 14.5px 12px 0 16px; }
+.td-list .td-row-main { padding-inline-end: 16px; }
+.td-list .td-meta { font-size: 12px; line-height: 16px; }
+.td-list .td-meta-icon { width: 12px !important; height: 12px !important; }
+.td-list .td-desc { color: var(--td-text-3); }
+/* a section's head: name 16 semibold and its count in grey, the fold chevron turned while folded, a hairline under it in light */
+.td-group-count { margin-inline-start: 8px; font-size: 14px; font-weight: 400; color: var(--td-text-3); }
+.td-group-chevron { transition: transform .15s ease-out; }
+[aria-expanded="false"] > .td-group-chevron { transform: rotate(-90deg); }
+.td-section > .td-group-head { border-bottom: .5px solid light-dark(var(--td-hair), transparent); }
 #task-sheet .td-row { margin: 0; padding-inline-start: calc(var(--depth, 0) * 24px); border-radius: 0; background: none; }
 #task-sheet .td-row::after { content: ""; position: absolute; left: calc(50px + var(--depth, 0) * 24px); right: 0; bottom: 0; border-bottom: .5px solid var(--td-hair); }
 .td-check { --ring: var(--td-p4); --tint: transparent; flex: none; position: relative; display: grid; place-items: center; box-sizing: border-box;
@@ -156,7 +178,11 @@ button.td-group-title { display: flex; align-items: center; gap: 6px; width: 100
   background: var(--tint); color: var(--ring); cursor: pointer; transition: background-color 150ms ease, opacity 150ms ease; }
 .td-check:disabled { cursor: default; }
 .td-check::before { content: ""; position: absolute; inset: -11px; }   /* a 44 px target */
-.td-check-mark { width: 12px !important; height: 12px !important; stroke-width: 3; opacity: 0; transition: opacity 150ms ease; }
+.td-check-mark { width: 12px !important; height: 12px !important; stroke-width: 3; opacity: 0; transition: opacity 150ms ease, transform 150ms ease-out; }
+/* ticking: the ring fills in its colour and the check grows in (150 ms), then the row fades out (views.js, is-leaving) */
+.is-done > .td-check .td-check-mark { transform: scale(1); }
+.td-row:not(.is-done, .is-complete) > .td-check .td-check-mark { transform: scale(.5); }
+.td-row > .td-check:not(:disabled):hover .td-check-mark { transform: none; }
 .td-check:not(:disabled):hover .td-check-mark { opacity: .6; }
 [data-priority="1"] > .td-check { --ring: var(--td-p1); --tint: var(--td-p1-fill); border-width: 2px; }
 [data-priority="2"] > .td-check { --ring: var(--td-p2); --tint: var(--td-p2-fill); border-width: 2px; }
@@ -532,8 +558,8 @@ body:has(dialog[open]) .ui-fab.td-fab { display: none; }
 .td-swipe-band { position: absolute; inset: 0; border-radius: inherit; z-index: 0; display: flex; align-items: center; color: #fff; pointer-events: none; }
 .td-swipe-band[data-side="right"] { justify-content: flex-end; padding-inline-end: 20px; }
 .td-swipe-band[data-side="left"] { justify-content: flex-start; padding-inline-start: 20px; }
-.td-swipe-icon { width: 24px; height: 24px; stroke-width: 2.5; opacity: 0; transition: transform .15s ease-out; }
-.td-row.is-lifted { z-index: 6; background: var(--td-card); box-shadow: 0 6px 20px rgb(0 0 0 / .18), 0 1px 3px rgb(0 0 0 / .12); }
+.td-swipe-icon { width: 24px; height: 24px; stroke-width: 2.5; opacity: 0; transform: scale(.8); transition: transform .15s ease-out; }
+.td-row.is-lifted { z-index: 6; background: var(--td-held); box-shadow: 0 6px 20px rgb(0 0 0 / .18), 0 1px 3px rgb(0 0 0 / .12); }
 .td-row.is-lifted::after { display: none; }
 .td-drop-clip { position: fixed; left: 0; top: 0; height: 100%; overflow: hidden; z-index: 20; pointer-events: none; }
 .td-drop-line { position: absolute; left: 0; top: 0; height: 2px; border-radius: 1px; background: var(--td-drop); opacity: 0; }
@@ -650,15 +676,20 @@ body:has(dialog[open]) .ui-fab.td-fab { display: none; }
    cards on, a card takes sideways moves for itself (its swipe actions) and the columns page from their gaps and heads */
 .td-list.td-board { touch-action: pan-x pan-y !important; }
 html[data-board-swipe] .td-board .td-row { touch-action: pan-y; }
-.td-board > .td-col { flex: none; box-sizing: border-box; width: 90%; max-width: 360px; scroll-snap-align: start; }
-.td-col-head { display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 0 0 4px; }
-.td-col-title { min-width: 0; margin: 0; font-size: 15px; font-weight: 600; color: var(--td-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td-board > .td-col { flex: none; box-sizing: border-box; width: 272px; max-width: calc(100vw - 48px); scroll-snap-align: start; }
+.td-col-head { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 0 0 4px; }
+.td-col-title { min-width: 0; margin: 0; font-size: 16px; font-weight: 600; color: var(--td-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .td-col-count { flex: 1; font-size: 14px; color: var(--td-text-3); }
 .td-board .td-rows { display: flex; flex-direction: column; gap: 8px; min-height: 8px; margin: 0; padding: 0; list-style: none; }
-.td-board .td-row { min-height: 0; margin: 0; padding: 0; border: 1px solid var(--td-card-edge); border-radius: 8px; background: var(--td-card); box-shadow: 0 1px 2px rgb(0 0 0 / .05); }
+/* a card: the card ground, radius 10, 12 px in; a hairline edge and a faint shadow in light */
+.td-board .td-row { min-height: 0; margin: 0; padding: 0; border: 1px solid light-dark(var(--td-hair), transparent); border-radius: 10px; background: var(--td-card);
+  box-shadow: 0 1px 2px light-dark(rgb(0 0 0 / .05), transparent); }
+.td-board .td-meta { font-size: 12px; line-height: 16px; }
 .td-board .td-meta-icon { width: 12px !important; height: 12px !important; }
-.td-board .td-row .td-check { margin: 11px 10px 0 12px; }
-.td-board .td-row-main { padding: 10px 12px 10px 0; }
+.td-board .td-row .td-check { width: 20px; height: 20px; margin: 12px 10px 0 12px; }
+.td-board .td-row-main { padding: 12px 12px 12px 0; }
+/* a column with no cards: its "+ Add task" as a dashed card */
+.td-board .td-col:not(:has(.td-row)) > .td-add-row { min-height: 48px; border: 1px dashed var(--td-hair); }
 .td-board .td-title + .td-meta { margin-top: 0; }
 .td-board .td-row.is-lifted { box-shadow: 0 10px 24px rgb(0 0 0 / .2); }
 .td-board .td-add-row { margin-top: 8px; padding: 0 12px; border-radius: 8px; }
@@ -717,15 +748,15 @@ html[data-board-swipe] .td-board .td-row { touch-action: pan-y; }
 /* a day's head pins under the strip while its day is on screen; the next day's pushes it up */
 /* a day: its head plain (no rule), dimmed while the day is empty */
 .td-group.td-day > .td-group-head { min-height: 40px; margin-top: 8px; border-bottom: 0; }
-.td-group.td-day > .td-group-head .td-group-title { font-size: 16px; font-weight: 400; }
-.td-group.td-day.is-empty > .td-group-head .td-group-title { color: var(--td-text-3); }
+.td-group.td-day > .td-group-head .td-group-title { font-size: 16px; font-weight: 500; color: var(--td-day-dim); }
+.td-group.td-day.is-today > .td-group-head .td-group-title { color: var(--td-text); }
 /* an empty day gets room: its head and the space round it fill about 70px (a day with tasks, 48px) */
 .td-group.td-day.is-empty > .td-group-head { min-height: 62px; }
 #upcoming .td-group > .td-group-head { position: sticky; top: var(--td-strip-foot, 0px); z-index: 2; background: var(--td-ground); }
 .td-week-view { overflow: hidden; touch-action: pan-y; }
 
 .td-strip-top { display: flex; align-items: center; padding: 8px 16px 0; }
-.td-month { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0; border: 0; background: none; color: var(--td-text); font-size: 17px; font-weight: 400; cursor: pointer; }
+.td-month { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0; border: 0; background: none; color: var(--td-text); font-size: 16px; font-weight: 500; cursor: pointer; }
 .td-month[aria-expanded="true"], .td-month[data-out] { color: var(--td-accent-text); }
 .td-month-chevron { width: 16px !important; height: 16px !important; transition: transform .15s; }
 .td-month-chevron.is-up { transform: rotate(180deg); }
@@ -804,13 +835,13 @@ html[data-board-swipe] .td-board .td-row { touch-action: pan-y; }
 /* the calendar layout (screens/calendar.js): a row over it, a sticky head of days and an all-day row, then the hours at
    48 px (blocks filled by priority, label or project; the time now in red), or a month of days with chips */
 body {
-  --td-cv-p1: light-dark(#ffd6d3, color-mix(in srgb, #d1453b 26%, #1e1e1e));
-  --td-cv-p2: light-dark(#fbe7ce, color-mix(in srgb, #eb8909 26%, #1e1e1e));
-  --td-cv-p3: light-dark(#dde6f9, color-mix(in srgb, #246fe0 26%, #1e1e1e));
-  --td-cv-p4: light-dark(#f2f0ee, #333230);
-  --td-cv-chip: light-dark(#f5f5f4, #2e2d2c);
+  --td-cv-p1: light-dark(#ffd6d3, color-mix(in srgb, #d1453b 26%, #272727));
+  --td-cv-p2: light-dark(#fbe7ce, color-mix(in srgb, #eb8909 26%, #272727));
+  --td-cv-p3: light-dark(#dde6f9, color-mix(in srgb, #246fe0 26%, #272727));
+  --td-cv-p4: light-dark(#f2f0ee, #2f2f2f);
+  --td-cv-chip: light-dark(#f5f5f4, var(--td-chip-page));
   --td-cv-hour: var(--td-text-3);   /* (the lighter grey of the hours fails contrast) */
-  --td-cv-red: #dc4c3e;
+  --td-cv-red: var(--td-accent);
   --td-cv-red-text: light-dark(#c3392c, #ff7b6e);   /* red words: the red darkened (lightened in dark) to pass contrast */
   --td-cv-faint: light-dark(#ecb5ad, #6b3a35);
 }
@@ -854,7 +885,7 @@ body {
 .td-cv-block[data-priority="1"], .td-cv-chip[data-priority="1"] { background: var(--td-cv-p1); }
 .td-cv-block[data-priority="2"], .td-cv-chip[data-priority="2"] { background: var(--td-cv-p2); }
 .td-cv-block[data-priority="3"], .td-cv-chip[data-priority="3"] { background: var(--td-cv-p3); }
-.td-cv-block.is-tinted, .td-cv-chip.is-tinted { background: light-dark(color-mix(in srgb, var(--td-cv-c) 20%, #fff), color-mix(in srgb, var(--td-cv-c) 26%, #1e1e1e)); }
+.td-cv-block.is-tinted, .td-cv-chip.is-tinted { background: light-dark(color-mix(in srgb, var(--td-cv-c) 20%, #fff), color-mix(in srgb, var(--td-cv-c) 26%, #272727)); }
 .td-cv-block.is-short { padding-block: 1px; }
 /* the ring sits in the block's top left corner; its tap area is the corner (the rest of the block opens the task) */
 .td-cv-ring { position: absolute; top: 4px; left: 4px; z-index: 1; width: 12px; height: 12px; min-height: 0; padding: 0; border: 1.5px solid var(--td-p4); border-radius: 50%; background: none; cursor: pointer; }
@@ -884,12 +915,12 @@ body {
 .td-cv-resize { position: absolute; left: 0; right: 0; bottom: 0; height: 10px; cursor: ns-resize; touch-action: pan-y; }
 .td-cv-block.is-resizing { z-index: 6; box-shadow: 0 6px 16px rgb(0 0 0 / .18); }
 .td-cv-block.is-resizing .td-cv-resize::before { content: ""; position: absolute; left: 50%; bottom: 3px; width: 24px; height: 4px; margin-left: -12px; border-radius: 2px; background: var(--td-text-3); }
-.td-cv-block.is-resizing .td-cv-resize::after { content: attr(data-end); position: absolute; right: 2px; bottom: 6px; padding: 0 4px; border-radius: 4px; background: #db4e3f; color: #fff; font-size: 11px; font-weight: 600; line-height: 16px; pointer-events: none; }
+.td-cv-block.is-resizing .td-cv-resize::after { content: attr(data-end); position: absolute; right: 2px; bottom: 6px; padding: 0 4px; border-radius: 4px; background: var(--td-fill); color: #fff; font-size: 11px; font-weight: 600; line-height: 16px; pointer-events: none; }
 .td-cv-block.is-lifted, .td-cv-chip.is-lifted { z-index: 6; pointer-events: none; box-shadow: 0 10px 24px rgb(0 0 0 / .2), 0 1px 4px rgb(0 0 0 / .12); }
 .is-drop.td-cv-allday-cell, .is-drop.td-cv-cell, .is-drop.td-cv-head { background: color-mix(in srgb, var(--td-accent) 12%, transparent); }
-.td-cv-drop { position: absolute; z-index: 5; top: -1px; left: 0; right: 0; height: 2px; background: #db4e3f; pointer-events: none; }
-.td-cv-drop::before { content: ""; position: absolute; left: -4px; top: -2.5px; width: 7px; height: 7px; border-radius: 50%; background: #db4e3f; }
-.td-cv-drop-time { position: absolute; left: 4px; bottom: 3px; padding: 0 4px; border-radius: 4px; background: #db4e3f; color: #fff; font-size: 11px; font-weight: 600; line-height: 16px; }
+.td-cv-drop { position: absolute; z-index: 5; top: -1px; left: 0; right: 0; height: 2px; background: var(--td-fill); pointer-events: none; }
+.td-cv-drop::before { content: ""; position: absolute; left: -4px; top: -2.5px; width: 7px; height: 7px; border-radius: 50%; background: var(--td-fill); }
+.td-cv-drop-time { position: absolute; left: 4px; bottom: 3px; padding: 0 4px; border-radius: 4px; background: var(--td-fill); color: #fff; font-size: 11px; font-weight: 600; line-height: 16px; }
 /* the time now: across the days (faint), today's column (red, a dot at its start), the time in the gutter */
 .td-cv-now { position: absolute; z-index: 3; top: 0; left: 0; right: 0; height: 0; pointer-events: none; }
 .td-cv-now-all { position: absolute; left: 54px; right: 0; top: -.5px; height: 1px; background: var(--td-cv-faint); }
@@ -904,7 +935,7 @@ body {
 .td-cv-mrow { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-bottom: .5px solid var(--td-hair); }
 .td-cv-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; min-height: 76px; padding: 2px 2px 4px; box-sizing: border-box; border-left: .5px solid var(--td-hair); cursor: cell; }
 .td-cv-cell:first-child { border-left: 0; }
-.td-cv-cell.is-out { background: light-dark(#fafaf9, #232323); }
+.td-cv-cell.is-out { background: light-dark(#fafaf9, #272727); }
 .td-cv-cell.is-out .td-cv-num { color: var(--td-text-2); }
 .td-cv-num { align-self: flex-end; display: grid; place-items: center; min-width: 22px; height: 22px; min-height: 0; padding: 0 3px; border: 0; border-radius: 6px; background: none; color: var(--td-text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .td-cv-num.is-today { background: var(--td-cv-red); color: #fff; }
@@ -912,7 +943,7 @@ body {
 .td-cv-cell .td-cv-chip[data-priority="1"] { background: var(--td-cv-p1); }
 .td-cv-cell .td-cv-chip[data-priority="2"] { background: var(--td-cv-p2); }
 .td-cv-cell .td-cv-chip[data-priority="3"] { background: var(--td-cv-p3); }
-.td-cv-cell .td-cv-chip.is-tinted { background: light-dark(color-mix(in srgb, var(--td-cv-c) 20%, #fff), color-mix(in srgb, var(--td-cv-c) 26%, #1e1e1e)); }
+.td-cv-cell .td-cv-chip.is-tinted { background: light-dark(color-mix(in srgb, var(--td-cv-c) 20%, #fff), color-mix(in srgb, var(--td-cv-c) 26%, #272727)); }
 .td-cv-more { align-self: flex-start; white-space: nowrap; min-height: 18px; padding: 0 4px; border: 0; background: none; color: var(--td-text-2); font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
 
 /* the No date and Overdue sheets: 50 px rows, a circle to tick */
@@ -1058,7 +1089,7 @@ textarea.has-md { color: transparent; }
 /* ---------- navigation chrome, as the reference's phone layout (owner 2 Nov 2026): solid bars, a slim top bar with the
    name at the start, a count under it and the page's buttons at the end; four tabs with a pill behind the lit one;
    a rounded-square add button ---------- */
-:root { --td-bar-ground: light-dark(#ffffff, #202020); --td-tabbar-ground: light-dark(#f6f5f4, #262626); }
+:root { --td-bar-ground: light-dark(#ffffff, #202020); }
 /* solid, whatever the Look choice says: no blur, no see-through */
 html.glass .ui-bar, html.glass .ui-bar.is-collapsed, .ui-bar, .ui-bar.is-collapsed { background: var(--td-bar-ground); border-bottom-color: transparent; box-shadow: none;
   -webkit-backdrop-filter: none; backdrop-filter: none; }
@@ -1085,13 +1116,13 @@ body:has(.ui-screen.td-grouped:not([hidden])) .ui-bar { background: var(--td-bar
 
 /* the tab bar: solid, four tabs, a pill behind the icon of the lit one */
 :root { --td-tabbar-h: 80px; }
-.ui-tabbar.td-tabbar { border-top: 0; background: var(--td-tabbar-ground); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 -1px 6px rgb(0 0 0 / .18); }
+.ui-tabbar.td-tabbar { border-top: 0; background: var(--td-bar); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 -1px 6px rgb(0 0 0 / .18); }
 .td-tabbar .ui-tab { max-width: none; justify-content: center; gap: 4px; padding: 8px 0 12px; font-size: 13px; font-weight: 400; color: var(--td-text-2); }
 .td-tabbar .ui-tab[aria-current="page"] { font-weight: 500; }
-.td-tabbar .ui-tab-icon { display: grid; place-items: center; width: 68px; height: 34px; border-radius: 17px; }
+.td-tabbar .ui-tab-icon { display: grid; place-items: center; width: 56px; height: 32px; border-radius: 16px; }
 .td-tabbar .ui-tab-icon > .ui-icon { width: 24px; height: 24px; }
-.td-tabbar .ui-tab[aria-current="page"] .ui-tab-icon { background: light-dark(#fbe3e1, #4a2224); color: var(--td-accent-text); }
-.td-today-icon .today-num { top: 13px; }
+.td-tabbar .ui-tab[aria-current="page"] .ui-tab-icon { background: var(--td-tab-pill); color: var(--td-accent-text); }
+.td-today-icon .today-num { top: 12px; }
 
 /* the add button: a rounded square, 68 px, 16 px above the bar and 20 px in from the edge */
 .ui-fab.td-fab { width: 68px; min-width: 68px; height: 68px; border-radius: 20px; background: light-dark(var(--td-fill), #ce4248);
@@ -1319,11 +1350,20 @@ html[data-fab="center"] .ui-fab.td-fab { inset-inline-end: auto; inset-inline-st
 .td-info-row .ui-row-main { flex: 1; font-size: 17px; }
 /* Productivity: the days off, a square per weekday */
 .td-days { display: flex; gap: 8px; padding: 4px 20px 12px; }
-.td-day { flex: 1; max-width: 44px; aspect-ratio: 1; border: 1.5px solid var(--td-hair); border-radius: 8px; background: none; color: var(--td-text); font: inherit; font-size: 15px; font-weight: 500; }
-.td-day[aria-pressed="true"] { border-color: var(--td-fill); background: var(--td-fill); color: #fff; }
+.td-days > .td-day { flex: 1; max-width: 44px; aspect-ratio: 1; border: 1.5px solid var(--td-hair); border-radius: 8px; background: none; color: var(--td-text); font: inherit; font-size: 15px; font-weight: 500; }
+.td-days > .td-day[aria-pressed="true"] { border-color: var(--td-fill); background: var(--td-fill); color: #fff; }
 /* the licences */
 .td-licence { margin: 0 20px; padding: 12px; border-radius: 10px; background: var(--td-selected); color: var(--td-text); font-size: 12px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
 /* the goal celebration (screens/party.js) */
 .td-party { position: fixed; left: 50%; top: 40%; z-index: 40; width: 0; height: 0; pointer-events: none; }
 .td-party-bit { position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 3px; }
 @media (prefers-reduced-motion: reduce) { .td-party { display: none; } }
+
+/* ---------- round 3 slice 4: the Inbox's tips "?", the Display dot ---------- */
+.td-empty-big { position: relative; }
+.td-empty-help { position: fixed; left: calc(16px + env(safe-area-inset-left, 0px)); bottom: calc(max(var(--ui-tabbar-room, 0px), env(safe-area-inset-bottom, 0px)) + 26px);
+  display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--td-text-3); cursor: pointer; }
+.td-empty-help .ui-icon { width: 24px; height: 24px; }
+.modal[aria-labelledby] p { white-space: pre-line; }
+#display-btn { position: relative; }
+#display-btn.has-dot::after { content: ""; position: absolute; top: 12px; right: 11px; width: 6px; height: 6px; border-radius: 50%; background: var(--td-accent); }

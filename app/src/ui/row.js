@@ -64,7 +64,7 @@ function meta(line, c) {
   const count = countText(line);
   if (count) {
     const n = el('span', 'td-count');
-    n.append(icon(ICONS.listTree, { class: 'td-meta-icon' }), count);
+    n.append(icon(ICONS.gitBranch, { class: 'td-meta-icon' }), count);
     n.setAttribute('aria-label', `${line.doneKids} of ${line.kids} subtasks done`);
     parts.push(n);
   }
@@ -167,22 +167,28 @@ export function addRow(label, onClick) {
   return b;
 }
 
-/** a group's header (a section, a day): its title, and optionally a fold chevron, a "+" (add a task there) and a "…" button;
- * plain: the title in normal weight (the one day heading over Today's list)
- * @param {string} title @param {{ id?: string, collapsed?: boolean, plain?: boolean, onFold?: () => void, onMore?: (b: HTMLElement) => void, onAdd?: () => void, label?: string }} [o] */
-export function groupHead(title, { id, collapsed, plain, onFold, onMore, onAdd, label } = {}) {
+/** a group's header (a section, a day): its title, and optionally its count (grey, after the name), a fold chevron (one
+ * glyph, turned by CSS while folded), a "+" (add a task there) and a "…" button; plain: the title in normal weight (the one
+ * day heading over Today's list)
+ * @param {string} title @param {{ id?: string, collapsed?: boolean, plain?: boolean, count?: number, onFold?: () => void, onMore?: (b: HTMLElement) => void, onAdd?: () => void, label?: string }} [o] */
+export function groupHead(title, { id, collapsed, plain, count, onFold, onMore, onAdd, label } = {}) {
   const h = el('div', plain ? 'td-group-head is-plain' : 'td-group-head');
   const name = el(onFold ? 'button' : 'h2', 'td-group-title');
   if (id) name.id = id;
   if (onFold) {
     /** @type {HTMLButtonElement} */ (name).type = 'button';
     name.setAttribute('aria-expanded', String(!collapsed));
-    name.append(icon(collapsed ? ICONS.chevronRight : ICONS.chevronDown, { class: 'td-group-chevron' }), el('span', '', title));
+    name.append(icon(ICONS.chevronDown, { class: 'td-group-chevron' }), el('span', '', title));
+    if (count) name.append(el('span', 'td-group-count', String(count)));
     name.addEventListener('click', onFold);
     const wrap = el('h2', 'td-group-h');
     wrap.append(name);
     h.append(wrap);
-  } else { name.textContent = title; h.append(name); }
+  } else {
+    name.textContent = title;
+    if (count) name.append(el('span', 'td-group-count', String(count)));
+    h.append(name);
+  }
   if (onAdd) {
     const add = /** @type {HTMLButtonElement} */ (el('button', 'td-icon-btn td-group-add'));
     add.type = 'button';
@@ -210,7 +216,7 @@ export function emptyNote(title, hint, kind) {
   if (kind) {
     box.classList.add('td-empty-big');
     box.append(el('p', 'td-empty-title', title), ...hint.split('\n').map(h => el('p', 'td-empty-hint', h)));
-    void import('./empty-art.js').then(m => box.prepend(m.emptyArt(kind)));
+    void import('./empty-art.js').then(m => { box.prepend(m.emptyArt(kind)); if (kind === 'inbox') box.append(m.inboxHelp()); });
     return box;
   }
   const art = el('span', 'td-empty-art');
