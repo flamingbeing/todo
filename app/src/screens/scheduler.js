@@ -1,9 +1,10 @@
 // The date sheet (#schedule-sheet): a plain "Date" title (left, under the grab handle) and a small red Save pill floating at
 // the bottom right; a pill field with a calendar icon that reads typed dates as they are typed ("fri 5pm", "every
-// monday": parse.js) and shows the date short ("11 Nov", "every workday"); the shortcut rows (Today, Tomorrow, This
-// weekend, Next week, and No date once there is one), each with its weekday ("Mon (9 Nov)" for Next week); a month
-// calendar running on for half a year, with a dot under the days that have tasks, the chosen day's "Mon 4 Nov · 5 tasks
-// due" and a bar of its tasks in their projects' colours; then one hairline panel of compact rows: Add time, Repeat (its
+// monday": parse.js, with General's "Next week" and "Weekend" days) and shows what it read under it; the shortcut rows
+// (Today, Tomorrow, Later this week early in the week, This weekend, Next week, and No date once there is one: dates.js
+// quickDays), each with its weekday ("Mon (9 Nov)" for Next week); a month calendar running on for half a year, with a
+// dot under the days that have open tasks, the chosen day's "Mon 4 Nov · 5 tasks" and a bar of its tasks in their
+// projects' colours; then plain rows under a hairline: Time, Repeat (its
 // menu of ready rules, and Custom: based on the scheduled or the completed date, every N days, weeks, months or years,
 // on which weekdays, and when it ends). A shortcut row sets the date at once; a day in the calendar, a time or a repeat
 // waits for Save. The sheet dismisses by swipe or scrim, changing nothing. With dateOnly (a deadline) the Add time and
@@ -12,7 +13,7 @@
 import { icon } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { INBOX } from '../items.js';
-import { dayKey, addDays, weekdayOf, timeText, dueOf, isDay, minutesText, dateTone, nextWeekOf, weekendOf } from '../dates.js';
+import { dayKey, addDays, weekdayOf, timeText, dueOf, isDay, minutesText, dateTone, quickDays } from '../dates.js';
 import { MORE } from '../icons-more.js';
 import { colorHex } from '../colors.js';
 import { parse } from '../parse.js';
@@ -85,7 +86,7 @@ export function pickDate(due, done, o = {}) {
     typed = null;
     const text = words.value.trim();
     if (!text || text === shownWords()) { hint.textContent = ''; return; }
-    const p = parse(text, { now: new Date(), chrono: libs?.chrono ?? null, RRule: libs?.RRule ?? null });
+    const p = parse(text, { now: new Date(), chrono: libs?.chrono ?? null, RRule: libs?.RRule ?? null, nextWeekDay: o.nextWeekDay ?? 1, weekendDay: o.weekendDay ?? 6 });
     typed = p.due;
     hint.textContent = p.due ? sayDue(p.due) : p.noDate ? 'No date' : 'Not a date yet';
     if (p.due) { pick(p.due.date, false); }
@@ -99,12 +100,11 @@ export function pickDate(due, done, o = {}) {
 
   // ---- the shortcut rows
   // (General: "Next week" and "Weekend" as set; on a weekend day, This weekend is the next one: Today already names today)
-  const sat = weekendOf(today, o.weekendDay ?? 6);
-  const mon = nextWeekOf(today, o.nextWeekDay ?? 1);
+  /** @type {Record<string, import('app-ui/icons/lucide.js').IconNodes>} */
+  const QUICK_ICONS = { Today: ICONS.calendar, Tomorrow: MORE.sun, 'Later this week': MORE.calendarRange, 'This weekend': MORE.sofa, 'Next week': MORE.calendarArrowUp };
   /** @type {[string, import('app-ui/icons/lucide.js').IconNodes, string, string | null][]} */
   const quick = [
-    ['Today', ICONS.calendar, 'today', today], ['Tomorrow', MORE.sun, 'tomorrow', addDays(today, 1)],
-    ['This weekend', MORE.sofa, 'weekend', sat], ['Next week', MORE.calendarArrowUp, 'week', mon],
+    ...quickDays(today, o).map(q => /** @type {[string, import('app-ui/icons/lucide.js').IconNodes, string, string | null]} */ ([q.label, QUICK_ICONS[q.label], q.tone, q.date])),
     // (No date only once there is a date to take off)
     ...(dueOf(due) || o.clearable ? [/** @type {[string, import('app-ui/icons/lucide.js').IconNodes, string, string | null]} */ ([o.dateOnly ? 'No deadline' : 'No date', MORE.circleSlash, 'none', null])] : []),
   ];
@@ -181,7 +181,7 @@ export function pickDate(due, done, o = {}) {
       drawRows();
     }
     const list = busy.get(shown) ?? [];
-    sumText.textContent = `${dayLong(shown)} · ${list.length ? `${list.length} task${list.length === 1 ? '' : 's'} due` : 'No tasks'}`;
+    sumText.textContent = `${dayLong(shown)} · ${list.length ? `${list.length} task${list.length === 1 ? '' : 's'}` : 'No tasks'}`;
     // the bar: a segment per project, as long as its share
     /** @type {Map<string, number>} */
     const by = new Map();
@@ -197,13 +197,15 @@ export function pickDate(due, done, o = {}) {
 
   // ---- time and repeat
   const more = el('ul', 'td-sched-more');
+  /** the "›" after a row's value */
+  const chev = () => icon(ICONS.chevronRight, { class: 'td-sched-chev' });
   const timeLi = el('li', ''), repeatLi = el('li', '');
   const timeRow = el('label', 'td-choice td-sched-row td-sched-time');
   const timeIn = Object.assign(document.createElement('input'), { type: 'time', className: 'td-sched-time-in' });
   timeIn.setAttribute('aria-label', 'Time');
   const timeSide = el('span', 'td-choice-side');
-  const timeLabel = el('span', 'td-choice-label', 'Add time');
-  timeRow.append(icon(MORE.clock, { class: 'td-choice-icon' }), timeLabel, timeSide, timeIn);
+  const timeLabel = el('span', 'td-choice-label', 'Time');
+  timeRow.append(icon(MORE.clock, { class: 'td-choice-icon' }), timeLabel, timeSide, chev(), timeIn);
   timeIn.addEventListener('change', () => {
     pending = { ...(pending ?? { date: today }) };
     if (timeIn.value) pending.time = timeIn.value; else delete pending.time;
@@ -218,7 +220,7 @@ export function pickDate(due, done, o = {}) {
   const repeatRow = /** @type {HTMLButtonElement} */ (el('button', 'td-choice td-sched-row'));
   repeatRow.type = 'button';
   const repeatSide = el('span', 'td-choice-side');
-  repeatRow.append(icon(ICONS.repeat, { class: 'td-choice-icon' }), el('span', 'td-choice-label', 'Repeat'), repeatSide);
+  repeatRow.append(icon(ICONS.repeat, { class: 'td-choice-icon' }), el('span', 'td-choice-label', 'Repeat'), repeatSide, chev());
   repeatRow.setAttribute('aria-haspopup', 'menu');
   repeatLi.append(repeatRow);
   // the duration: a menu of lengths, or Custom's minutes typed in a row under it
@@ -226,7 +228,7 @@ export function pickDate(due, done, o = {}) {
   durRow.type = 'button';
   durRow.setAttribute('aria-haspopup', 'menu');
   const durSide = el('span', 'td-choice-side');
-  durRow.append(icon(MORE.hourglass, { class: 'td-choice-icon' }), el('span', 'td-choice-label', 'Duration'), durSide);
+  durRow.append(icon(MORE.hourglass, { class: 'td-choice-icon' }), el('span', 'td-choice-label', 'Duration'), durSide, chev());
   durLi.append(durRow);
   const minLi = el('li', 'td-sched-min');
   const minIn = Object.assign(document.createElement('input'), { type: 'number', min: '1', max: '1440', inputMode: 'numeric', className: 'td-sched-min-in', placeholder: '50' });
@@ -263,12 +265,12 @@ export function pickDate(due, done, o = {}) {
     ], { label: 'Repeat' });
   });
   const drawRows = () => {
-    // (a value only once set: no "None", no chevron)
-    timeSide.textContent = pending?.time ? timeText(pending.time) : '';
+    // (unset: "None ›", as the rows read in the reference)
+    timeSide.textContent = pending?.time ? timeText(pending.time) : 'None';
     timeIn.value = pending?.time ?? '';
     timeX.hidden = !pending?.time;
-    repeatSide.textContent = pending?.rrule ? describe({ rrule: pending.rrule, fromDone: pending.fromDone }) : '';
-    durSide.textContent = dur ? minutesText(dur) : '';
+    repeatSide.textContent = pending?.rrule ? describe({ rrule: pending.rrule, fromDone: pending.fromDone }) : 'None';
+    durSide.textContent = dur ? minutesText(dur) : 'None';
   };
 
   // ---- the custom repeat screen

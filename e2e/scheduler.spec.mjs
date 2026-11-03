@@ -22,12 +22,16 @@ test('a quick row sets the day and closes; the sheet passes axe', async ({ phone
   await put(t, { title: t, due: { date: day(0) } });
   await synced(page);
   await openScheduler(page, t);
-  // Today, Tomorrow, This weekend, Next week and (the task has a date) No date; no Later this week, no Postpone
-  await expect(page.locator(`${sheet} .td-sched-quick .td-choice-label`)).toHaveText(['Today', 'Tomorrow', 'This weekend', 'Next week', 'No date']);
+  // Today, Tomorrow, Later this week (Monday to Wednesday only), This weekend, Next week and (the task has a date) No date; no Postpone
+  const wd = new Date().getDay(), later = wd >= 1 && wd <= 3 ? ['Later this week'] : [];
+  await expect(page.locator(`${sheet} .td-sched-quick .td-choice-label`)).toHaveText(['Today', 'Tomorrow', ...later, 'This weekend', 'Next week', 'No date']);
   await expect(page.locator(`${sheet} .td-sheet-title`)).toHaveText('Date');
-  await expect(page.locator(`${sheet} .td-sched-more .td-sched-row`)).toHaveText([/Add time/, /Duration/, /Repeat/]);   // (the task sheet keeps Duration here: its only place)
+  await expect(page.locator(`${sheet} .td-sched-more .td-sched-row`)).toHaveText([/^Time/, /^Duration/, /^Repeat/]);   // (the task sheet keeps Duration here: its only place)
   await expect(page.locator(`${sheet} .td-cal-sum`)).toContainText(/task/);
   expect(await AxeBuilder(page)).toEqual([]);
+  await page.emulateMedia({ colorScheme: 'dark' });
+  expect(await AxeBuilder(page)).toEqual([]);
+  await page.emulateMedia({ colorScheme: 'light' });
   await page.locator(`${sheet} .td-sched-row`).filter({ hasText: 'Tomorrow' }).click();
   await expect(page.locator(sheet)).toBeHidden();
   await expect.poll(() => dueOf(t), { timeout: 15_000 }).toEqual({ date: day(1) });
