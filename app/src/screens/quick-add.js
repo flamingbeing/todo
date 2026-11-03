@@ -494,6 +494,16 @@ export function openQuickAdd(ctx, start, hold = null) {
     if (idle || (at instanceof HTMLTextAreaElement && form.contains(at))) { lazy.loaded('morph')?.aim(sheet); sheet.close(); }
   };
   document.documentElement.addEventListener('ui-keyboard', onKeyboard);
+  // TEMPORARY diagnostic (remove after the Today gap is fixed): if the card floats clear of the keyboard, print the numbers
+  setTimeout(() => {
+    const vv = window.visualViewport, r = sheet.getBoundingClientRect(), cs = getComputedStyle(sheet), root = document.documentElement;
+    const gap = Math.round((vv ? vv.offsetTop + vv.height : innerHeight) - r.bottom);
+    if (!sheet.open || gap < 40) return;
+    const box = document.createElement('pre');
+    box.style.cssText = 'position:fixed;z-index:99999;left:4px;top:60px;margin:0;padding:6px;background:#000c;color:#0f0;font:11px/1.3 monospace;white-space:pre-wrap;pointer-events:none';
+    box.textContent = `kb-debug gap=${gap} inner=${innerHeight} vv=${vv && Math.round(vv.height)}/${vv && Math.round(vv.offsetTop)} lift=${root.style.getPropertyValue('--ui-keyboard-h')} cls=${root.className}\nsheet bottom=${Math.round(r.bottom)} cssBottom=${cs.bottom} margin=${cs.margin} translate=${cs.translate} dock=${root.dataset.tabbar || ''} page=${document.querySelector('.ui-page')?.getBoundingClientRect().height}`;
+    document.body.append(box); setTimeout(() => box.remove(), 15000);
+  }, 700);
   const unwatch = () => document.documentElement.removeEventListener('ui-keyboard', onKeyboard);
   const onClose = () => { unwatch(); list.hidden = true; try { draft.stop(); } catch { /* storage blocked */ } };
   sheet.addEventListener('close', onClose, { once: true });
