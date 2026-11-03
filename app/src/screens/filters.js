@@ -104,7 +104,7 @@ export function drawFiltersLabels(ctx, host) {
       const on = managing === kind;
       m.type = 'button';
       m.setAttribute('aria-pressed', String(on));
-      m.append(icon(on ? ICONS.check : ICONS.settings, { class: 'td-fl-icon' }), el('span', 'td-fl-label', on ? 'Done' : `Manage ${kind}`));
+      m.append(icon(on ? ICONS.check : MORE.settings, { class: 'td-fl-icon' }), el('span', 'td-fl-label', on ? 'Done' : `Manage ${kind}`));
       m.addEventListener('click', () => { managing = on ? '' : kind; drawFiltersLabels(ctx, host); });
       li.append(m);
       list.append(li);

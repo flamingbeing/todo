@@ -2,8 +2,7 @@
 // switches tabs; a press that moves (a slow tap turning into a swipe or a scroll), or lifts early, is no long press; the tap
 // that ends a long press does not switch tabs.
 import { haptic } from '@core/ui';
-import { $ } from '../dom.js';
-import { screens } from '../shell.js';
+import { openSettingsPage } from '../shell.js';
 
 const HOLD_MS = 500, SLOP = 10;
 
@@ -46,19 +45,4 @@ export function holdTabBar(bar, open) {
 }
 
 /** Settings > Navigation bar from anywhere: Browse's Settings screen, then its page */
-export async function openTabBarSettings() {
-  const until = async (/** @type {() => unknown} */ ok) => { for (let i = 0; i < 60 && !ok(); i++) await new Promise(r => setTimeout(r, 50)); return !!ok(); };
-  const open = () => !$('settings-page').hidden;
-  if (!open()) {
-    /** @type {HTMLElement | null} */ (document.querySelector('.ui-tabbar > [data-tab-id="browse"]'))?.click();
-    if (!await until(() => !$('browse-page').hidden && !screens()?.depth())) return;
-    screens()?.push('#settings-page');
-    if (!await until(open)) return;
-  }
-  if ($('settings-page').classList.contains('is-sub')) {
-    /** @type {HTMLElement | null} */ (document.querySelector('.ui-bar .ui-bar-back'))?.click();
-    if (!await until(() => !$('settings-page').classList.contains('is-sub'))) return;
-  }
-  const row = [...document.querySelectorAll('#settings-host .ui-settings-menu-groups .ui-settings-go')].find(b => b.textContent?.trim().startsWith('Navigation bar'));
-  /** @type {HTMLElement | undefined} */ (row)?.click();
-}
+export const openTabBarSettings = () => openSettingsPage('Navigation bar');

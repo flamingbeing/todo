@@ -1158,3 +1158,69 @@ body:has(.ui-screen.td-grouped:not([hidden])) .ui-bar { background: var(--td-bar
 .td-activity-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .td-activity-time { flex: none; font-size: 12px; color: var(--td-text-2); margin-top: 3px; }
 .td-activity-empty { margin: 24px 16px; text-align: center; color: var(--td-text-2); }
+
+/* ---------- Settings, round 3: group headers, the pages' own parts ---------- */
+html[data-look="ios"] #settings-host .ui-settings-menu-groups > .ui-settings-title { border-top: 0; padding-top: 22px; font-size: 13px; font-weight: 400;
+  text-transform: uppercase; letter-spacing: .02em; color: var(--td-text-2); }
+/* the add button's place (Settings > Navigation bar; option fabPos) */
+html[data-fab="left"] .ui-fab.td-fab { inset-inline-end: auto; inset-inline-start: calc(20px + env(safe-area-inset-left, 0px)); }
+html[data-fab="center"] .ui-fab.td-fab { inset-inline-end: auto; inset-inline-start: calc(50% - 34px); }
+#settings-host .td-settings-sub { margin: 0; padding: 18px 20px 8px; font-size: 15px; font-weight: 500; color: var(--td-text); }
+#settings-host .td-settings-caption { margin: 0; padding: 12px 20px 16px; color: var(--td-text-2); font-size: 14px; line-height: 1.45; }
+#settings-host .td-device-note { border-top: .5px solid var(--td-hair); margin-top: 8px; }
+/* Theme: Appearance as three buttons, then the style cards */
+.td-seg { display: flex; gap: 0; margin: 0 20px; border: 1px solid var(--td-hair); border-radius: 12px; overflow: hidden; }
+.td-seg-btn { flex: 1; min-height: 44px; border: 0; background: none; color: var(--td-text); font: inherit; font-size: 15px; }
+.td-seg-btn + .td-seg-btn { border-inline-start: 1px solid var(--td-hair); }
+.td-seg-btn[aria-checked="true"] { background: var(--td-selected); color: var(--td-accent-text); font-weight: 500; }
+.td-theme-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px; padding: 0 20px 8px; }
+.td-theme-card { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 0; border: 0; background: none; color: var(--td-text); font: inherit; text-align: start; }
+.td-theme-view { display: flex; flex-direction: column; gap: 6px; height: 72px; padding: 0 0 8px; border: 1px solid var(--td-hair); border-radius: 12px; overflow: hidden; box-sizing: border-box; }
+.td-theme-bar { height: 18px; }
+.td-theme-line { height: 6px; margin: 0 10px; border-radius: 3px; background: rgb(0 0 0 / .14); }
+.td-theme-line.is-short { width: 50%; }
+.td-theme-name { font-size: 14px; font-weight: 500; }
+.td-theme-tick { position: absolute; top: 26px; inset-inline-end: 8px; width: 18px; height: 18px; padding: 2px; border-radius: 50%; background: var(--td-fill); color: #fff; opacity: 0; }
+.td-theme-card[aria-checked="true"] .td-theme-view { outline: 2px solid var(--td-fill); outline-offset: 1px; }
+.td-theme-card[aria-checked="true"] .td-theme-tick { opacity: 1; }
+#settings-host .theme-switch { padding: 0 20px 8px; }
+/* App icon: a 56 px icon, its name, a green tick on the one in use */
+.td-icon-list { margin: 0; padding: 0; background: none; box-shadow: none; }
+.td-icon-row { display: flex; align-items: center; gap: 16px; width: 100%; min-height: 76px; padding: 0 20px; border: 0; background: none; color: var(--td-text); font: inherit; text-align: start; }
+.td-icon-row > img { width: 56px; height: 56px; border-radius: 14px; box-shadow: 0 1px 3px rgb(0 0 0 / .18); }
+.td-icon-name { flex: 1; font-size: 17px; font-weight: 600; }
+.td-icon-tick { width: 22px; height: 22px; color: #058527; opacity: 0; }
+.td-icon-row[aria-checked="true"] .td-icon-tick { opacity: 1; }
+/* Navigation bar: a little phone per place of the add button, a radio under each */
+.td-fab-places { display: flex; justify-content: center; gap: 28px; padding: 8px 20px 12px; }
+.td-fab-place { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 0; border: 0; background: none; color: var(--td-text); font: inherit; font-size: 15px; }
+.td-fab-phone { position: relative; display: block; width: 64px; height: 112px; box-sizing: border-box; border: 1.5px solid var(--td-hair); border-radius: 10px; }
+.td-fab-lines { position: absolute; top: 14px; left: 10px; right: 10px; height: 34px;
+  background: repeating-linear-gradient(to bottom, var(--td-text-2) 0 3px, transparent 3px 9px); opacity: .55; border-radius: 2px; }
+.td-fab-dot { position: absolute; bottom: 14px; width: 12px; height: 12px; border-radius: 3px; background: var(--td-fill); }
+.td-fab-place[data-place="left"] .td-fab-dot { left: 8px; }
+.td-fab-place[data-place="center"] .td-fab-dot { left: calc(50% - 6px); }
+.td-fab-place[data-place="right"] .td-fab-dot { right: 8px; }
+.td-fab-place[aria-checked="true"] .td-fab-phone { border-color: var(--td-fill); }
+.td-fab-radio { width: 22px; height: 22px; box-sizing: border-box; border: 2px solid var(--td-text-2); border-radius: 50%; }
+.td-fab-place[aria-checked="true"] .td-fab-radio { border-color: var(--td-fill); background: radial-gradient(circle, var(--td-fill) 0 5px, transparent 5.5px); }
+/* Navigation menu: "Hide all" at the end of its heading, a tick box per item */
+#settings-host .td-subhead-end { display: flex; align-items: center; justify-content: space-between; }
+.td-link-btn { border: 0; background: none; padding: 6px 0; color: var(--td-accent-text); font: inherit; font-size: 15px; }
+.td-menu-items { margin: 0; padding: 0; background: none; box-shadow: none; }
+.td-menu-item { display: flex; align-items: center; gap: 16px; min-height: 56px; padding: 0 20px; }
+.td-check { width: 22px; height: 22px; margin: 0; accent-color: var(--td-fill); }
+.td-menu-icon { width: 22px; height: 22px; color: var(--td-accent-text); flex: none; }
+.td-menu-item .ui-row-main { display: flex; flex-direction: column; font-size: 17px; }
+.td-info-row { display: flex; align-items: center; gap: 16px; width: 100%; min-height: 56px; padding: 0 20px; border: 0; background: none; color: var(--td-text); font: inherit; text-align: start; }
+.td-info-row .ui-row-main { flex: 1; font-size: 17px; }
+/* Productivity: the days off, a square per weekday */
+.td-days { display: flex; gap: 8px; padding: 4px 20px 12px; }
+.td-day { flex: 1; max-width: 44px; aspect-ratio: 1; border: 1.5px solid var(--td-hair); border-radius: 8px; background: none; color: var(--td-text); font: inherit; font-size: 15px; font-weight: 500; }
+.td-day[aria-pressed="true"] { border-color: var(--td-fill); background: var(--td-fill); color: #fff; }
+/* the licences */
+.td-licence { margin: 0 20px; padding: 12px; border-radius: 10px; background: var(--td-selected); color: var(--td-text); font-size: 12px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* the goal celebration (screens/party.js) */
+.td-party { position: fixed; left: 50%; top: 40%; z-index: 40; width: 0; height: 0; pointer-events: none; }
+.td-party-bit { position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 3px; }
+@media (prefers-reduced-motion: reduce) { .td-party { display: none; } }

@@ -27,9 +27,9 @@ test('counts, the 7-day chart and the streak; a goal shows a bar', async ({ phon
 
   // a daily goal in Settings > Productivity shows a bar on the page
   await openSettings(page, 'Productivity');
-  await page.getByRole('combobox', { name: /Daily goal/ }).selectOption({ label: '3' }).catch(async () => {
+  await page.getByRole('combobox', { name: /Daily goal/ }).selectOption({ label: '3 tasks' }).catch(async () => {
     await page.locator('#settings-host').getByText('Daily goal', { exact: true }).click();
-    await page.getByRole('option', { name: '3', exact: true }).click();
+    await page.getByRole('option', { name: '3 tasks', exact: true }).click();
   });
   await settingsBack(page);
   await openTab(page, 'browse');

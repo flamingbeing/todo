@@ -33,7 +33,7 @@ test('Settings has Reminders, off by default; a refused permission leaves it off
   await signIn(page, 'member');
   await synced(page);
   expect(await page.evaluate(() => window.__asked)).toBe(0);   // never asked on load
-  await openSettings(page, 'Reminders');
+  await openSettings(page, 'Notifications');
   const sw = page.locator('#settings-host').getByRole('switch', { name: /Notify me/ });
   await expect(sw).not.toBeChecked();
   expect(await page.evaluate(() => window.__asked)).toBe(0);
