@@ -22,7 +22,7 @@ test('day circle fades in 60 ms, caret has no transform transition, Overdue head
   // open the calendar; it lands in under 200 ms + the tap
   await page.locator('#upcoming-strip .td-month').click();
   const t0 = Date.now();
-  await expect.poll(async () => page.locator('#upcoming-strip .td-cal').evaluate(e => e.getBoundingClientRect().height), { intervals: [10] }).toBeGreaterThan(150);
+  await expect.poll(async () => page.locator('#upcoming-strip .td-wcal').evaluate(e => e.getBoundingClientRect().height), { intervals: [10] }).toBeGreaterThan(150);
   expect(Date.now() - t0).toBeLessThan(400);
 });
 
