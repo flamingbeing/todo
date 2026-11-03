@@ -47,3 +47,15 @@ test('with reduced motion nothing animates', async ({ phone }) => {
   expect(await page.evaluate(() => document.getAnimations().filter(a => /td-qa-open|td-fab-pop/.test(a.animationName ?? '')).length)).toBe(0);
   expect(await page.evaluate(() => getComputedStyle(document.getElementById('fab')).display)).toBe('none');
 });
+
+test('the keyboard going (Back on a phone) takes quick add with it', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  await synced(page);
+  await page.locator('#fab').click();
+  await expect(page.locator('#add-sheet')).toHaveJSProperty('open', true);
+  await expect(page.locator('#add-sheet .td-add-title')).toBeFocused();
+  // what app-ui's keyboard watch says when the keyboard hides with the caret still in a field
+  await page.evaluate(() => document.documentElement.dispatchEvent(new CustomEvent('ui-keyboard', { detail: { open: false } })));
+  await expect(page.locator('#add-sheet')).toHaveJSProperty('open', false);
+});

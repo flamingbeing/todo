@@ -582,6 +582,11 @@ button:is(.td-group-title, .td-add-row, .td-suggest-item, .td-sched-row, .td-bro
 .td-row { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 /* Android Chrome paints a grey rounded box over a held button (the pill seen on a long-press): the row has its own lift */
 .td-row, .td-row * { -webkit-tap-highlight-color: transparent; }
+/* a press shades the whole row, square to its card: app-ui's button press is an inset shade with the button's round
+   corners, which on the words' button alone (it starts after the circle) showed as a pill in the middle of the row */
+.td-row > .td-row-main:is(:active, [data-pressed]) { box-shadow: none; }
+.td-row:has(> .td-row-main:is(:active, [data-pressed])):not(.is-lifted, .is-swiping),
+#task-sheet .td-row:has(> .td-row-main:is(:active, [data-pressed])) { background: var(--td-selected); }
 .td-row.is-swiping { overflow: hidden; }
 .td-row.is-swiping > :not(.td-swipe-band, .td-fold) { position: relative; z-index: 1; }
 .td-row.is-swiping > .td-fold { z-index: 1; }
