@@ -1149,3 +1149,12 @@ body:has(.ui-screen.td-grouped:not([hidden])) .ui-bar { background: var(--td-bar
 #settings-page a.ui-setting-value { color: var(--td-text-2); text-decoration: none; }
 #settings-page a.ui-setting-value::after { content: ""; position: absolute; inset: 0; }
 #settings-page .ui-about-extra { position: relative; }
+
+/* activity log and project comments (screens/activity.js) */
+.td-activity { margin: 8px 16px 16px; padding: 4px 0; }
+.td-activity-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 16px; }
+.td-activity-row:not(:last-child) { border-bottom: .5px solid var(--td-hair); }
+.td-activity-icon { flex: none; width: 18px !important; height: 18px !important; margin-top: 2px; color: var(--td-text-2); }
+.td-activity-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.td-activity-time { flex: none; font-size: 12px; color: var(--td-text-2); margin-top: 3px; }
+.td-activity-empty { margin: 24px 16px; text-align: center; color: var(--td-text-2); }

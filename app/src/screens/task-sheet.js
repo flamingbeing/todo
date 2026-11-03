@@ -117,10 +117,7 @@ function draw(ctx) {
       const body = [String(now.description ?? ''), taskLink(now.id)].filter(Boolean).join('\n\n');
       location.href = `mailto:?subject=${encodeURIComponent(now.title)}&body=${encodeURIComponent(body)}`;
     } };
-    const activity = { label: 'View activity', icon: MORE.activity, run: () => {
-      const done = now.done && now.doneAt ? `, done ${when(now.doneAt)}` : '';
-      ctx.toast(`${made ? `Added ${made}` : 'Added earlier'}${done}`);
-    } };
+    const activity = { label: 'View activity', icon: MORE.activity, run: () => ctx.openActivity({ task: now }) };
     openMenu(more, writable ? [
       { label: 'Edit task', icon: MORE.pencil, run: () => openEditTask(ctx, now) },
       { label: 'Duplicate task', icon: MORE.copy, run: async () => { const at = current(ctx); if (at && await ctx.app.duplicateTask(at)) ctx.toast(REFUSED); else ctx.toast('Duplicated'); } },

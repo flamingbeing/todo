@@ -20,7 +20,7 @@ import { placeText } from '../tasks.js';
 import { dueLine, deadlineLine, dayKey, minutesText } from '../dates.js';
 import { LEADS, cleanReminders, leadShort, dueMs } from '../reminders.js';
 import { colorHex } from '../colors.js';
-import { byOrder } from '../order.js';
+import { byOrder, orderBetween } from '../order.js';
 import { projectTree } from '../arrange.js';
 import { parse, shiftRanges, dueWords } from '../parse.js';
 import { dateLibs } from '../recur.js';
@@ -266,11 +266,13 @@ export function openQuickAdd(ctx, start, hold = null) {
   const moreChip = button('td-chip td-chip-more', 'More options');
   moreChip.append(icon(ICONS.plus));
   // (the description is always under the name; the menu stacks upward, the icon left of each label, no ticks)
+  const on = (/** @type {string} */ k) => { try { return settings.get(k) !== false; } catch { return true; } };
   moreChip.addEventListener('click', () => openMenu(moreChip, [
-    { label: 'Priority', icon: MORE.flag, run: () => openPriority(moreChip) },
-    { label: 'Reminders', icon: MORE.bell, run: () => openReminders(moreChip) },
-    { label: 'Labels', icon: ICONS.tag, run: openLabels }, { label: 'Deadline', icon: ICONS.target, run: openDeadline },
-    { label: 'Duration', icon: MORE.hourglass, run: () => openDuration(moreChip) }], { label: 'More options', pop: true }));
+    ...(on('qaPriority') ? [{ label: 'Priority', icon: MORE.flag, run: () => openPriority(moreChip) }] : []),
+    ...(on('qaReminders') ? [{ label: 'Reminders', icon: MORE.bell, run: () => openReminders(moreChip) }] : []),
+    ...(on('qaLabels') ? [{ label: 'Labels', icon: ICONS.tag, run: openLabels }] : []),
+    ...(on('qaDeadline') ? [{ label: 'Deadline', icon: ICONS.target, run: openDeadline }] : []),
+    ...(on('qaDuration') ? [{ label: 'Duration', icon: MORE.hourglass, run: () => openDuration(moreChip) }] : [])], { label: 'More options', pop: true }));
 
   // names as they are typed after #, /, @ or %: # opens a floating "My Projects" card above the sheet (Inbox first, a short
   // list that scrolls, the sheet stays put); /, @ and % list inline
@@ -370,6 +372,11 @@ export function openQuickAdd(ctx, start, hold = null) {
     base.order = undefined;
     return o !== undefined && v.projectId === base.projectId && v.sectionId === base.sectionId && v.parentId === base.parentId ? o : undefined;
   };
+  /** the order before the first task in a task's list (the top) @param {{ projectId: string, sectionId: string | null, parentId: string | null }} v */
+  const topOf = v => {
+    const mine = byOrder(ctx.data().tasks.filter(t => (t.projectId || INBOX) === v.projectId && (t.sectionId || null) === (v.sectionId || null) && (t.parentId || null) === (v.parentId || null)));
+    return orderBetween(null, typeof mine[0]?.order === 'number' ? mine[0].order : null);
+  };
   /** labels made here before the list has them (by name) @type {Map<string, string>} */
   const made = new Map();
   /** adds one task from a name (with its words) and the description @param {Parsed} p @param {ReturnType<typeof value>} v @param {string} about */
@@ -383,7 +390,7 @@ export function openQuickAdd(ctx, start, hold = null) {
       if (!r.refused) { made.set(n.toLowerCase(), r.id); ids.push(r.id); }
     }
     return ctx.app.addTask({ title: p.title, description: about || undefined, projectId: v.projectId, sectionId: v.sectionId, parentId: v.parentId,
-      priority: v.priority, labels: ids.length ? [...new Set(ids)] : undefined, due: v.due ?? undefined, deadline: v.deadline ?? undefined, order: atDrop(v),
+      priority: v.priority, labels: ids.length ? [...new Set(ids)] : undefined, due: v.due ?? undefined, deadline: v.deadline ?? undefined, order: atDrop(v) ?? (settings.get('addToTop') ? topOf(v) : undefined),
       duration: v.duration ?? undefined, reminders: v.reminders.length && v.due ? v.reminders : undefined });
   };
   const clearAll = () => {
