@@ -1039,16 +1039,18 @@ textarea.has-md { color: transparent; }
 .td-streak-cap, .td-streak-best { color: var(--td-text-2); font-size: 13px; }
 .td-streak-best { margin-left: auto; }
 .td-prod-h { margin: 0 0 10px; font-size: 15px; font-weight: 600; }
-.td-bars { position: relative; display: grid; gap: 10px; padding-inline-end: 64px; }
-.td-bars-row { position: relative; display: flex; align-items: center; min-height: 24px; }
-.td-bars-track { flex: 1; min-width: 0; }
-.td-bars-fill { display: flex; width: var(--w); height: 10px; min-width: 0; border-radius: 3px; overflow: hidden; }
-.td-bars-part { display: block; min-width: 2px; height: 100%; }
-.td-bars-l { position: absolute; top: 50%; left: calc(var(--w) + 8px); translate: 0 -50%; font-size: 13px; color: var(--td-text-2); white-space: nowrap; }
-.td-bars-n { color: var(--td-text); font-weight: 700; font-variant-numeric: tabular-nums; }
+/* the bars: columns oldest to newest, a 24 x 120 track each (the empty part in the chip grey), filled from the bottom with
+   the projects' colours stacked; the count over it, the day under it (16 px line + 6 px gap: the goal line's base) */
+.td-bars { --td-bar-h: 120px; position: relative; display: flex; justify-content: space-between; align-items: flex-end; gap: 4px; padding-inline: 4px; }
+.td-bars-row { display: flex; flex: 1 1 0; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.td-bars-track { display: flex; flex-direction: column; justify-content: flex-end; width: 24px; height: var(--td-bar-h); border-radius: 4px; background: color-mix(in srgb, var(--td-text) 9%, transparent); overflow: hidden; }
+.td-bars-fill { display: flex; flex-direction: column-reverse; min-height: 0; }
+.td-bars-part { display: block; flex-basis: 0; min-height: 2px; width: 100%; }
+.td-bars-n { min-height: 16px; font-size: 12px; line-height: 16px; color: var(--td-text); font-weight: 700; font-variant-numeric: tabular-nums; }
+.td-bars-l { font-size: 12px; line-height: 16px; color: var(--td-text-2); white-space: nowrap; }
 .td-bars-row.is-today .td-bars-l { color: var(--td-text); font-weight: 700; }
 .td-bars-row.is-off .td-bars-l { color: var(--td-text-3); opacity: .7; }
-.td-bars-goal { position: absolute; top: -4px; bottom: -4px; left: var(--at); border-left: 1.5px dashed var(--td-text-3); pointer-events: none; }
+.td-bars-goal { position: absolute; left: 0; right: 0; bottom: calc(22px + var(--td-bar-h) * var(--at)); border-top: 1.5px dashed var(--td-text-3); pointer-events: none; }
 .td-vacation-chip { display: inline-flex; justify-self: start; align-items: center; gap: 6px; margin: 0; padding: 4px 12px; border-radius: 14px;
   background: var(--td-tab-pill, color-mix(in srgb, var(--td-accent) 14%, transparent)); color: var(--td-accent-text); font-size: 13px; font-weight: 600; }
 .td-vacation-chip .ui-icon { width: 16px; height: 16px; }

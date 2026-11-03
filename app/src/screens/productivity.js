@@ -36,22 +36,27 @@ export function ring(n, goal, label) {
   return box;
 }
 
-/** the bars, newest first: one row each, the label and count after the bar, split by project; a dashed line at the goal
+/** the bars, oldest first, left to right: one column each (the count over it, the day or week under it, today's bold), a
+ * 24 px track (empty on a day with nothing done) filled from the bottom and split by project; a dashed line at the goal
+ * (heights are plain CSS heights, nothing moves)
  * @param {import('../stats.js').Bar[]} list @param {number} goal @param {(pid: string) => { name: string, color: string }} proj
  * @param {string} today @param {boolean} wk  weeks (labels are the weeks' first days) */
 export function barRows(list, goal, proj, today, wk) {
   const max = Math.max(1, goal, ...list.map(b => b.n));
-  const box = el('div', 'td-bars');
+  const box = el('div', `td-bars${wk ? ' is-weekly' : ''}`);
   box.setAttribute('role', 'list');
-  if (goal) { const g = el('div', 'td-bars-goal'); g.style.setProperty('--at', `${goal / max * 100}%`); g.setAttribute('aria-hidden', 'true'); box.append(g); }
+  if (goal) { const g = el('div', 'td-bars-goal'); g.style.setProperty('--at', String(goal / max)); g.setAttribute('aria-hidden', 'true'); box.append(g); }
   for (const b of list) {
     const r = el('div', `td-bars-row${b.today ? ' is-today' : ''}${b.off ? ' is-off' : ''}`);
     r.setAttribute('role', 'listitem');
     r.dataset.key = b.key;
     const word = wk ? `Week of ${shortDate(b.key, today)}` : b.key === today ? 'Today' : weekdayName(b.key);
     r.setAttribute('aria-label', `${word}: ${plural(b.n, 'task')}${b.parts.length > 1 ? ` (${b.parts.map(p => `${proj(p.pid).name} ${p.n}`).join(', ')})` : ''}${b.off ? ', day off' : ''}`);
+    const n = el('b', 'td-bars-n', b.n ? String(b.n) : '');
+    n.setAttribute('aria-hidden', 'true');
     const track = el('div', 'td-bars-track');
     const fill = el('div', 'td-bars-fill');
+    fill.style.height = `${b.n / max * 100}%`;
     for (const p of b.parts) {
       const s = el('span', 'td-bars-part');
       s.style.flexGrow = String(p.n);
@@ -60,12 +65,9 @@ export function barRows(list, goal, proj, today, wk) {
       fill.append(s);
     }
     track.append(fill);
-    // (the day and its count just after the bar's end)
-    r.style.setProperty('--w', `${b.n / max * 100}%`);
-    const lab = el('span', 'td-bars-l', `${wk ? shortDate(b.key, today) : weekdayName(b.key).slice(0, 2)} `);
+    const lab = el('span', 'td-bars-l', wk ? shortDate(b.key, today) : weekdayName(b.key).slice(0, 2));
     lab.setAttribute('aria-hidden', 'true');
-    lab.append(el('b', 'td-bars-n', String(b.n)));
-    r.append(track, lab);
+    r.append(n, track, lab);
     box.append(r);
   }
   return box;

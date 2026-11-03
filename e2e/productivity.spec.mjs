@@ -1,6 +1,6 @@
 // Productivity (Browse > Reporting > chart button): Daily and Weekly tabs; a ring with today's (or this week's) finished
 // tasks against the goal set in Settings > Productivity (this device, off by default); the streak; the last 7 days (or
-// 4 weeks) as bars split by project colour. Counts only. The page passes axe, light and dark.
+// 4 weeks) as vertical bars, oldest to newest, split by project colour. Counts only. The page passes axe, light and dark.
 import AxeBuilder from './axe.mjs';
 import { test, expect, signIn, synced, uniq, db, openTab, openSettings, settingsBack } from './fixtures.mjs';
 
@@ -38,6 +38,11 @@ test('the tabs, the ring, the streak and stacked bars per project; a goal shows 
   await expect(todayBar.locator(`.td-bars-part[data-pid="${pid}"]`)).toHaveCount(1);
   await expect(todayBar.locator('.td-bars-part[data-pid="inbox"]')).toHaveCount(1);
   await expect(host.locator('.td-bars-goal')).toHaveCount(0);   // goals are off until set
+  // vertical 24 px columns, oldest to newest: today's is the last, at the right, and every day has its track, done or not
+  await expect(host.locator('.td-bars-row').last()).toHaveClass(/is-today/);
+  const cols = await host.locator('.td-bars-track').evaluateAll(ts => ts.map(t => { const r = t.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height), Math.round(r.x)]; }));
+  expect(cols.every(([w, h]) => w === 24 && h === 120)).toBe(true);
+  expect(cols.every(([, , x], i) => i === 0 || x > cols[i - 1][2])).toBe(true);
   for (const colorScheme of /** @type {const} */ (['light', 'dark'])) {
     await page.emulateMedia({ colorScheme });
     expect(await AxeBuilder(page)).toEqual([]);
@@ -48,6 +53,7 @@ test('the tabs, the ring, the streak and stacked bars per project; a goal shows 
   await expect(host.getByRole('tab', { name: 'Weekly' })).toHaveAttribute('aria-selected', 'true');
   await expect(host.locator('.td-prod-h')).toHaveText('Completed in the last 4 weeks');
   await expect(host.locator('.td-bars-row')).toHaveCount(4);
+  await expect(host.locator('.td-bars-row').last()).toHaveClass(/is-today/);   // this week at the right
   await host.getByRole('tab', { name: 'Daily' }).click();
 
   // a daily goal in Settings > Productivity: "n/3" in the ring and a dashed line on the bars

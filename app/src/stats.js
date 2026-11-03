@@ -72,7 +72,7 @@ export function doneByDayProject(tasks) {
 /** @typedef {{ key: string, n: number, parts: { pid: string, n: number }[], off: boolean, today: boolean }} Bar */
 
 /**
- * The Productivity page's bars, newest first: the last 7 days (daily) or the last 4 weeks (weekly, each from its first
+ * The Productivity page's bars, oldest first (left to right, today or this week last): the last 7 days (daily) or the last 4 weeks (weekly, each from its first
  * day), each split by project (largest first; ties by project id). off: a day off (Settings > Productivity), daily only.
  * @param {Task[]} tasks @param {{ today?: string, weekly?: boolean, weekStart?: number, daysOff?: number[] }} [o] @returns {Bar[]}
  */
@@ -88,7 +88,7 @@ export function bars(tasks, { today = dayKey(), weekly = false, weekStart = 1, d
   };
   if (weekly) {
     const first = weekOf(today, weekStart);
-    return Array.from({ length: 4 }, (_, i) => { const w = addDays(first, -7 * i); return bar(w, 7, w, false); });
+    return Array.from({ length: 4 }, (_, i) => { const w = addDays(first, -7 * (3 - i)); return bar(w, 7, w, false); });
   }
-  return Array.from({ length: 7 }, (_, i) => { const d = addDays(today, -i); return bar(d, 1, d, daysOff.includes(weekdayOf(d))); });
+  return Array.from({ length: 7 }, (_, i) => { const d = addDays(today, i - 6); return bar(d, 1, d, daysOff.includes(weekdayOf(d))); });
 }
