@@ -1,6 +1,6 @@
 // The sizes the app is drawn at (1 pt = 1 CSS px, 3 device px on a phone): a two-line row is 73 pt, the checkbox 20 at
 // x 16, the title starts at 48, the add button is 68 (the reference's rounded square), and a title-only row is 52. The task
-// sheet: a 44 pt head with 28 pt round buttons, the ring 22 at x 19, the title and row text at x 56, rows 48.5 apart.
+// sheet: a 44 pt head with 28 pt round buttons, the ring 22 at x 19, the title and row text at x 56, the date row 48.5, then one sideways row of 35 pt pills 8 apart from x 16.
 // Light and dark keep the same sizes.
 import { test, expect, signIn, synced, uniq, today, db, clickOpens } from './fixtures.mjs';
 
@@ -69,11 +69,14 @@ for (const scheme of ['light', 'dark']) {
     const m = () => page.locator('#task-sheet').evaluate(s => {
       const box = e => e.getBoundingClientRect(), x0 = box(s).x + s.clientLeft;   // (inside the sheet's border)
       const head = box(s.querySelector('.td-sheet-head')), more = box(s.querySelector('.td-sheet-more')), ring = box(s.querySelector('.td-task-card > .td-check'));
-      const rows = [...s.querySelectorAll('.td-attrs > .td-attr')].map(box);
+      const date = box(s.querySelector('.td-attrs > .td-attr:not(.td-attr-desc)')), pills = [...s.querySelectorAll('.td-attr-chips > .td-attr.is-chip')].map(box);
       return { head: Math.round(head.height), more: [more.width, more.height], ring: [ring.width, Math.round(ring.x - x0)],
         rowTextX: Math.round(box(s.querySelector('.td-attrs .td-attr-desc .td-task-words') ?? s.querySelector('.td-attrs > .td-attr')).x - x0),
-        pitch: Math.round((rows[2].y - rows[1].y) * 10) / 10 };
+        dateRow: Math.round(date.height * 10) / 10, pillCount: pills.length, pillH: [...new Set(pills.map(p => p.height))],
+        oneRow: new Set(pills.map(p => Math.round(p.y))).size, pillX: Math.round(pills[0].x - x0), pillGap: Math.round((pills[1].x - pills[0].right) * 10) / 10,
+        pillsBelowDate: pills[0].y >= date.bottom };
     });
-    await expect.poll(m, { timeout: 10_000 }).toEqual({ head: 44, more: [28, 28], ring: [22, 19], rowTextX: 56, pitch: 48.5 });
+    await expect.poll(m, { timeout: 10_000 }).toEqual({ head: 44, more: [28, 28], ring: [22, 19], rowTextX: 56,
+      dateRow: 48.5, pillCount: 6, pillH: [35], oneRow: 1, pillX: 16, pillGap: 8, pillsBelowDate: true });
   });
 }

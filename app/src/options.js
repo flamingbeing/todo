@@ -37,10 +37,11 @@ export const OPTIONS = {
   smartDates: { scope: 'device', default: true },
   // quick add: a new task goes to the top of its list instead of the end (this device)
   addToTop: { scope: 'device', default: false },
-  // quick add's "+" menu: which actions it offers (this device; all on, as before)
-  qaPriority: { scope: 'device', default: true },
-  qaReminders: { scope: 'device', default: true },
-  qaLabels: { scope: 'device', default: true },
+  // quick add: Priority, Reminders and Labels keep their chip in the row next to "+" before it is set (this device; off,
+  // the row is "+", the project, Date), Deadline and Duration are rows of the "+" menu (on)
+  qaPriority: { scope: 'device', default: false },
+  qaReminders: { scope: 'device', default: false },
+  qaLabels: { scope: 'device', default: false },
   qaDeadline: { scope: 'device', default: true },
   qaDuration: { scope: 'device', default: true },
   // what a row does when swiped right or left (this device): 'complete', 'schedule', 'delete', 'select' or 'none'

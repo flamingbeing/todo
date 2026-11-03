@@ -83,7 +83,7 @@ export function openDisplay(ctx, view, project) {
     return b;
   };
   const choose = (/** @type {string} */ title, /** @type {readonly (readonly [string | number, string])[]} */ words, /** @type {unknown} */ now,
-    /** @type {(v: any) => void} */ set) => pickOne(title, words.map(([key, label]) => ({ label, checked: key === now, run: () => set(key) })));
+    /** @type {(v: any) => void} */ set) => pickOne(title, words.map(([key, label]) => ({ label, checked: key === now, run: () => set(key) })), { tall: title === 'Sorting' });
   const toggle = (/** @type {import('app-ui/icons/lucide.js').IconNodes} */ ic, /** @type {string} */ label, /** @type {boolean} */ on, /** @type {(v: boolean) => void} */ set) => {
     const r = el('label', 'td-attr td-switch-row');
     const box = Object.assign(document.createElement('input'), { type: 'checkbox', className: 'ui-switch', checked: on });
@@ -129,21 +129,9 @@ export function openDisplay(ctx, view, project) {
     card.append(tiles);
     if (cal) {
       // Today is its day; Upcoming has no Agenda (it is one)
-      const kinds = view === 'today' ? [] : CAL_WORDS.filter(([k]) => !days || k !== 'agenda');   // (Upcoming: its n-day is Week)
-      if (kinds.length) {
-        const seg = el('div', 'td-seg');
-        seg.setAttribute('role', 'radiogroup');
-        seg.setAttribute('aria-label', 'Calendar');
-        for (const [key, label] of kinds) {
-          const b = /** @type {HTMLButtonElement} */ (el('button', 'td-seg-item', label));
-          b.type = 'button';
-          b.setAttribute('role', 'radio');
-          b.setAttribute('aria-checked', String(d.cal === key));
-          b.addEventListener('click', () => save({ cal: key }));
-          seg.append(b);
-        }
-        card.append(seg);
-      }
+      const kinds = view === 'today' ? [] : CAL_WORDS.filter(([k]) => !days || k !== 'agenda').map(([k, l]) => /** @type {const} */ ([k, k === 'week' ? `${columnCount(window.innerWidth)}-day` : l]));   // (Upcoming: its n-day is Week)
+      // (the reference: a Layout row under the tiles that opens its own small sheet: Agenda or N-day; Month stays as a third choice)
+      if (kinds.length) card.append(row(MORE.calendarDays, 'Layout', word(kinds, d.cal), () => choose('Layout', kinds, d.cal, v => save({ cal: v }))));
       const colors = COLOR_WORDS.filter(([k]) => k !== 'project' || !(view === 'inbox' || view.startsWith('project:')));
       card.append(row(MORE.palette, 'Coloring', word(COLOR_WORDS, d.color), () => choose('Coloring', colors, d.color, v => save({ color: v }))));
     }

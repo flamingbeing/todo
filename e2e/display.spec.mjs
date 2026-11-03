@@ -96,7 +96,17 @@ test('Today and the Inbox offer List, Board and Calendar; Calendar is kept for t
     await sheet.getByRole('radio', { name: 'Calendar' }).click();
     await expect(sheet.getByRole('radio', { name: 'Calendar' })).toHaveAttribute('aria-checked', 'true');
     // Today is its day (no Agenda, Week or Month); the Inbox has all three
-    await expect(sheet.getByRole('radiogroup', { name: 'Calendar' }).getByRole('radio')).toHaveText(tab === 'today' ? [] : ['Agenda', 'Week', 'Month']);
+    const layoutRow = sheet.getByRole('button', { name: /^Layout/ });
+    if (tab === 'today') await expect(layoutRow).toHaveCount(0);
+    else {
+      // the Layout row opens its own small sheet: Agenda, N-day and Month, radio dots, a left title, no X
+      await layoutRow.click();
+      const pick = page.locator('#pick-sheet');
+      await expect(pick.getByRole('option')).toHaveText([/^Agenda$/, /^\d-day$/, /^Month$/]);
+      await expect(pick.getByRole('button', { name: 'Close' })).toHaveCount(0);
+      await pick.getByRole('option').nth(2).click();
+      await expect(layoutRow).toContainText('Month');
+    }
     await expect(sheet.locator('.td-display-done')).toBeVisible();
     await sheet.getByRole('button', { name: /^(Done|Save)$/ }).click();
     await expect(page.locator(`#${tab}-page .td-cv`)).toBeVisible();

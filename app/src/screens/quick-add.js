@@ -1,18 +1,19 @@
-// Quick add (#add-sheet), docked above the keyboard: the task's name, where words that set something are marked as
-// they are typed ("tomorrow 4 pm", "p1", "#Work", "@errand", "every monday": parse.js) on a peach ground drawn by a
-// layer behind the field, the description (always there, under the name), chips for the date, priority, reminders, labels,
-// deadline and duration (each with an x to clear it, but the date's: its words are the date), then a hairline and the foot:
-// the project picker and a small round send button (faint until the name has text). The date, priority, reminders and
-// labels chips are always in the row (each can be hidden in Settings > Quick Add), deadline and duration once set; picking
-// a value ticks the haptics. A chip set by hand wins over the words; clearing a chip the words
+// Quick add (#add-sheet), docked above the keyboard, a compact card: the task's name, where words that set something are
+// marked as they are typed ("tomorrow 4 pm", "p1", "#Work", "@errand", "every monday": parse.js) on a peach ground drawn
+// by a layer behind the field, then one row: a "+" chip, the project chip (Inbox), the Date chip, any chip that is set
+// (priority, reminders, labels, deadline, duration: a faint border, each with an x to clear it, but the date's: its words
+// are the date) and, at the right, the round send button (faint until the name has text). The "+" menu stacks upward from
+// the chip: Description (the line under the name appears when picked, or when a draft has one), Priority, Reminders,
+// Labels, Deadline, Duration, Customize Quick Add. Settings > Quick Add: the Priority, Reminders and Labels switches also
+// keep that chip in the row before it is set (off by default); the Deadline and Duration switches choose their menu rows.
+// A value picked ticks the haptics. A chip set by hand wins over the words; clearing a chip the words
 // set leaves the words as plain text. A day picked in the Date sheet is written into the name as highlighted words
 // ("11 Nov", "every workday") when they read back as that same date; editing or deleting the words changes the date.
-// The "…" chip's menu stacks upward: Deadline, Priority, Reminders, Labels, Duration, Customize Quick Add. Typing # opens a floating card of
-// "My Projects" (Inbox first) above the sheet; the Inbox chip opens the same card; /, @ and % suggest inline. The
-// placeholder is a different example each time the sheet opens. It starts with what the page shown
-// suggests and stays open after each add, cleared, for the next task (opened for a sub-task, from the task sheet's "Add sub-task", it closes
-// after the one add); an unsent name is kept as a draft. Pasting two or
-// more lines offers to add one task per line.
+// Typing # opens a floating card of "My Projects" (Inbox first) above the sheet; the Inbox chip opens the same card; /, @
+// and % suggest inline. The placeholder is a different example each time the sheet opens. It starts with what the page
+// shown suggests and stays open after each add, cleared, for the next task (opened for a sub-task, from the task sheet's
+// "Add sub-task", it closes after the one add); an unsent name is kept as a draft. Pasting two or more lines offers to
+// add one task per line.
 import { APP } from '../config.js';
 import { icon, draftSlot, confirmModal, plural, haptic, lazyModules } from '@core/ui';
 import { ICONS } from '../icons.js';
@@ -95,6 +96,7 @@ export function openQuickAdd(ctx, start, hold = null) {
   field.append(mirror, title);
   const desc = Object.assign(document.createElement('textarea'), { className: 'td-add-desc', placeholder: 'Description', rows: 1, maxLength: 16000 });
   desc.setAttribute('aria-label', 'Description');
+  desc.hidden = true;   // (shown from the + menu, or when a draft has one)
   const grow = (/** @type {HTMLTextAreaElement} */ t) => { t.style.height = 'auto'; t.style.height = `${t.scrollHeight}px`; };
   desc.addEventListener('input', () => { grow(desc); keep(); });
 
@@ -154,6 +156,8 @@ export function openQuickAdd(ctx, start, hold = null) {
   /** a value picked from a chip */
   const tick = () => { try { haptic('tick'); } catch { /* no haptics here */ } };
   const chips = el('div', 'td-chips');
+  const plus = button('td-chip td-chip-plus', 'More options');
+  plus.append(icon(ICONS.plus));
   /** a chip: the button that opens its picker, and beside it (once set) an x that clears it
    * @param {string} label @returns {{ box: HTMLElement, main: HTMLButtonElement, x: HTMLButtonElement }} */
   const chip = label => {
@@ -219,7 +223,7 @@ export function openQuickAdd(ctx, start, hold = null) {
   /** @param {number | null} n */
   const setDuration = n => { unmark(['duration']); manual.duration = n; tick(); reparse(); title.focus(); };
   const openDuration = (/** @type {HTMLElement} */ at) => openMenu(at, [null, ...DURATIONS].map(n => ({ label: n ? minutesText(n) : 'None', icon: MORE.hourglass,
-    checked: (value().duration ?? null) === n, run: () => setDuration(n) })), { label: 'Duration', ...(at === moreChip ? { pop: true } : {}) });
+    checked: (value().duration ?? null) === n, run: () => setDuration(n) })), { label: 'Duration', ...(at === plus ? { pop: true } : {}) });
   durC.main.addEventListener('click', () => openDuration(durC.main));
   /** @param {string | null | undefined} date */
   const deadlineOf = date => (date ? { date } : null);
@@ -259,7 +263,7 @@ export function openQuickAdd(ctx, start, hold = null) {
   }, { data: ctx.data(), ...dayOptions(settings), duration: value().duration, durationRow: false }));
   const openPriority = (/** @type {HTMLElement} */ at) => openMenu(at, [1, 2, 3, 4].map(p => ({
     label: `Priority ${p}`, icon: MORE.flag, color: PRIORITY_COLOR[p], checked: value().priority === p,
-    run: () => { unmark(['priority']); manual.priority = p; tick(); reparse(); title.focus(); } })), { label: 'Priority', ...(at === moreChip ? { pop: true } : {}) });
+    run: () => { unmark(['priority']); manual.priority = p; tick(); reparse(); title.focus(); } })), { label: 'Priority', ...(at === plus ? { pop: true } : {}) });
   prioChip.addEventListener('click', () => openPriority(prioChip));
   // the labels: the picker (from the chip, or the "…" chip's menu); typed @names count too
   const openLabels = () => {
@@ -273,16 +277,16 @@ export function openQuickAdd(ctx, start, hold = null) {
     });
   };
   labelChip.addEventListener('click', openLabels);
-  const moreChip = button('td-chip td-chip-more', 'More options');
-  moreChip.append(icon(MORE.ellipsis));
-  // (the description is always under the name; the menu stacks upward, the icon left of each label, no ticks; the last
-  // row closes quick add, its draft kept, and opens Settings > Quick Add)
-  moreChip.addEventListener('click', () => openMenu(moreChip, [
+  // the + chip: its menu stacks upward from the chip, the icon left of each label, no ticks; the last row closes quick add,
+  // its draft kept, and opens Settings > Quick Add
+  const showDesc = () => { desc.hidden = false; grow(desc); desc.focus(); };
+  plus.addEventListener('click', () => openMenu(plus, [
+    { label: 'Description', icon: MORE.textAlignStart, run: showDesc },
+    { label: 'Priority', icon: MORE.flag, run: () => openPriority(plus) },
+    { label: 'Reminders', icon: MORE.alarmClock, run: () => openReminders(plus) },
+    { label: 'Labels', icon: ICONS.tag, run: openLabels },
     ...(on('qaDeadline') ? [{ label: 'Deadline', icon: ICONS.target, run: openDeadline }] : []),
-    ...(on('qaPriority') ? [{ label: 'Priority', icon: MORE.flag, run: () => openPriority(moreChip) }] : []),
-    ...(on('qaReminders') ? [{ label: 'Reminders', icon: MORE.alarmClock, run: () => openReminders(moreChip) }] : []),
-    ...(on('qaLabels') ? [{ label: 'Labels', icon: ICONS.tag, run: openLabels }] : []),
-    ...(on('qaDuration') ? [{ label: 'Duration', icon: MORE.hourglass, run: () => openDuration(moreChip) }] : []),
+    ...(on('qaDuration') ? [{ label: 'Duration', icon: MORE.hourglass, run: () => openDuration(plus) }] : []),
     { label: 'Customize Quick Add', icon: MORE.slidersHorizontal, run: () => { if (sheet.open) sheet.close(); void openSettingsPage('Quick Add'); } }],
   { label: 'More options', pop: true }));
 
@@ -353,14 +357,14 @@ export function openQuickAdd(ctx, start, hold = null) {
     }));
   };
 
-  // the foot: where it goes, and send
-  const place = button('td-add-place', 'Project');
+  // the project chip, and send
+  const place = button('td-chip td-add-place', 'Project');
   const drawPlace = () => {
     const v = value(), data = ctx.data(), p = data.projects.find(x => x.id === v.projectId);
     const i = icon(v.projectId === INBOX ? ICONS.inbox : ICONS.hash);
     if (v.projectId !== INBOX) i.style.color = colorHex(p?.color);
     const words = placeText(/** @type {import('../items.js').Task} */ ({ id: '', title: '-', projectId: v.projectId, sectionId: v.sectionId }), data.projects, data.sections);
-    place.replaceChildren(i, el('span', '', words), icon(ICONS.chevronDown, { class: 'td-add-place-more' }));
+    place.replaceChildren(i, el('span', '', words));
     place.setAttribute('aria-label', `Project: ${words}`);
   };
   place.addEventListener('click', () => {
@@ -376,9 +380,9 @@ export function openQuickAdd(ctx, start, hold = null) {
   send.setAttribute('aria-label', 'Add task');
   send.append(icon(MORE.arrowUp));
   const ready = () => { send.disabled = !parsed.title; };   // (faint while the name is empty, see .td-send)
-  chips.append(dateC.box, prioC.box, remC.box, labelC.box, deadC.box, durC.box, moreChip);
-  const foot = el('div', 'td-add-foot');
-  foot.append(place, send);
+  chips.append(plus, place, dateC.box, prioC.box, remC.box, labelC.box, deadC.box, durC.box);
+  const row = el('div', 'td-add-row2');
+  row.append(chips, send);
 
   // (the FAB dropped between two rows gives the first task that place; the next ones go to the end)
   const atDrop = (/** @type {{ projectId: string, sectionId: string | null, parentId: string | null }} */ v) => {
@@ -408,7 +412,7 @@ export function openQuickAdd(ctx, start, hold = null) {
       duration: v.duration ?? undefined, reminders: (r => (r.length && v.due ? r : undefined))(autoReminders(v.due, v.reminders, settings.get('autoReminder'))) });
   };
   const clearAll = () => {
-    title.value = ''; desc.value = ''; desc.style.height = ''; ignore = []; was = '';
+    title.value = ''; desc.value = ''; desc.style.height = ''; desc.hidden = true; ignore = []; was = '';
     for (const k of /** @type {const} */ (['due', 'priority', 'labels', 'deadline', 'duration', 'reminders'])) delete manual[k];
     try { draft.clear(); } catch { /* storage blocked */ }
     reparse();
@@ -466,7 +470,7 @@ export function openQuickAdd(ctx, start, hold = null) {
     title.focus();
   });
 
-  form.append(el('div', 'td-grab'), field, desc, list, chips, foot);
+  form.append(field, desc, list, row);
   body.replaceChildren(form);
   if (kept && (kept.name || kept.desc)) {
     title.value = kept.name ?? ''; desc.value = kept.desc ?? '';
@@ -474,7 +478,7 @@ export function openQuickAdd(ctx, start, hold = null) {
     was = title.value;
   }
   reparse();
-  if (desc.value) grow(desc);
+  if (desc.value) { desc.hidden = false; grow(desc); }
   if (!sheet.open) { lazy.loaded('morph')?.aim(sheet); sheet.showModal(); void lazy.need('morph').catch(() => {}); }
   if (hold) hold.handTo(title); else title.focus();
   title.setSelectionRange(title.value.length, title.value.length);

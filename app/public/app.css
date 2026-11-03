@@ -192,7 +192,7 @@ button.td-group-title { display: flex; align-items: center; gap: 6px; width: 100
 [data-priority="4"].is-done > .td-check, [data-priority="4"] > .td-check[aria-checked="true"] { --ring: var(--td-text-3); }
 .td-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: 14px 12px 14px 0;
   border: 0; background: none; text-align: start; cursor: pointer; color: var(--td-text); }
-.td-title { font-size: 16px; line-height: 21px; overflow-wrap: anywhere; }
+.td-title { font-size: 17px; line-height: 21px; overflow-wrap: anywhere; }
 /* a title and its meta line, no description: 14 + 21 + 8 + 17 + 14 = 74 pt, the two-line row of the references (222 px at 3x) */
 .td-title + .td-meta { margin-top: 6px; }
 .is-done .td-title { color: var(--td-text-2); }
@@ -389,24 +389,27 @@ span.td-chip { height: 26px; padding: 0 8px; cursor: default; }
   @starting-style { #add-sheet.td-sheet[open]::backdrop { background-color: rgb(0 0 0 / 0); } }
 }
 @keyframes td-qa-open { from { opacity: 0; transform: translate(var(--qa-dx), var(--qa-dy)) scale(var(--qa-s)); } 40% { opacity: 1; } }
-.td-add { display: grid; gap: 10px; padding: 4px 12px 0; }
-.td-grab { justify-self: center; width: 28px; height: 3px; margin-top: 2px; border-radius: 2px; background: var(--td-text-3); opacity: .6; }
+#add-sheet .td-sheet-body { padding: 0 0 calc(2px + env(safe-area-inset-bottom, 0px)); }
+.td-add { display: grid; gap: 4px; padding: 6px 12px 4px; }
 .td-add-title, .td-add-desc { box-sizing: border-box; width: 100%; padding: 0; border: 0; outline: 0; background: none; resize: none; }
 /* the name: a field over a layer with the same text, where the words found sit on peach */
 .td-qa-field { position: relative; }
-.td-add-title, .td-qa-mirror { box-sizing: border-box; margin: 0; padding: 2px 4px; font: 400 17px/1.45 var(--td-font); letter-spacing: normal;
+.td-add-title, .td-qa-mirror { box-sizing: border-box; margin: 0; padding: 0 4px; font: 400 17px/1.45 var(--td-font); letter-spacing: normal;
   white-space: pre-wrap; overflow-wrap: break-word; word-break: normal; }
-.td-add-title { position: relative; display: block; min-height: 30px; overflow: hidden; color: var(--td-text); caret-color: var(--td-accent); }
+.td-add-title { position: relative; display: block; min-height: 25px; overflow: hidden; color: var(--td-text); caret-color: var(--td-accent); }
 .td-qa-mirror { position: absolute; inset: 0; overflow: hidden; color: transparent; pointer-events: none; }
 .td-qa-mirror .td-hl { border-radius: 4px; background: var(--td-peach); color: transparent; box-shadow: 0 0 0 1px var(--td-peach); }
 .td-add-desc { min-height: 0; height: 22px; padding: 0 4px; font-size: 14px; line-height: 1.4; color: var(--td-text-2); }
 .td-add-desc[hidden] { display: none; }
 div.td-chip { gap: 0; padding: 0; cursor: default; }
-.td-add .td-chips { flex-wrap: nowrap; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+/* the card's one row: the chips scroll sideways, the round send stays at the right */
+.td-add-row2 { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.td-add .td-chips { flex: 1; min-width: 0; flex-wrap: nowrap; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: none; }
 .td-add .td-chips::-webkit-scrollbar { display: none; }
-.td-add .td-chip { flex: none; height: 32px; border: 1px solid var(--td-hair); background: none; font-size: 14px; }
+.td-add .td-chip { flex: none; height: 30px; min-height: 0; border: 1px solid var(--td-hair); background: none; font-size: 14px; }
 .td-add .td-chip:not([data-tone]) { color: var(--td-text-2); }
-.td-add .td-chip-more { width: 40px; justify-content: center; padding: 0; }
+.td-add .td-chip-plus { width: 36px; justify-content: center; padding: 0; }
+.td-add .td-chip-plus .ui-icon { width: 18px; height: 18px; }
 .td-add .td-chip[data-tone] { border-color: var(--td-hair); }
 .td-add .td-chip.is-set:not([data-tone]) { color: var(--td-text); }
 /* (P1 reads red like its flag; the other flags' tones are too light for text, so their words stay plain) */
@@ -439,14 +442,11 @@ div.td-chip { gap: 0; padding: 0; cursor: default; }
 .td-suggest-items { display: grid; align-content: start; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 6px; }
 .td-suggest.is-card .td-suggest-item { flex: none; gap: 14px; min-height: 44px; padding: 0 16px; }
 .td-suggest.is-card .td-suggest-item .ui-icon { width: 20px; height: 20px; }
-.td-add-foot { display: flex; align-items: center; gap: 8px; margin: 0 -12px; padding: 8px 12px; border-top: 1px solid var(--td-hair); }
-.td-add-place { display: inline-flex; flex: 0 1 auto; min-width: 0; align-items: center; gap: 6px; height: 32px; padding: 0 4px; border: 0; border-radius: 8px; background: none;
-  color: var(--td-text-2); font-size: 15px; font-weight: 500; cursor: pointer; }
-.td-add-place .td-add-place-more { width: 14px; height: 14px; }
+.td-add .td-add-place { display: inline-flex; align-items: center; gap: 6px; max-width: 45%; padding: 0 10px; cursor: pointer; }
 .td-add-place > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .td-add-place .ui-icon { width: 16px; height: 16px; flex: none; }
 /* (a 28px circle, its tap area 44px through the padding ring) */
-.td-send { display: grid; place-items: center; flex: none; box-sizing: content-box; width: 28px; height: 28px; min-height: 0; margin: -8px -8px -8px auto; padding: 8px; border: 0; border-radius: 50%;
+.td-send { display: grid; place-items: center; flex: none; box-sizing: content-box; width: 28px; height: 28px; min-height: 0; margin: -8px -8px -8px 0; padding: 8px; border: 0; border-radius: 50%;
   background: var(--td-fill); background-clip: content-box; color: #fff; cursor: pointer; }
 .td-send:disabled { opacity: .4; cursor: default; }
 .td-send .ui-icon { width: 16px; height: 16px; stroke-width: 2.5; }
@@ -471,8 +471,9 @@ div.td-chip { gap: 0; padding: 0; cursor: default; }
 
 /* the "…" menus (the kit's menu layer, placed under their button by ui/menu.js) */
 .td-menu-layer[popover] { inset: 0; width: auto; height: auto; margin: 0; padding: 0; border: 0; background: none; overflow: visible; color: inherit; }
-.td-menu { min-width: 220px; border-radius: 14px; }
-.td-menu .ui-menu-item { display: flex; align-items: center; gap: 12px; min-height: 44px; font-size: 16px; }
+.td-menu { min-width: 180px; border-radius: 14px; }
+.td-menu .td-menu-icon { order: -1; }
+.td-menu .ui-menu-item { display: flex; align-items: center; gap: 12px; min-height: 44px; justify-content: flex-start; text-align: left; font-size: 16px; }
 .td-menu-icon { width: 20px !important; height: 20px !important; flex: none; color: var(--td-text-2); }
 /* a floating card stacked upward from its chip (ui/menu.js `pop`): a title row, the icon on the left of each label */
 .td-menu-pop { min-width: 200px; max-height: min(60vh, 420px); overflow-y: auto; padding-bottom: 6px; border-radius: 14px; background: light-dark(#fff, #2c2c2c); transform-origin: 0 100%; }
@@ -585,8 +586,10 @@ button:is(.td-group-title, .td-add-row, .td-suggest-item, .td-sched-row, .td-bro
 /* a press shades the whole row, square to its card: app-ui's button press is an inset shade with the button's round
    corners, which on the words' button alone (it starts after the circle) showed as a pill in the middle of the row */
 .td-row > .td-row-main:is(:active, [data-pressed]) { box-shadow: none; }
-.td-row:has(> .td-row-main:is(:active, [data-pressed])):not(.is-lifted, .is-swiping),
+.td-row:has(> .td-row-main:is(:active, [data-pressed], [data-ripple="hold"])):not(.is-lifted, .is-swiping),
 #task-sheet .td-row:has(> .td-row-main:is(:active, [data-pressed])) { background: var(--td-selected); }
+/* (the tint stays after the lift until the task sheet opens: html[data-ripple="hold"] keeps the kit's hold on the row's words) */
+.td-list:not(.td-board) .td-row:has(> .td-row-main[data-ripple="hold"]) { background: var(--td-selected); }
 .td-row.is-swiping { overflow: hidden; }
 .td-row.is-swiping > :not(.td-swipe-band, .td-fold) { position: relative; z-index: 1; }
 .td-row.is-swiping > .td-fold { z-index: 1; }
@@ -625,16 +628,20 @@ button:is(.td-group-title, .td-add-row, .td-suggest-item, .td-sched-row, .td-bro
 .td-drop-section > span:not(:nth-child(2)) { flex: 1; height: 1px; background: currentColor; opacity: .45; }
 .td-drop-section.is-over > span:not(:nth-child(2)) { height: 2px; opacity: 1; }
 
-/* select mode (screens/select.js): grey rows, the top bar over the page's, and the glass bar in the tab bar's place */
+/* select mode (screens/select.js): grey rows, the top bar over the page's, and the slim flat bar in the tab bar's place */
 .td-row.is-selected { background: var(--td-selected); }
 .td-row.is-selected::after { display: none; }
 .td-selecting :is(.ui-tabbar, .ui-fab.td-fab) { visibility: hidden; }
 .td-select-top { position: fixed; z-index: 7; left: 0; right: 0; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px;
   min-height: 44px; padding: calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px; background: var(--td-ground); border-bottom: .5px solid var(--td-hair); }
 .td-select-count { flex: 1; margin: 0; text-align: center; font-size: 17px; font-weight: 600; color: var(--td-text); }
-.td-select-bar.ui-action-bar { justify-content: space-around; padding: 4px 8px; }
-.td-select-bar .td-select-act { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 64px; min-height: 48px;
-  padding: 4px 8px; color: var(--td-accent-text); font-size: 11px; font-weight: 600; cursor: pointer; }
+.td-select-cancel { margin-inline-start: -8px; color: var(--td-text); }
+.td-select-bar.ui-action-bar, .glass .td-select-bar.ui-action-bar { left: 0; right: 0; bottom: 0; max-width: none; margin: 0; justify-content: space-around; gap: 0;
+  padding: 4px 8px calc(env(safe-area-inset-bottom, 0px) + 4px); border: 0; border-top: .5px solid var(--td-hair); border-radius: 0; box-shadow: none;
+  background: var(--td-ground); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.td-select-bar .td-select-act { display: flex; align-items: center; justify-content: center; flex: 1; min-width: 44px; min-height: 48px; padding: 4px 8px;
+  border-radius: 0; color: var(--td-text); cursor: pointer; }
+.td-select-bar .td-select-act:active { background: var(--td-selected); }
 .td-select-icon { width: 22px; height: 22px; }
 /* Manage projects: a grip, the colour, the name; the row being dragged lifts */
 .td-manage-row { position: relative; display: flex; align-items: center; min-height: 50px; padding-inline: calc(4px + var(--depth, 0) * 20px) 16px; background: var(--td-card); }
@@ -689,7 +696,7 @@ button:is(.td-group-title, .td-add-row, .td-suggest-item, .td-sched-row, .td-bro
 .td-choice[aria-checked="mixed"] .td-tick::after { content: ""; width: 10px; height: 2px; border-radius: 1px; background: var(--td-accent); }
 .td-create .td-choice-label { color: var(--td-accent-text); }
 .td-choice-none { padding: 14px 16px; color: var(--td-text-2); font-size: 15px; }
-.td-chip-more { min-height: 0; padding-inline: 8px; }
+.td-chip-plus { min-height: 0; padding-inline: 8px; }
 
 /* ---------- Search ---------- */
 .td-search-head { display: flex; align-items: center; justify-content: space-between; padding: 0 12px 0 16px; }
@@ -769,7 +776,8 @@ html[data-board-swipe] .td-board .td-row { touch-action: pan-y; }
 .td-display-sheet [data-fill] { display: flex; flex-direction: column; min-height: 100%; }
 .td-display-bar { position: sticky; bottom: 0; margin-top: auto; display: flex; align-items: center; justify-content: space-between; padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px)); background: light-dark(#eeedeb, #1e1e1e); }
 /* Done (Save) is a red pill at the right; Reset all, a grey pill at the left, shows after the first change */
-.td-display-reset { height: 44px; min-width: 96px; padding: 0 20px; border: 0; border-radius: 22px; background: light-dark(#dcdad7, #3a3a3a); color: var(--td-text); font-size: 16px; cursor: pointer; }
+.td-display-reset { height: 44px; padding: 0 8px; border: 0; background: none; color: var(--td-text-2); font-size: 16px; cursor: pointer; }
+#display-sheet { --d-sheet-in: 333ms; }
 .td-display-reset[hidden] { display: none; }
 .td-display-save { min-width: 84px; height: 44px; margin-inline-start: auto; border-radius: 22px; }
 
@@ -996,11 +1004,9 @@ body {
 .td-sched-min .td-choice-label { flex: 1; font-size: 16px; }
 .td-sched-min-in { box-sizing: border-box; width: 88px; height: 36px; padding: 0 10px; border: 0; border-radius: 8px; background: light-dark(#f2f2f2, #333);
   color: inherit; font: inherit; font-size: 16px; text-align: end; }
-/* select mode: each row's box is a selection circle (grey ring; ticked: the accent, filled, with a check) */
+/* select mode: each row's box is a plain grey ring */
 .is-selecting .td-row > .td-check { --ring: var(--td-p4); --tint: transparent; border-width: 1.5px; }
-.is-selecting .td-row.is-selected > .td-check { --ring: var(--td-fill); background: var(--td-fill); color: #fff; }
-.is-selecting .td-row > .td-check .td-check-mark { opacity: 0; }
-.is-selecting .td-row.is-selected > .td-check .td-check-mark { opacity: 1; }
+/* (a picked row is told by its grey tint, not a filled circle) */
 /* a "* " row: a note in the list, its box kept for the line-up but not shown (select mode shows its circle) */
 .td-row.is-plain > .td-check { visibility: hidden; }
 .is-selecting .td-row.is-plain > .td-check { visibility: visible; }
@@ -1124,6 +1130,7 @@ textarea.has-md { color: transparent; }
 /* ---------- navigation chrome, as the reference's phone layout (owner 2 Nov 2026): solid bars, a slim top bar with the
    name at the start, a count under it and the page's buttons at the end; four tabs with a pill behind the lit one;
    a rounded-square add button ---------- */
+:root { --ui-sheet-rise: 16px; }
 :root { --td-bar-ground: light-dark(#ffffff, #202020); }
 /* solid, whatever the Look choice says: no blur, no see-through */
 html.glass .ui-bar, html.glass .ui-bar.is-collapsed, .ui-bar, .ui-bar.is-collapsed { background: var(--td-bar-ground); border-bottom-color: transparent; box-shadow: none;
@@ -1193,6 +1200,8 @@ html[data-look="ios"] .td-section-desc { border-top: 1px solid var(--td-hair); m
    title (20 px semibold at x 56); rows 48.5 px apart, icon centred on x 30, words at 56, hairlines from 56; grey pills;
    5 px grey bands between the details, the sub-tasks and the comments; the comment pill docked at the bottom */
 #task-sheet.td-sheet { background: var(--td-card); border-radius: 20px 20px 0 0; }
+/* at the medium detent the card is 55% of the screen, as in the reference (the kit measures this height on open; large stays for typing) */
+#task-sheet:not([data-detent="large"]) { height: 55dvh; }
 #task-sheet .ui-sheet-grabber::before { top: 8px; width: 39px; height: 5px; border-radius: 3px; background: light-dark(#cccccd, #5a5a5a); }
 #task-sheet .td-sheet-body { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0; }
 #task-sheet .td-sheet-head { flex: none; gap: 8px; height: 44px; padding: 0 16px 0 8px; }
@@ -1214,6 +1223,7 @@ html[data-look="ios"] .td-section-desc { border-top: 1px solid var(--td-hair); m
 #task-sheet .td-attr-icon { left: 20px; width: 20px !important; height: 20px !important; color: var(--td-text-2); }
 #task-sheet .td-attr-icon[data-tone] { color: var(--td-d-tone, var(--td-text-2)); }
 #task-sheet .td-attr-desc { align-items: flex-start; }
+#task-sheet .td-attr-desc[hidden] { display: none; }
 #task-sheet .td-attr-desc .td-attr-icon { top: 14px; translate: none; }
 #task-sheet .td-attr-desc .td-task-words { flex: 1; }
 #task-sheet .td-task-desc, #task-sheet .td-md-desc { padding: 13px 0 12px; font-size: 16px; line-height: 22px; color: var(--td-text); }
@@ -1232,8 +1242,10 @@ html[data-look="ios"] .td-section-desc { border-top: 1px solid var(--td-hair); m
 /* the pills under the rows (Reminder, Deadline, Move to…): grey, 35 px, radius 8, icon 16 + 16 px words */
 #task-sheet .td-attr-chips { display: flex; gap: 8px; margin: 0; padding: 12px 16px 16px; overflow-x: auto; scrollbar-width: none; }
 #task-sheet .td-attr-chips::-webkit-scrollbar { display: none; }
-#task-sheet .td-attr.is-chip { position: static; flex: none; width: auto; min-height: 35px; height: 35px; gap: 8px; padding: 0 14px; border-radius: 8px; flex-wrap: nowrap;
-  background: var(--td-chip); color: var(--td-text); font-size: 16px; font-weight: 500; white-space: nowrap; }
+#task-sheet .td-attr.is-chip { position: static; flex: none; width: auto; min-height: 35px; height: 35px; gap: 8px; padding: 0 14px; border-radius: 18px; flex-wrap: nowrap;
+  border: 1px solid var(--td-hair); background: none; color: var(--td-text); font-size: 14px; font-weight: 400; white-space: nowrap; }
+#task-sheet .td-attr.is-chip:is(:active, [data-pressed]) { background: var(--td-selected); }
+#task-sheet .td-attr-chips { padding-block: 4px 16px; }
 #task-sheet .td-attr.is-chip::after { display: none; }
 #task-sheet .td-attr.is-chip .td-attr-icon { position: static; translate: none; width: 16px !important; height: 16px !important; color: var(--td-text); }
 #task-sheet .td-attr.is-chip .td-attr-text { flex: none; color: inherit; }
@@ -1253,7 +1265,8 @@ html[data-look="ios"] .td-section-desc { border-top: 1px solid var(--td-hair); m
 #task-sheet .td-subtasks .td-row::after { left: calc(56px + var(--depth, 0) * 24px); }
 #task-sheet .td-add-sub { justify-content: flex-start; gap: 0; width: 100%; min-height: 48px; margin: 0; padding: 0 16px 0 56px; position: relative; border-radius: 0; background: none;
   color: var(--td-text); font-size: 16px; font-weight: 400; }
-#task-sheet .td-add-sub .td-add-icon { position: absolute; left: 20px; width: 20px; height: 20px; color: var(--td-text-2); }
+#task-sheet .td-add-sub .td-add-icon { position: absolute; left: 20px; width: 20px; height: 20px; color: var(--td-accent); }
+#task-sheet .td-add-sub { color: var(--td-accent); }
 #task-sheet .td-comments { padding-bottom: 8px; }
 #task-sheet .td-comment-list { margin: 0; border-radius: 0; background: none; }
 #task-sheet .td-comment { padding: 6px 16px 6px 56px; }
@@ -1421,3 +1434,45 @@ html[data-fab="center"] .ui-fab.td-fab { inset-inline-end: auto; inset-inline-st
 .modal[aria-labelledby] p { white-space: pre-line; }
 #display-btn { position: relative; }
 #display-btn.has-dot::after { content: ""; position: absolute; top: 12px; right: 11px; width: 6px; height: 6px; border-radius: 50%; background: var(--td-accent); }
+
+/* the "•••" menu as its own action sheet over the dimmed task sheet: a flat surface with a 20 px top radius, the added-on line, icons at the left,
+   a press shades the whole row (the rise and fade of its opening come from the kit) */
+.td-menu.ui-menu-panel { border-radius: 20px 20px 0 0; background: light-dark(#fff, #1c1c1e); box-shadow: 0 -2px 24px rgb(0 0 0 / .18); }
+.td-menu.ui-menu-panel .ui-menu-item { position: relative; width: 100%; padding: 0 20px; border-radius: 0; }
+.td-menu.ui-menu-panel .ui-menu-item:is(:active, [data-pressed]) { background: var(--td-selected); }
+.td-menu-layer:has(> .td-menu.ui-menu-panel) > .td-menu-veil { background: rgb(0 0 0 / .4); }
+
+/* the pick sheets (screens/pick.js), as the reference's: the title left-aligned under the grab handle, no X; a red radio
+   dot for the chosen row; a short list sizes the sheet to itself (data-fit; the kit measures it on open); Move to is tall
+   with a Search field; Priority is four tiles; Reminders is Suggestions / Date & time / + Add reminder */
+.td-sheet-head-plain { padding: 4px 20px 8px; }
+.td-sheet-head-plain .td-sheet-title { text-align: start; font-size: 20px; font-weight: 600; }
+.td-choice-radio { flex: none; box-sizing: border-box; width: 22px; height: 22px; margin-inline-start: 12px; border: 1.5px solid var(--td-text-3); border-radius: 50%; }
+.td-choice[aria-selected="true"] .td-choice-radio { border: 6px solid var(--td-accent); }
+#pick-sheet[data-fit]:not([data-detent="large"]) { height: auto; max-height: calc(100dvh - 12px); }
+#pick-sheet.td-tall:not([data-detent="large"]) { height: 90dvh; }
+.td-pick-search { position: relative; margin: 0 16px 8px; }
+.td-pick-find { box-sizing: border-box; width: 100%; height: 40px; padding: 0 12px 0 38px; border: 0; border-radius: 10px; background: var(--td-fill-soft, light-dark(#f1f0ee, #2c2c2c)); color: var(--td-text); font-size: 16px; }
+.td-pick-find-icon { position: absolute; left: 11px; top: 11px; width: 18px !important; height: 18px !important; color: var(--td-text-3); pointer-events: none; }
+.td-prio-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 8px 16px 12px; }
+.td-prio-tile { display: flex; flex-direction: column; align-items: center; gap: 6px; box-sizing: border-box; min-height: 72px; padding: 12px 0 10px; border: 1.5px solid var(--td-hair); border-radius: 12px;
+  background: none; color: var(--td-text); font-size: 14px; cursor: pointer; }
+.td-prio-tile[aria-checked="true"] { border-color: var(--td-text); }
+.td-prio-tile:is(:active, [data-pressed]) { background: var(--td-selected); }
+.td-prio-flag { width: 24px !important; height: 24px !important; }
+.td-remind-sec { padding: 0 16px 8px; }
+.td-remind-h { margin: 8px 4px 6px; font-size: 14px; font-weight: 600; color: var(--td-text-2); }
+.td-remind-card { overflow: hidden; border-radius: 12px; }
+.td-remind-line, .td-remind-add, .td-remind-set { position: relative; display: flex; align-items: center; box-sizing: border-box; width: 100%; min-height: 54px; padding: 4px 16px; border: 0; background: none; text-align: start; font-size: 16px; color: var(--td-text); }
+.td-remind-line, .td-remind-add { cursor: pointer; }
+.td-remind-line:is(:active, [data-pressed]), .td-remind-add:is(:active, [data-pressed]) { background: var(--td-selected); }
+.td-remind-card > * + * { border-top: .5px solid var(--td-hair); }
+.td-remind-words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.td-remind-when { font-size: 13px; color: var(--td-text-3); }
+.td-remind-x { flex: none; display: grid; place-items: center; width: 40px; height: 40px; margin-inline-end: -8px; border: 0; border-radius: 50%; background: none; color: var(--td-text-2); cursor: pointer; }
+.td-remind-x .ui-icon { width: 18px; height: 18px; }
+.td-remind-add { color: var(--td-accent-text, var(--td-accent)); font-weight: 500; }
+.td-remind-add .td-choice-icon { color: var(--td-accent-text, var(--td-accent)); }
+
+/* "+ Add task" at a list's end: a full-width filled rounded button (the reference); the board's own add row keeps its look */
+.td-list:not(.td-board) .td-group > .td-add-row, .td-list:not(.td-board) > .td-add-row { width: calc(100% - 32px); margin: 8px 16px; padding: 0 16px; border-radius: 12px; background: var(--td-selected); color: var(--td-text); }

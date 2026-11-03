@@ -48,11 +48,11 @@ export const SETTING_SECTIONS = [
   { title: 'Quick Add', icon: MORE.circlePlus, group: 'Personalization', find: 'add top bottom actions', rows: [
     { key: 'addToTop', label: 'Add new tasks to the top', sub: 'Instead of the end of the list' },
     { heading: 'Quick Add actions' },
-    { key: 'qaPriority', label: 'Priority' },
-    { key: 'qaReminders', label: 'Reminders' },
-    { key: 'qaLabels', label: 'Labels' },
-    { key: 'qaDeadline', label: 'Deadline' },
-    { key: 'qaDuration', label: 'Duration' },
+    { key: 'qaPriority', label: 'Priority', sub: 'Always show next to +' },
+    { key: 'qaReminders', label: 'Reminders', sub: 'Always show next to +' },
+    { key: 'qaLabels', label: 'Labels', sub: 'Always show next to +' },
+    { key: 'qaDeadline', label: 'Deadline', sub: 'In the + menu' },
+    { key: 'qaDuration', label: 'Duration', sub: 'In the + menu' },
   ] },
   { title: 'Productivity', icon: MORE.gauge, group: 'Productivity', find: 'goal daily weekly days off vacation streak celebration', rows: [
     { heading: 'Set goals' },

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="glass" data-bar="slim" data-push-bar="hide">
+<html lang="en" class="glass" data-bar="slim" data-push-bar="hide" data-slide="rise" data-sheet-bar="fade" data-keyboard-bar="fade" data-ripple="hold">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
@@ -14,9 +14,9 @@
     "@core/auth": "https://core.anawj.com/sync/1.5.5/auth.js",
     "@core/sync": "https://core.anawj.com/sync/1.5.5/sync.js",
     "@core/update": "https://core.anawj.com/sync/1.5.5/update.js",
-    "@core/ui": "https://core.anawj.com/ui/1.0.0-rc.84/ui/index.js",
-    "@core/theme": "https://core.anawj.com/ui/1.0.0-rc.84/theme/index.js",
-    "@core/settings": "https://core.anawj.com/ui/1.0.0-rc.84/settings/index.js",
+    "@core/ui": "https://core.anawj.com/ui/1.0.0-rc.85/ui/index.js",
+    "@core/theme": "https://core.anawj.com/ui/1.0.0-rc.85/theme/index.js",
+    "@core/settings": "https://core.anawj.com/ui/1.0.0-rc.85/settings/index.js",
     "app-update/register.js": "https://core.anawj.com/update/0.2.0/register.js",
     "firebase/app": "./vendor/firebase/12.19.0/firebase-app.js",
     "firebase/auth": "./vendor/firebase/12.19.0/firebase-auth.js",
@@ -26,14 +26,14 @@
   }
 }
   </script>
-  <script src="https://core.anawj.com/ui/1.0.0-rc.84/theme/early.js"></script>
+  <script src="https://core.anawj.com/ui/1.0.0-rc.85/theme/early.js"></script>
   <link rel="modulepreload" href="https://core.anawj.com/sync/1.5.5/app.js" data-module>
   <link rel="modulepreload" href="https://core.anawj.com/sync/1.5.5/auth.js" data-module>
   <link rel="modulepreload" href="https://core.anawj.com/sync/1.5.5/sync.js" data-module>
   <link rel="modulepreload" href="https://core.anawj.com/sync/1.5.5/update.js" data-module>
-  <link rel="modulepreload" href="https://core.anawj.com/ui/1.0.0-rc.84/ui/index.js" data-module>
-  <link rel="modulepreload" href="https://core.anawj.com/ui/1.0.0-rc.84/theme/index.js" data-module>
-  <link rel="modulepreload" href="https://core.anawj.com/ui/1.0.0-rc.84/settings/index.js" data-module>
+  <link rel="modulepreload" href="https://core.anawj.com/ui/1.0.0-rc.85/ui/index.js" data-module>
+  <link rel="modulepreload" href="https://core.anawj.com/ui/1.0.0-rc.85/theme/index.js" data-module>
+  <link rel="modulepreload" href="https://core.anawj.com/ui/1.0.0-rc.85/settings/index.js" data-module>
   <link rel="modulepreload" href="https://core.anawj.com/update/0.2.0/register.js" data-module>
   <link rel="modulepreload" href="./vendor/firebase/12.19.0/firebase-app.js" data-module>
   <link rel="modulepreload" href="./vendor/firebase/12.19.0/firebase-auth.js" data-module>
@@ -43,11 +43,11 @@
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="stylesheet" href="https://design.flamingbeing.com/v1/tokens.css">
-  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.84/theme/theme.css">
-  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.84/ui/ui.css">
-  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.84/theme/glass.css">
-  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.84/ui/gestures.css">
-  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.84/ui/shell/shell.css">
+  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.85/theme/theme.css">
+  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.85/ui/ui.css">
+  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.85/theme/glass.css">
+  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.85/ui/gestures.css">
+  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.85/ui/shell/shell.css">
   <link rel="stylesheet" href="app.css">
   <script type="module" src="src/app.js"></script>
 </head>
@@ -213,37 +213,37 @@
   <div id="toasts"></div>
 
   <!-- the sheets: src/screens/ fills each the first time it opens -->
-  <dialog class="ui-sheet td-sheet" id="task-sheet" data-detents="medium large" data-wide="panel" aria-label="Task">
+  <dialog class="ui-sheet td-sheet" data-release-motion="settle" id="task-sheet" data-detents="medium large" data-wide="panel" aria-label="Task">
     <div class="ui-sheet-grabber" aria-label="Expand or collapse"></div>
     <div class="td-sheet-body" data-fill></div>
   </dialog>
-  <dialog class="ui-sheet td-sheet" id="edit-task-sheet" data-detents="large" data-wide="panel" aria-label="Edit task">
+  <dialog class="ui-sheet td-sheet" data-release-motion="settle" id="edit-task-sheet" data-detents="large" data-wide="panel" aria-label="Edit task">
     <div class="td-sheet-body" data-fill></div>
   </dialog>
-  <dialog class="ui-sheet td-sheet" id="add-sheet" data-wide="panel" aria-label="Add task">
+  <dialog class="ui-sheet td-sheet" data-release-motion="settle" id="add-sheet" data-wide="panel" aria-label="Add task">
     <div class="td-sheet-body" data-fill></div>
   </dialog>
-  <dialog class="ui-sheet td-sheet" id="project-sheet" data-detents="large" data-wide="panel" aria-label="Project">
+  <dialog class="ui-sheet td-sheet" data-release-motion="settle" id="project-sheet" data-detents="large" data-wide="panel" aria-label="Project">
     <div class="ui-sheet-grabber" aria-hidden="true"></div>
     <div class="td-sheet-body" data-fill></div>
   </dialog>
-  <dialog class="ui-sheet td-sheet" id="schedule-sheet" data-detents="medium large" data-wide="panel" aria-label="Schedule">
+  <dialog class="ui-sheet td-sheet" data-release-motion="settle" id="schedule-sheet" data-close-motion="drop" data-detents="medium large" data-wide="panel" aria-label="Schedule">
     <div class="ui-sheet-grabber" aria-hidden="true"></div>
     <div class="td-sheet-body" data-fill></div>
   </dialog>
-  <dialog class="ui-sheet td-sheet" id="pick-sheet" data-detents="medium large" data-wide="panel" aria-label="Choose">
+  <dialog class="ui-sheet td-sheet" data-release-motion="settle" id="pick-sheet" data-detents="medium large" data-wide="panel" aria-label="Choose">
     <div class="ui-sheet-grabber" aria-label="Expand or collapse"></div>
     <div class="td-sheet-body" data-fill></div>
   </dialog>
-  <dialog class="ui-sheet td-sheet" id="edit-sheet" data-detents="large" data-wide="panel" aria-label="Label or filter">
+  <dialog class="ui-sheet td-sheet" data-release-motion="settle" id="edit-sheet" data-detents="large" data-wide="panel" aria-label="Label or filter">
     <div class="ui-sheet-grabber" aria-hidden="true"></div>
     <div class="td-sheet-body" data-fill></div>
   </dialog>
-  <dialog class="ui-sheet td-sheet" id="cal-sheet" data-detents="medium large" data-wide="panel" aria-label="Tasks">
+  <dialog class="ui-sheet td-sheet" data-release-motion="settle" id="cal-sheet" data-detents="medium large" data-wide="panel" aria-label="Tasks">
     <div class="ui-sheet-grabber" aria-label="Expand or collapse"></div>
     <div class="td-sheet-body" data-fill></div>
   </dialog>
-  <dialog class="ui-sheet td-sheet td-display-sheet" id="display-sheet" data-detents="large" data-wide="panel" aria-label="Display">
+  <dialog class="ui-sheet td-sheet td-display-sheet" data-release-motion="settle" id="display-sheet" data-detents="large" data-wide="panel" aria-label="Display">
     <div class="ui-sheet-grabber" aria-hidden="true"></div>
     <div class="td-sheet-body" data-fill></div>
   </dialog>
