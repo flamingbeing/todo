@@ -16,6 +16,7 @@ body {
   --td-row-bg: light-dark(#f6f3ef, #282828);
   --td-peach: light-dark(#fde7d9, rgb(220 76 62 / .28));
   --td-selected: light-dark(#f0f0f0, #333);
+  --td-chip: light-dark(#f5f5f5, #404040);
   --td-accent: var(--accent, #dc4c3e);
   /* a filled control with white on it (the + button, Done, send, chosen days): the accent in light; in dark the theme's
      accent is a light tint (white on it about 2:1), so the fill is that hue at full colour and mid lightness (white on
@@ -340,9 +341,13 @@ span.td-chip { height: 26px; padding: 0 8px; cursor: default; }
 .td-chip[data-tone="week"], .td-chip[data-tone="deadline"] { color: var(--td-d-week); }
 .td-chip[data-tone="weekend"] { color: var(--td-d-weekend); }
 
-/* quick add: the name, the description, chips, then the project and the round send button */
-#add-sheet.td-sheet { height: auto; min-height: 0; box-sizing: border-box; width: calc(100% - 16px); max-width: calc(100% - 16px); margin: auto 8px 8px; border-radius: 24px; background: var(--td-card); }
-.td-add { display: grid; gap: 10px; padding: 4px 12px 4px; }
+/* quick add: a card docked on the keyboard (square foot, 12px top corners, the page dimmed 40%, rising by transform in
+   220ms on the kit's curve): the name, the description, a row of outlined chips, a hairline, then the project and a
+   small round send button */
+#add-sheet.td-sheet { height: auto; min-height: 0; box-sizing: border-box; width: 100%; max-width: 40rem; margin: auto auto 0; border-radius: 12px 12px 0 0; background: var(--td-card); }
+#add-sheet.td-sheet[open] { animation: ui-rise 220ms var(--spring-snappy); }
+#add-sheet.td-sheet::backdrop { background: rgb(0 0 0 / .4); }
+.td-add { display: grid; gap: 10px; padding: 4px 12px 0; }
 .td-grab { justify-self: center; width: 28px; height: 3px; margin-top: 2px; border-radius: 2px; background: var(--td-text-3); opacity: .6; }
 .td-add-title, .td-add-desc { box-sizing: border-box; width: 100%; padding: 0; border: 0; outline: 0; background: none; resize: none; }
 /* the name: a field over a layer with the same text, where the words found sit on peach */
@@ -352,14 +357,16 @@ span.td-chip { height: 26px; padding: 0 8px; cursor: default; }
 .td-add-title { position: relative; display: block; min-height: 30px; overflow: hidden; color: var(--td-text); caret-color: var(--td-accent); }
 .td-qa-mirror { position: absolute; inset: 0; overflow: hidden; color: transparent; pointer-events: none; }
 .td-qa-mirror .td-hl { border-radius: 4px; background: var(--td-peach); color: transparent; box-shadow: 0 0 0 1px var(--td-peach); }
-.td-add-desc { padding: 0 4px; font-size: 15px; line-height: 1.4; color: var(--td-text-2); }
+.td-add-desc { min-height: 0; height: 22px; padding: 0 4px; font-size: 14px; line-height: 1.4; color: var(--td-text-2); }
 .td-add-desc[hidden] { display: none; }
 div.td-chip { gap: 0; padding: 0; cursor: default; }
 .td-add .td-chips { flex-wrap: nowrap; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: none; }
 .td-add .td-chips::-webkit-scrollbar { display: none; }
-.td-add .td-chip { flex: none; height: 32px; border-color: transparent; background: light-dark(#f2f2f2, #383838); }
-.td-add .td-chip-more { width: 32px; justify-content: center; padding: 0; background: light-dark(#f2f2f2, #383838); }
-.td-add .td-chip[data-tone] { border-color: transparent; }
+.td-add .td-chip { flex: none; height: 32px; border: 1px solid var(--td-hair); background: none; font-size: 14px; }
+.td-add .td-chip:not([data-tone]) { color: var(--td-text-2); }
+.td-add .td-chip-more { width: 40px; justify-content: center; padding: 0; }
+.td-add .td-chip[data-tone] { border-color: var(--td-hair); }
+.td-add .td-chip.is-set:not([data-tone]) { color: var(--td-text); }
 .td-chip-main { display: inline-flex; align-items: center; gap: 5px; height: 100%; padding: 0 10px; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
 .td-chip.is-set .td-chip-main { padding-inline-end: 4px; }
 .td-chip.is-set:has(> .td-chip-x[hidden]) .td-chip-main { padding-inline-end: 10px; }
@@ -384,14 +391,17 @@ div.td-chip { gap: 0; padding: 0; cursor: default; }
 .td-suggest-items { display: grid; align-content: start; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 6px; }
 .td-suggest.is-card .td-suggest-item { flex: none; gap: 14px; min-height: 44px; padding: 0 16px; }
 .td-suggest.is-card .td-suggest-item .ui-icon { width: 20px; height: 20px; }
-.td-add-place { display: inline-flex; flex: none; align-items: center; gap: 6px; max-width: 40%; height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: light-dark(#f2f2f2, #383838);
-  color: var(--td-text-2); font-size: 13px; cursor: pointer; }
-.td-add-place .td-add-place-more { display: none; }
+.td-add-foot { display: flex; align-items: center; gap: 8px; margin: 0 -12px; padding: 8px 12px; border-top: 1px solid var(--td-hair); }
+.td-add-place { display: inline-flex; flex: 0 1 auto; min-width: 0; align-items: center; gap: 6px; height: 32px; padding: 0 4px; border: 0; border-radius: 8px; background: none;
+  color: var(--td-text-2); font-size: 15px; font-weight: 500; cursor: pointer; }
+.td-add-place .td-add-place-more { width: 14px; height: 14px; }
 .td-add-place > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .td-add-place .ui-icon { width: 16px; height: 16px; flex: none; }
-.td-send { display: grid; place-items: center; flex: none; width: 44px; height: 40px; margin-inline-start: auto; padding: 0; border: 0; border-radius: 12px; background: var(--td-fill); color: #fff; cursor: pointer; }
-.td-send:disabled { background: light-dark(#e4e4e4, #3c3c3c); color: var(--td-text-3); opacity: 1; cursor: default; }
-.td-send .ui-icon { width: 18px; height: 18px; stroke-width: 2.5; }
+/* (a 28px circle, its tap area 44px through the padding ring) */
+.td-send { display: grid; place-items: center; flex: none; box-sizing: content-box; width: 28px; height: 28px; min-height: 0; margin: -8px -8px -8px auto; padding: 8px; border: 0; border-radius: 50%;
+  background: var(--td-fill); background-clip: content-box; color: #fff; cursor: pointer; }
+.td-send:disabled { opacity: .4; cursor: default; }
+.td-send .ui-icon { width: 16px; height: 16px; stroke-width: 2.5; }
 
 /* the pick sheet: a list of choices, and the date form */
 .td-choices { list-style: none; }
@@ -457,12 +467,15 @@ body:has(dialog[open]) .ui-fab.td-fab { display: none; }
 .td-sched-hint { margin: 6px 4px 0; font-size: 13px; color: var(--td-text-2); }
 .td-sched-hint:empty { display: none; }
 .td-sched-quick, .td-sched-more { margin: 0; padding: 0; list-style: none; }
-.td-sched-row { min-height: 52px; font-weight: 600; font-size: 16px; }
-.td-sched-row .td-choice-side { font-weight: 400; font-size: 16px; }
+.td-sched-row { min-height: 48px; font-size: 16px; }
+.td-sched-quick .td-choice-icon { width: 20px !important; height: 20px !important; margin-inline: 1px 19px; }
+.td-sched-row .td-choice-side { font-weight: 400; font-size: 14px; color: var(--td-text-3); }
 .td-choice-icon[data-tone="none"] { color: var(--td-text-2); }
-.td-sched-chev { width: 18px !important; height: 18px !important; margin-inline-start: 6px; color: var(--td-text-3); }
-.td-sched-more { margin: 4px 16px 16px; border-radius: 12px; background: light-dark(#f2f2f2, #2f2f2f); box-shadow: inset 0 0 0 .5px var(--td-hair); overflow: hidden; }
-.td-sched-more .td-sched-row { min-height: 44px; font-weight: 400; }
+.td-sched-chev { flex: none; width: 18px !important; height: 18px !important; margin-inline-start: 6px; color: var(--td-text-3); }
+/* Time, Duration, Repeat: plain rows under a hairline, the name semibold, "None ›" grey at the right */
+.td-sched-more { margin: 0 0 16px; border-top: .5px solid var(--td-hair); }
+.td-sched-more .td-sched-row { min-height: 52px; font-weight: 600; }
+.td-sched-more .td-sched-row .td-choice-side { font-size: 16px; }
 .td-sched-more .td-sched-row .td-choice-label { flex: 1; }
 .td-sched-more > li { position: relative; display: flex; align-items: center; }
 .td-sched-more > li + li { border-top: .5px solid var(--td-hair); }
@@ -480,18 +493,19 @@ body:has(dialog[open]) .ui-fab.td-fab { display: none; }
 .td-cal-bar > span { min-width: 4px; }
 .td-cal-grid { max-height: 184px; padding: 0 8px; overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y mandatory; }
 .td-cal-week { display: grid; grid-template-columns: repeat(7, 1fr); scroll-snap-align: start; }
-.td-cal-day { position: relative; display: grid; place-items: center; height: 46px; padding: 0; border: 0; background: none; color: var(--td-text); font-size: 18px; cursor: pointer; }
-.td-cal-num { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; }
+.td-cal-day { position: relative; display: grid; place-items: center; height: 44px; padding: 0; border: 0; background: none; color: var(--td-text); font-size: 17px; cursor: pointer; }
+.td-cal-num { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; }
 .td-cal-day.is-past { color: var(--td-text-3); cursor: default; }
-.td-cal-day.is-today .td-cal-num { color: var(--td-accent-text); font-weight: 600; }
+.td-cal-day.is-today .td-cal-num { color: var(--td-accent-text); font-weight: 700; }
 .td-cal-day[aria-selected="true"] .td-cal-num { background: var(--td-fill); color: #fff; font-weight: 600; }
-.td-cal-day[aria-selected="true"]:is([data-tone="today"], [data-tone="tomorrow"], [data-tone="week"]) .td-cal-num { background: var(--td-d-tone); }
+.td-cal-day[aria-selected="true"]:is([data-tone="today"], [data-tone="tomorrow"], [data-tone="week"], [data-tone="weekend"]) .td-cal-num { background: var(--td-d-tone); }
+.td-cal-day[data-tone="weekend"] { --td-d-tone: var(--td-d-weekend); }
 .td-cal-day[data-tone="today"] { --td-d-tone: var(--td-d-today); }
 .td-cal-day[data-tone="tomorrow"] { --td-d-tone: var(--td-d-tomorrow); }
 .td-cal-day[data-tone="week"] { --td-d-tone: var(--td-d-week); }
 .td-cal-month { position: absolute; top: -1px; font-size: 11px; line-height: 11px; color: var(--td-text-2); }
 .td-cal-day[aria-selected="true"] .td-cal-month { display: none; }
-.td-cal-dot { position: absolute; bottom: 1px; width: 4px; height: 4px; border-radius: 50%; background: var(--td-text-3); }
+.td-cal-dot { position: absolute; bottom: 0; width: 4px; height: 4px; border-radius: 50%; background: var(--td-text-3); }
 .td-cal-day[aria-selected="true"] .td-cal-dot { background: var(--td-accent); }
 /* custom repeat */
 #schedule-sheet .td-custom { padding-bottom: 16px; }
@@ -1094,55 +1108,98 @@ body:has(.ui-screen.td-grouped:not([hidden])) .ui-bar { background: var(--td-bar
 /* the bar's Back: a bare arrow, as the reference's */
 .ui-bar .ui-bar-back { width: 48px; min-width: 48px; height: 48px; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; color: var(--td-text); margin-inline-start: -12px; }
 
-/* the task sheet (screens/task-sheet.js): app-ui's detents (medium = half the screen on a phone, large = full height, which
-   the kit sizes: no height rule here), a dark ground with slim cards, the project at the top left and "⋮" at
-   the right, the unset attributes as chips in a row that scrolls sideways, the sub-tasks under them, the comment box fixed at the bottom */
-#task-sheet.td-sheet { background: light-dark(#f6f3ee, #202020); border-radius: 16px 16px 0 0; }
+/* the task sheet (screens/task-sheet.js), sized as the reference's iOS task view (1 pt = 1 px): app-ui's detents (medium =
+   half the screen on a phone, large = full height: no height rule here); top corners 20, grabber 39x5 8 px down; a 44 px
+   head (breadcrumb, then the "•••" and "×" circles, 28 px, 8 apart, 16 from the edge); the ring (22 px at x 19) and the
+   title (20 px semibold at x 56); rows 48.5 px apart, icon centred on x 30, words at 56, hairlines from 56; grey pills;
+   5 px grey bands between the details, the sub-tasks and the comments; the comment pill docked at the bottom */
+#task-sheet.td-sheet { background: var(--td-card); border-radius: 20px 20px 0 0; }
+#task-sheet .ui-sheet-grabber::before { top: 8px; width: 39px; height: 5px; border-radius: 3px; background: light-dark(#cccccd, #5a5a5a); }
 #task-sheet .td-sheet-body { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0; }
-#task-sheet .td-sheet-head { flex: none; padding: 2px 16px 6px; }
+#task-sheet .td-sheet-head { flex: none; gap: 8px; height: 44px; padding: 0 16px 0 8px; }
+#task-sheet .td-sheet-parent { gap: 0; min-height: 44px; padding-inline-start: 16px; color: var(--td-text-2); font-size: 14px; font-weight: 400; }
+#task-sheet .td-sheet-parent .td-crumb-icon { width: 12px !important; height: 12px !important; margin-inline-end: 20px; }
+#task-sheet .td-sheet-parent .td-crumb-go { width: 16px !important; height: 16px !important; margin-inline-start: 4px; color: var(--td-text-2); }
+.td-sheet-circle { flex: none; display: grid; place-items: center; box-sizing: border-box; width: 28px; min-width: 28px; height: 28px; min-height: 28px; margin: 0; padding: 0;
+  border: 0; border-radius: 50%; background: var(--td-chip); color: var(--td-text); cursor: pointer; }
+.td-sheet-circle .ui-icon { width: 16px; height: 16px; }
 .td-sheet-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 0 0 16px; }
-#task-sheet .td-card { margin-bottom: 4px; border-radius: 10px; background: light-dark(#fff, #272727); }
-#task-sheet .td-task-card { padding: 4px 16px 4px 0; }
-#task-sheet .td-task-title { font-size: 19px; font-weight: 500; line-height: 26px; padding-top: 10px; padding-bottom: 6px; }
-#task-sheet .td-task-desc { padding-bottom: 8px; }
-#task-sheet .td-task-desc[hidden] { display: none; }
-#task-sheet .td-attr { min-height: 52px; }
-#task-sheet .td-attr [data-tone] { color: var(--td-text); }
-#task-sheet .td-attr-chips { display: flex; gap: 8px; margin: 10px 0 6px; padding: 0 16px; overflow-x: auto; scrollbar-width: none; }
+#task-sheet .td-task-card { margin: 0; padding: 0 16px 0 0; border-radius: 0; background: none; overflow: visible; }
+#task-sheet .td-task-card > .td-check { width: 22px; height: 22px; margin: 11px 15px 0 19px; }
+#task-sheet .td-task-title { font-size: 20px; font-weight: 600; line-height: 25px; padding: 9px 0; }
+#task-sheet .td-md-title { padding-top: 9px; font-size: 20px; line-height: 25px; }
+#task-sheet .td-attrs { margin: 0; }
+#task-sheet .td-attr { min-height: 48.5px; padding: 0 16px 0 56px; font-size: 16px; font-weight: 400; color: var(--td-text); }
+#task-sheet .td-attr::after { content: ""; position: absolute; left: 56px; right: 0; bottom: 0; border-bottom: 1px solid var(--td-hair); }
+#task-sheet .td-attrs > .td-attr:last-child::after { display: none; }
+#task-sheet .td-attr-icon { left: 20px; width: 20px !important; height: 20px !important; color: var(--td-text-2); }
+#task-sheet .td-attr-icon[data-tone] { color: var(--td-d-tone, var(--td-text-2)); }
+#task-sheet .td-attr-desc { align-items: flex-start; }
+#task-sheet .td-attr-desc .td-attr-icon { top: 14px; translate: none; }
+#task-sheet .td-attr-desc .td-task-words { flex: 1; }
+#task-sheet .td-task-desc, #task-sheet .td-md-desc { padding: 13px 0 12px; font-size: 16px; line-height: 22px; color: var(--td-text); }
+#task-sheet .td-task-desc::placeholder { color: var(--td-text-3); }
+#task-sheet .td-attr .td-attr-text[data-tone] { color: var(--td-d-tone); }
+#task-sheet .td-attr [data-tone="overdue"] { --td-d-tone: var(--td-d-overdue); }
+#task-sheet .td-attr [data-tone="today"] { --td-d-tone: var(--td-d-today); }
+#task-sheet .td-attr [data-tone="tomorrow"] { --td-d-tone: var(--td-d-tomorrow); }
+#task-sheet .td-attr [data-tone="week"], #task-sheet .td-attr [data-tone="deadline"] { --td-d-tone: var(--td-d-week); }
+#task-sheet .td-attr [data-tone="weekend"] { --td-d-tone: var(--td-d-weekend); }
+#task-sheet .td-attr [data-tone="later"] { --td-d-tone: var(--td-text); }
+#task-sheet .td-attr .td-repeat { width: 16px; height: 16px; color: var(--td-text-2); }
+#task-sheet .td-attr[aria-label^="Labels"] { gap: 8px; padding-block: 10px; }
+.td-label-chip { --c: var(--td-text-3); }
+#task-sheet .td-label-chip { height: 28px; padding: 0 12px; border: 0; border-radius: 8px; background: color-mix(in srgb, var(--c) 20%, transparent); color: var(--td-text); font-size: 16px; }
+/* the pills under the rows (Reminder, Deadline, Move to…): grey, 35 px, radius 8, icon 16 + 16 px words */
+#task-sheet .td-attr-chips { display: flex; gap: 8px; margin: 0; padding: 12px 16px 16px; overflow-x: auto; scrollbar-width: none; }
 #task-sheet .td-attr-chips::-webkit-scrollbar { display: none; }
-#task-sheet .td-attr.is-chip { position: static; flex: none; width: auto; min-height: 36px; gap: 6px; padding: 0 12px; border-radius: 8px; flex-wrap: nowrap;
-  background: light-dark(#fff, #2f2f2f); color: var(--td-text-2); font-size: 14px; white-space: nowrap; }
+#task-sheet .td-attr.is-chip { position: static; flex: none; width: auto; min-height: 35px; height: 35px; gap: 8px; padding: 0 14px; border-radius: 8px; flex-wrap: nowrap;
+  background: var(--td-chip); color: var(--td-text); font-size: 16px; font-weight: 500; white-space: nowrap; }
 #task-sheet .td-attr.is-chip::after { display: none; }
-#task-sheet .td-attr.is-chip .td-attr-icon { position: static; translate: none; width: 18px !important; height: 18px !important; }
-#task-sheet .td-attr.is-chip .td-attr-text { flex: none; }
+#task-sheet .td-attr.is-chip .td-attr-icon { position: static; translate: none; width: 16px !important; height: 16px !important; color: var(--td-text); }
+#task-sheet .td-attr.is-chip .td-attr-text { flex: none; color: inherit; }
+/* sub-tasks and comments: each under a 5 px grey band */
+#task-sheet .td-subtasks, #task-sheet .td-comments { margin: 0; border-top: 5px solid var(--td-chip); }
+#task-sheet .td-subtasks:empty { display: none; }
 .td-subtasks { margin: 8px 0 0; }
 .td-subtasks-head { display: flex; align-items: center; gap: 4px; margin: 4px 16px 4px; }
-.td-subtasks-head .td-subtasks-title { flex: 1; margin: 0; font-size: 15px; font-weight: 600; color: var(--td-text); }
-.td-subtasks-count { margin-inline-start: 8px; font-weight: 400; color: var(--td-text-2); }
-.td-subtasks-btn { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 18px; background: none; color: var(--td-text); cursor: pointer; }
+#task-sheet .td-subtasks-head { min-height: 48px; margin: 0; padding: 0 8px 0 16px; }
+.td-subtasks-head .td-subtasks-title { flex: 1; margin: 0; font-size: 16px; font-weight: 700; color: var(--td-text); }
+.td-subtasks-count { margin-inline-start: 2px; font-weight: 400; color: var(--td-text-2); }
+.td-subtasks-btn { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 18px; background: none; color: var(--td-text-2); cursor: pointer; }
+.td-subtasks-btn[hidden] { display: none; }
 .td-subtasks-btn .ui-icon { width: 20px; height: 20px; }
 #task-sheet .td-subtasks .td-rows { margin: 0; border-radius: 0; background: none; }
-#task-sheet .td-add-sub { justify-content: center; margin: 4px 16px; padding: 0 16px; border-radius: 10px; background: light-dark(#fff, #272727); color: var(--td-accent-text); }
-#task-sheet .td-add-sub .td-add-icon { width: 20px; height: 20px; }
-#task-sheet .td-comments { margin: 12px 0 0; }
-#task-sheet .td-comment-list { margin: 0 16px; border-radius: 10px; background: light-dark(#fff, #272727); }
-.td-comment-bar { flex: none; padding: 8px 12px calc(10px + env(safe-area-inset-bottom, 0px)); background: light-dark(#f6f3ee, #202020); }
+#task-sheet .td-subtasks .td-check { margin-inline: 19px 15px; }
+#task-sheet .td-subtasks .td-row::after { left: calc(56px + var(--depth, 0) * 24px); }
+#task-sheet .td-add-sub { justify-content: flex-start; gap: 0; width: 100%; min-height: 48px; margin: 0; padding: 0 16px 0 56px; position: relative; border-radius: 0; background: none;
+  color: var(--td-text); font-size: 16px; font-weight: 400; }
+#task-sheet .td-add-sub .td-add-icon { position: absolute; left: 20px; width: 20px; height: 20px; color: var(--td-text-2); }
+#task-sheet .td-comments { padding-bottom: 8px; }
+#task-sheet .td-comment-list { margin: 0; border-radius: 0; background: none; }
+#task-sheet .td-comment { padding: 6px 16px 6px 56px; }
+#task-sheet .td-comment + .td-comment { border-top: 0; }
+.td-comment-face { position: absolute; left: 18px; top: 6px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--td-chip); color: var(--td-text-2); font-size: 12px; font-weight: 600; }
+#task-sheet .td-comment-text { font-size: 16px; line-height: 22px; }
+.td-comments-all { display: block; margin: 2px 0 0 56px; min-height: 32px; padding: 0; border: 0; background: none; color: var(--td-accent-text); font-size: 16px; font-weight: 500; cursor: pointer; }
+.td-comments-all[hidden] { display: none; }
+.td-comment-bar { flex: none; padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px)); background: var(--td-card); }
 .td-comment-bar:empty { display: none; }
-#task-sheet .td-add-comment { position: relative; align-items: center; margin: 0; padding: 4px 4px 4px 18px; border-radius: 24px; background: light-dark(#fff, #303030); }
-#task-sheet .td-add-comment textarea { padding: 10px 0; }
-#task-sheet .td-add-comment textarea::placeholder { color: var(--td-text-2); }
-.td-comment-clip { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 20px; background: light-dark(#eee, #3a3a3a); color: var(--td-text-2); }
-.td-comment-clip .ui-icon { width: 20px; height: 20px; }
-.td-comment-clip[hidden], .td-comment-send[hidden] { display: none; }
-#task-sheet .td-comment-send { width: 40px; height: 40px; }
+#task-sheet .td-add-comment { position: relative; align-items: center; min-height: 35px; margin: 0; padding: 0 3px 0 16px; border-radius: 18px; background: var(--td-chip); }
+#task-sheet .td-add-comment textarea { padding: 6px 0; font-size: 16px; line-height: 23px; }
+#task-sheet .td-add-comment textarea::placeholder { color: var(--td-text-3); }
+.td-comment-send[hidden] { display: none; }
+#task-sheet .td-comment-send { width: 29px; height: 29px; min-height: 29px; }
 
 /* the "⋮" menu as a bottom panel: a line of when it was added, then icon and words, the danger row last */
 .td-menu.ui-menu-panel { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; max-width: 40rem; margin: 0 auto; border-radius: 16px 16px 0 0;
   padding: 0 0 calc(8px + env(safe-area-inset-bottom, 0px)); background: light-dark(#fff, #202020); transform-origin: 50% 100%; }
 .ui-menu-grab { width: 36px; height: 5px; margin: 8px auto 4px; border-radius: 3px; background: var(--td-hair); }
-.ui-menu-note { padding: 12px 20px; font-size: 14px; color: var(--td-text-2); border-bottom: .5px solid var(--td-hair); }
-.ui-menu-panel .ui-menu-item { gap: 16px; min-height: 46px; padding: 0 32px 0 20px; }
-.ui-menu-panel .td-menu-icon { order: -1; width: 22px !important; height: 22px !important; }
+.ui-menu-note { padding: 12px 20px; font-size: 13px; color: var(--td-text-3); border-bottom: 1px solid var(--td-hair); }
+.ui-menu-panel .ui-menu-item { gap: 20px; min-height: 56px; padding: 0 32px 0 20px; font-size: 16px; }
+.ui-menu-panel .td-menu-icon { order: -1; width: 24px !important; height: 24px !important; }
+.ui-menu-panel .ui-menu-item:not(.ui-danger, .danger) .td-menu-icon { color: var(--td-text-2); }
 .ui-menu-panel hr { margin: 4px 0; border: 0; border-top: .5px solid var(--td-hair); }
 .ui-menu-panel .ui-menu-item { justify-content: flex-start; text-align: start; }
 
@@ -1174,7 +1231,6 @@ html[data-look="ios"] .td-browse-card { border-radius: 12px; }
 #settings-host .ui-settings-group .ui-setting .ui-row-main { font-size: 17px; }
 #settings-host .ui-settings-group .ui-setting .ui-row-sub { margin-top: 1px; font-size: 14px; color: var(--td-text-2); }
 #settings-host .ui-settings-group .theme-switch > * { padding-inline: 20px; }
-.td-sched-more .td-choice-side { color: var(--td-text-2); }
 
 /* the Edit task page: the card with the name and its circle, the description card with its lines icon */
 #edit-task-sheet.td-sheet { background: var(--td-sheet); }
@@ -1256,8 +1312,8 @@ html[data-fab="center"] .ui-fab.td-fab { inset-inline-end: auto; inset-inline-st
 .td-link-btn { border: 0; background: none; padding: 6px 0; color: var(--td-accent-text); font: inherit; font-size: 15px; }
 .td-menu-items { margin: 0; padding: 0; background: none; box-shadow: none; }
 .td-menu-item { display: flex; align-items: center; gap: 16px; min-height: 56px; padding: 0 20px; }
-.td-check { width: 22px; height: 22px; margin: 0; accent-color: var(--td-fill); }
-.td-menu-icon { width: 22px; height: 22px; color: var(--td-accent-text); flex: none; }
+.td-menu-item .td-check { width: 22px; height: 22px; margin: 0; accent-color: var(--td-fill); }
+.td-menu-item .td-menu-icon { width: 22px; height: 22px; color: var(--td-accent-text); flex: none; }
 .td-menu-item .ui-row-main { display: flex; flex-direction: column; font-size: 17px; }
 .td-info-row { display: flex; align-items: center; gap: 16px; width: 100%; min-height: 56px; padding: 0 20px; border: 0; background: none; color: var(--td-text); font: inherit; text-align: start; }
 .td-info-row .ui-row-main { flex: 1; font-size: 17px; }

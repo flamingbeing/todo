@@ -1,7 +1,12 @@
-// The task sheet (#task-sheet): the task's title and description in a card, then a row each for its project, date,
-// deadline, priority and labels, then its subtasks with "Add sub-task" and its comments. Every change saves as it is made (on change or when a
-// field is left), through the write queue; there is no Save button, and closing keeps what was typed. The "…" has
-// Edit task (a full page: edit-task.js), Duplicate, Move to and Delete (with an undo). "Add sub-task" and the "+" in the
+// The task sheet (#task-sheet), laid out as the reference's iOS task view: the project as a breadcrumb at the top left
+// ("Work / This week ›", opens the place picker) with two grey circles at the right, "•••" (the menu) and "×" (close);
+// the ring and the title; then flat rows, icon at 30 and words at 56 with a hairline from the words on: Description,
+// Date, Deadline (once set), Priority, Labels (tinted chips), Reminders (once set); grey pills under them for what is not
+// a row (Reminder, Deadline, Move to…); a grey band, the sub-tasks; a band, the comments, with the comment field docked
+// at the bottom. Every change saves as it is made (on change or when a
+// field is left), through the write queue; there is no Save button, and closing keeps what was typed. The "•••" has
+// Edit task (a full page: edit-task.js), Duplicate, Complete forever (a repeating task), Copy link, Hide completed
+// sub-tasks, View activity, Email and Delete (with an undo). "Add sub-task" and the "+" in the
 // Sub-tasks header open quick add above the keyboard for it (the sheet stays at its height behind). Opening a subtask shows it in the same sheet, with its parent's name
 // at the top to go back up.
 // On a phone it opens at half the screen with the list showing above (app-ui's detents, index.html: "medium large"); a
@@ -103,8 +108,11 @@ function draw(ctx) {
     up.setAttribute('aria-label', `Back to ${parent.title}`);
     up.addEventListener('click', () => { showing = parent.id; draw(ctx); });
   }
-  const more = /** @type {HTMLButtonElement} */ (el('button', 'td-sheet-more'));
-  more.type = 'button'; more.setAttribute('aria-label', 'More'); more.setAttribute('aria-haspopup', 'menu'); more.append(icon(MORE.ellipsisVertical));
+  const more = /** @type {HTMLButtonElement} */ (el('button', 'td-sheet-more td-sheet-circle'));
+  more.type = 'button'; more.setAttribute('aria-label', 'More'); more.setAttribute('aria-haspopup', 'menu'); more.append(icon(MORE.ellipsis));
+  const shut = /** @type {HTMLButtonElement} */ (el('button', 'td-sheet-close td-sheet-circle'));
+  shut.type = 'button'; shut.setAttribute('aria-label', 'Close'); shut.append(icon(MORE.x));
+  shut.addEventListener('click', () => d().close());
   // (Copy link: this page's address with #task=<id>, which opens this task's sheet on load; a viewer can copy it too)
   const copyLink = { label: 'Copy link to task', icon: MORE.link, run: async () => {
     try { await navigator.clipboard.writeText(taskLink(t.id)); ctx.toast('Link copied'); } catch { ctx.toast('Could not copy the link'); }
@@ -118,19 +126,26 @@ function draw(ctx) {
       location.href = `mailto:?subject=${encodeURIComponent(now.title)}&body=${encodeURIComponent(body)}`;
     } };
     const activity = { label: 'View activity', icon: MORE.activity, run: () => ctx.openActivity({ task: now }) };
+    // (a repeating task can also be done for good: its repeat comes off, so it does not roll on)
+    const forever = now.due?.rrule && !now.done ? [{ label: 'Complete forever', icon: MORE.checkCheck, run: async () => {
+      const at = current(ctx);
+      if (!at) return;
+      d().close();
+      if (await ctx.app.completeForever(at)) ctx.toast(REFUSED);
+    } }] : [];
     openMenu(more, writable ? [
       { label: 'Edit task', icon: MORE.pencil, run: () => openEditTask(ctx, now) },
       { label: 'Duplicate task', icon: MORE.copy, run: async () => { const at = current(ctx); if (at && await ctx.app.duplicateTask(at)) ctx.toast(REFUSED); else ctx.toast('Duplicated'); } },
+      ...forever,
       copyLink,
       { label: hideDone ? 'Show completed sub-tasks' : 'Hide completed sub-tasks', icon: hideDone ? MORE.eye : MORE.circleSlash, run: () => { hideDone = !hideDone; refresh?.(ctx); } },
       activity,
       email,
-      { label: 'Move to…', icon: MORE.folderInput, run: () => move() },
       null,
       { label: 'Delete task', icon: MORE.trash2, danger: true, run: () => remove() },
     ] : [copyLink, activity, email], { label: 'Task', sheet: true, note: made ? `Added on ${made}` : '' });
   });
-  head.append(up, more);
+  head.append(up, more, shut);
 
   // the card: box, title, description
   const card = el('div', 'td-card td-task-card');
@@ -176,19 +191,21 @@ function draw(ctx) {
     for (const link of v.querySelectorAll('a')) link.tabIndex = -1;
   };
   const words = el('div', 'td-task-words');
-  words.append(title, views[0], desc, views[1]);
+  words.append(title, views[0]);
   card.append(box, words);
+  // the description: the first row, its lines icon at the left; empty, its placeholder in grey
+  const descRow = el('div', 'td-attr td-attr-desc');
+  const descWords = el('div', 'td-task-words');
+  descWords.append(desc, views[1]);
+  descRow.append(icon(MORE.textAlignStart, { class: 'td-attr-icon' }), descWords);
 
-  // the rows: project, date, priority, labels
-  const rows = el('div', 'td-card td-attrs');
+  // the rows: description, date, deadline, priority, labels, reminders; the pills under them
+  const rows = el('div', 'td-attrs');
   const scroll = el('div', 'td-sheet-scroll');
   const place = /** @type {HTMLButtonElement} */ (up), date = attrRow(ICONS.calendar, 'Date', []), prio = attrRow(MORE.flag, 'Priority', []);
   const labels = attrRow(ICONS.tag, 'Labels', []), deadline = attrRow(ICONS.target, 'Deadline', []);
   const remind = attrRow(MORE.bell, 'Reminders', []);
   for (const b of [place, date, deadline, remind, prio, labels]) b.disabled = !writable;
-  const descChip = attrRow(MORE.textAlignStart, 'Add description', [el('span', 'td-attr-text td-attr-empty', 'Description')]);
-  descChip.disabled = !writable;
-  descChip.addEventListener('click', () => { desc.hidden = false; desc.focus(); });
   const move = () => { const now = current(ctx); if (now) pickPlace(ctx.data(), { projectId: projectOf(now), sectionId: now.sectionId }, async to => {
     const at = current(ctx);
     if (at && await ctx.app.moveTask(at, { ...to, parentId: null })) ctx.toast(REFUSED);
@@ -215,8 +232,10 @@ function draw(ctx) {
       run: () => save({ reminders: has.includes(lead) ? has.filter(x => x !== lead) : [...has, lead] }) })), { label: 'Reminders' });
   });
   const chipRow = el('div', 'td-attr-chips');
-  /** the unset ones are chips in a row that scrolls sideways; set ones (and the date) are rows */
-  const sort = (/** @type {HTMLButtonElement} */ b, /** @type {boolean} */ set) => { b.classList.toggle('is-chip', !set); (set ? rows : chipRow).append(b); };
+  const moveTo = attrRow(MORE.folderInput, 'Move to…', [el('span', 'td-attr-text', 'Move to…')]);
+  moveTo.classList.add('is-chip');
+  moveTo.disabled = !writable;
+  moveTo.addEventListener('click', move);
 
   // subtasks
   const subs = el('section', 'td-subtasks');
@@ -241,10 +260,10 @@ function draw(ctx) {
     box.setAttribute('aria-checked', String(!!now.done));
     box.setAttribute('aria-label', `${now.done ? 'Not done' : 'Complete'}: ${now.title}`);
     if (document.activeElement !== title) { title.value = now.title; grow(title); }
-    if (document.activeElement !== desc) { desc.value = String(now.description ?? ''); desc.hidden = !desc.value; grow(desc); }
+    if (document.activeElement !== desc) { desc.value = String(now.description ?? ''); grow(desc); }
     marks(title, views[0]); marks(desc, views[1]);
     const data = c.data(), pid = projectOf(now), proj = data.projects.find(x => x.id === pid);
-    const hash = icon(pid === 'inbox' ? ICONS.inbox : ICONS.hash, { class: 'td-crumb-icon' });
+    const hash = icon(pid === 'inbox' ? ICONS.inbox : ICONS.hash, { class: 'td-crumb-icon' });   // (12 px, in the project's colour)
     hash.style.color = colorHex(proj?.color ?? 'charcoal');
     const where = placeText(now, data.projects, data.sections);
     if (!parent) {
@@ -265,27 +284,27 @@ function draw(ctx) {
     deadline.setAttribute('aria-label', dl ? `Deadline: ${dl.text}` : 'Deadline');
     const rem = cleanReminders(now.reminders);
     const remText = rem.length ? rem.map(leadText).join(', ').replace(/ before/g, '') : '';
-    remind.replaceChildren(icon(MORE.bell, { class: 'td-attr-icon' }), el('span', `td-attr-text${remText ? '' : ' td-attr-empty'}`, remText || 'Reminders'));
-    remind.setAttribute('aria-label', remText ? `Reminders: ${remText}` : 'Reminders');
+    remind.replaceChildren(icon(MORE.alarmClock, { class: 'td-attr-icon' }), el('span', 'td-attr-text', remText ? `Reminders: ${remText}` : 'Reminder'));
+    remind.setAttribute('aria-label', remText ? `Reminders: ${remText}` : 'Reminder');
     const flag = icon(MORE.flag, { class: `td-attr-icon td-flag${p < 4 ? ' is-filled' : ''}` });
     flag.style.color = PRIORITY_COLOR[p];
-    prio.replaceChildren(flag, el('span', 'td-attr-text', p < 4 ? `Priority ${p}` : 'Priority'));
+    prio.replaceChildren(flag, el('span', 'td-attr-text', `Priority ${p}`));
     prio.setAttribute('aria-label', `Priority ${p}`);
     const mine = labelsOf(now, data.labels);
     const chips = mine.map(l => {
-      const chip = el('span', 'td-chip', l.name);
-      chip.style.color = colorHex(l.color);
+      // (the label's colour at a fifth, the words in the text colour)
+      const chip = el('span', 'td-chip td-label-chip', l.name);
+      chip.style.setProperty('--c', colorHex(l.color));
       return chip;
     });
     labels.replaceChildren(icon(ICONS.tag, { class: 'td-attr-icon' }), ...(chips.length ? chips : [el('span', 'td-attr-text td-attr-empty', 'Labels')]));
     labels.setAttribute('aria-label', mine.length ? `Labels: ${mine.map(l => l.name).join(', ')}` : 'Labels');
-    // what is set is a row; what is not is a chip (Description first, then Date, Priority, Reminders, Labels, Deadline)
-    const isSet = new Map(/** @type {[HTMLButtonElement, boolean][]} */ ([[date, !!due], [deadline, !!dl], [remind, !!remText], [prio, p < 4], [labels, !!mine.length]]));
+    // Description, Date, Priority and Labels are always rows; Deadline and Reminders are rows once set, else grey pills
+    // beside Move to… (as the reference's Reminder and Move to… buttons)
+    const isSet = new Map(/** @type {[HTMLButtonElement, boolean][]} */ ([[deadline, !!dl], [remind, !!remText]]));
     for (const [b, set] of isSet) b.classList.toggle('is-chip', !set);
-    descChip.classList.add('is-chip');
-    rows.replaceChildren(...[date, deadline, remind, prio, labels].filter(b => isSet.get(b)));
-    chipRow.replaceChildren(...[...(desc.value || desc === document.activeElement ? [] : [descChip]), ...[date, prio, remind, labels, deadline].filter(b => !isSet.get(b))]);
-    rows.hidden = !rows.children.length;
+    rows.replaceChildren(descRow, date, ...(dl ? [deadline] : []), prio, labels, ...(remText ? [remind] : []));
+    chipRow.replaceChildren(...(remText ? [] : [remind]), ...(dl ? [] : [deadline]), ...(writable ? [moveTo] : []));
     chipRow.hidden = !chipRow.children.length;
 
     // its subtasks, open and done (a done one shows ticked); the header counts them, "+" adds one, the chevron folds the list
@@ -303,7 +322,7 @@ function draw(ctx) {
     };
     if (all.length) {
       const bar = el('div', 'td-subtasks-head');
-      const h = el('h3', 'td-subtasks-title', 'Sub-tasks');
+      const h = el('h3', 'td-subtasks-title', 'Sub-tasks ');
       const count = el('span', 'td-subtasks-count', `${all.filter(k => k.done).length}/${all.length}`);
       h.append(count);
       bar.append(h);
@@ -315,7 +334,7 @@ function draw(ctx) {
       }
       const fold = /** @type {HTMLButtonElement} */ (el('button', 'td-subtasks-btn'));
       fold.type = 'button'; fold.setAttribute('aria-expanded', String(!folded)); fold.setAttribute('aria-label', folded ? 'Show sub-tasks' : 'Hide sub-tasks');
-      fold.append(icon(folded ? ICONS.chevronDown : MORE.chevronUp));
+      fold.append(icon(folded ? ICONS.chevronDown : MORE.chevronUp));   // (the reference's collapse chevron)
       fold.addEventListener('click', () => { folded = !folded; fill(c); });
       bar.append(fold);
       parts.push(bar);

@@ -221,3 +221,26 @@ test('the sheet\'s Copy link gives #task=<id>, which opens that task\'s sheet wh
   await expect(page.locator('#task-sheet .td-task-title')).toHaveValue(t);
   expect(await page.evaluate(() => location.hash)).not.toContain('task=');
 });
+
+test('the sheet\'s ••• menu: the added-on line, its rows in order, Move to… as a pill; Complete forever ends a repeating task', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const t = uniq('forever');
+  await put(t, { title: t, due: { date: day(0), rrule: 'FREQ=DAILY' } });
+  await synced(page);
+  await clickOpens(row(page, '#today', t).locator('.td-row-main'), page.locator('#task-sheet'));
+  // Move to… is a grey pill under the rows, not a menu row; the header has ••• and ×
+  await expect(page.locator('#task-sheet .td-attr.is-chip').filter({ hasText: 'Move to…' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
+  for (const scheme of ['light', 'dark']) { await page.emulateMedia({ colorScheme: scheme }); expect(await AxeBuilder(page)).toEqual([]); }
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.locator('#task-sheet .td-sheet-more').click();
+  await expect(page.locator('.ui-menu-note')).toContainText('Added on');
+  await expect(page.getByRole('menuitem')).toHaveText(['Edit task', 'Duplicate task', 'Complete forever', 'Copy link to task', 'Hide completed sub-tasks',
+    'View activity', 'Email to this task', 'Delete task']);
+  expect(await AxeBuilder(page)).toEqual([]);
+  await page.getByRole('menuitem', { name: 'Complete forever' }).click();
+  await expect(page.locator('#task-sheet')).toBeHidden();
+  await expect.poll(async () => { const d = await db.get(`spaces/_/tasks/${t}`); return [d?.done, d?.due?.rrule ?? null]; }, { timeout: 15_000 }).toEqual([true, null]);
+  await expect(row(page, '#today', t)).toHaveCount(0);
+});

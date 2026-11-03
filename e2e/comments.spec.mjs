@@ -21,6 +21,7 @@ test('add, edit and delete a comment; the row counts them', async ({ phone }) =>
   await page.getByRole('button', { name: 'Send comment' }).click();
   const one = page.locator(`${sheet} .td-comment`);
   await expect(one).toHaveCount(1);
+  await expect(page.locator(`${sheet} .td-comments h3`)).toHaveText('Comments 1');
   await expect(one.locator('.td-comment-text strong')).toHaveText('Friday');
   await expect(one.locator('.td-comment-time')).not.toBeEmpty();
   expect(await AxeBuilder(page)).toEqual([]);
