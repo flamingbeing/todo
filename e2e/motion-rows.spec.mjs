@@ -69,3 +69,19 @@ test('with reduced motion nothing bursts and rows do not slide', async ({ phone 
   expect(await page.evaluate(id => getComputedStyle(document.querySelector(`#project .td-row[data-id="${id}"]`)).transitionDuration, b)).toBe('0s');
   await letGo(page);
 });
+
+test('a pressed row shades whole and square, not as a pill on its words', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const [a] = await project(page, 'press');
+  const seen = await page.evaluate(sel => {
+    const row = document.querySelector(sel), main = row.querySelector('.td-row-main');
+    const bg0 = getComputedStyle(row).backgroundColor;
+    main.setAttribute('data-pressed', '');
+    const out = { bg0, bg: getComputedStyle(row).backgroundColor, shadow: getComputedStyle(main).boxShadow };
+    main.removeAttribute('data-pressed');
+    return out;
+  }, rowIn('project', a));
+  expect(seen.bg).not.toBe(seen.bg0);
+  expect(seen.shadow).toBe('none');
+});

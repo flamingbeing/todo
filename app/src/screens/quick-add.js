@@ -478,9 +478,20 @@ export function openQuickAdd(ctx, start, hold = null) {
   if (!sheet.open) { lazy.loaded('morph')?.aim(sheet); sheet.showModal(); void lazy.need('morph').catch(() => {}); }
   if (hold) hold.handTo(title); else title.focus();
   title.setSelectionRange(title.value.length, title.value.length);
-  const onClose = () => { list.hidden = true; try { draft.stop(); } catch { /* storage blocked */ } };
+  // Back on a phone first hides the keyboard (the page never hears that Back), so the sheet goes with it: the keyboard
+  // went while the caret is still in the sheet's words (a chip or picker moves focus first) at the same width (not a
+  // turn of the phone) = Back or the keyboard's own hide key. The draft keeps what was typed.
+  const width = innerWidth;
+  const onKeyboard = (/** @type {Event} */ e) => {
+    if (/** @type {CustomEvent} */ (e).detail?.open !== false || !sheet.open || innerWidth !== width) return;
+    const at = document.activeElement;
+    if (at instanceof HTMLTextAreaElement && form.contains(at)) sheet.close();
+  };
+  document.documentElement.addEventListener('ui-keyboard', onKeyboard);
+  const unwatch = () => document.documentElement.removeEventListener('ui-keyboard', onKeyboard);
+  const onClose = () => { unwatch(); list.hidden = true; try { draft.stop(); } catch { /* storage blocked */ } };
   sheet.addEventListener('close', onClose, { once: true });
-  closeLast = () => { sheet.removeEventListener('close', onClose); try { draft.stop(); } catch { /* as above */ } };
+  closeLast = () => { unwatch(); sheet.removeEventListener('close', onClose); try { draft.stop(); } catch { /* as above */ } };
   // the date libraries: the words they read are marked once they are here
   if (!libs) void dateLibs().then(l => { libs = l; if (sheet.open && body.contains(form)) reparse(); }).catch(() => {});
 }
