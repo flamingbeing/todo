@@ -33,7 +33,7 @@ import { underBar } from './stick.js';
 const STEP = 28;
 /** the open calendar: a week row's height (keep in step with .td-weeks-row in app.css; five rows, as the reference), the letters row above the weeks,
  * the rows the open calendar shows, and the weeks drawn at a time (the first draw reaches a year and more ahead) */
-const ROW = 44, HEAD = 20, ROWS = 5, CHUNK = 26;
+const ROW = 44, HEAD = 20, CHUNK = 26;   // (the grid shows 4 to 6 rows: from the shown week to the end of its month)
 const mon = (/** @type {string} */ k) => +k.slice(0, 4) * 12 + +k.slice(5, 7);
 /** how many days each list draws @type {WeakMap<HTMLElement, number>} */
 const shown = new WeakMap();
@@ -149,14 +149,14 @@ function build(host, s) {
   let first = '', rows = 0, topKey = '', baseH = 64;
   /** the settle now @type {{ stop: () => number, running: () => boolean, done: Promise<boolean> } | undefined} */
   let run;
-  const full = HEAD + ROWS * ROW;
+  let rowsOut = 5, full = HEAD + rowsOut * ROW;
   const span = () => full - baseH;
   const setH = (/** @type {number} */ h) => { cal.style.height = `${h}px`; };
   const sync = () => { view.hidden = open || busy; cal.hidden = !(open || busy); month.toggleAttribute('data-out', open && !pulling); };
 
   /** draws weeks until n are there */
   const ensure = (/** @type {number} */ n) => {
-    const today = s.day, parts = [];
+    const today = s.day, parts = [], by = count();
     for (; rows < n; rows++) {
       const r = el('div', 'td-weeks-row');
       r.setAttribute('role', 'group');
@@ -167,6 +167,7 @@ function build(host, s) {
         b.classList.toggle('is-today', key === today);
         b.classList.toggle('is-alt', (mon(key) - mon(today)) % 2 !== 0);   // (every other month on a lighter cell)
         b.setAttribute('aria-pressed', String(key === s.pick));
+        if (by.has(key)) b.dataset.has = '';   // (a dot under days with tasks)
         if (key.endsWith('-01')) b.append(el('span', 'td-wcell-mon', MONTHS[+key.slice(5, 7) - 1].slice(0, 3)));
         b.append(el('span', 'td-sr', `${weekdayName(key)} `), el('span', 'td-wday-num', String(+key.slice(8))), el('span', 'td-sr', ` ${MONTHS[+key.slice(5, 7) - 1]}`));
         r.append(b);
@@ -183,9 +184,13 @@ function build(host, s) {
   };
   /** the weeks start at this week, the shown one at the top */
   const place = () => {
+    const [y, m] = [+s.week.slice(0, 4), +s.week.slice(5, 7)], last = dayKey(new Date(y, m, 0));
+    rowsOut = Math.min(6, Math.max(4, daysBetween(s.week, weekOf(last, s.start)) / 7 + 1));
+    full = HEAD + rowsOut * ROW;
+    grid.style.height = `${rowsOut * ROW}px`;
     first = weekOf(s.day, s.start);
     const at = daysBetween(first, s.week) / 7;
-    ensure(at + ROWS + 1);   // (just the rows the first frame needs: 60 at once was a 32px hitch at drag start)
+    ensure(at + rowsOut + 1);   // (just the rows the first frame needs: 60 at once was a 32px hitch at drag start)
     grid.scrollTop = at * ROW;
     topKey = s.pick >= s.week && s.pick <= addDays(s.week, 6) ? s.pick : s.week;
     // (the rest a year ahead, once the browser is idle)
@@ -242,6 +247,7 @@ function build(host, s) {
     sync();
     caret.classList.toggle('is-up', open);
     if (rows) {
+      for (const c of /** @type {NodeListOf<HTMLElement>} */ (grid.querySelectorAll('.td-wcell'))) c.toggleAttribute('data-has', by.has(String(c.dataset.day)));
       grid.querySelector('[aria-pressed="true"]')?.setAttribute('aria-pressed', 'false');
       grid.querySelector(`[data-day="${s.pick}"]`)?.setAttribute('aria-pressed', 'true');
     }
