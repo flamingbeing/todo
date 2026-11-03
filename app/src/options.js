@@ -3,7 +3,7 @@
 import { cleanTabs } from '@core/ui';
 
 export const SETTINGS_COLL = 'settings';
-const SWIPES = ['complete', 'schedule', 'delete', 'select', 'none'];
+export const SWIPES = ['complete', 'schedule', 'delete', 'select', 'none'];
 /** the leads (minutes before) an automatic reminder can take: reminders.js LEADS (kept here so startup need not load it) */
 export const LEAD_MINUTES = [0, 5, 10, 15, 30, 60, 120, 1440, 2880, 10080];
 /** the app icons (app/public/icons/variants/<id>.svg|png; 'default' is icons/icon.svg) */

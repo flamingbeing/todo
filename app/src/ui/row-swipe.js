@@ -1,19 +1,22 @@
 // Swiping a task row sideways (app-ui's drag, as 'cards' in the arbiter, so a page swipe stands down over a row): the
-// row slides over a coloured band with the action's icon, teal with a check for Complete and orange with a calendar
-// for Schedule (red with a bin for Delete), as chosen per device in Settings > General. Past about a third of the row
-// (a tick there), or flung that way, the action runs; short of it the row springs back. Nothing swipes in select mode,
+// row slides over a coloured band with the action's white icon (colors.js SWIPE_TONES: green with a check for Complete,
+// purple with a calendar for Schedule, red with a bin for Delete, teal with a ticked square for Select), as chosen per
+// device in Settings > General. The icon rides at the row's edge, at 80 % until the commit point (about a third of the
+// row), where it grows to full size with a haptic tick; let go there, or flung that way, the action runs; short of it the
+// row springs back. Nothing swipes in select mode,
 // while a row is held up for a drag, or for a person who may only read. A board's cards swipe too when Settings > General
 // "Swipe board cards" is on (off: a sideways move scrolls the columns).
 import { drag, glide, haptic, icon } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { MORE } from '../icons-more.js';
+import { SWIPE_TONES } from '../colors.js';
 
 /** @typedef {'complete' | 'schedule' | 'delete' | 'select' | 'none'} Swipe */
 const LOOK = /** @type {Record<Exclude<Swipe, 'none'>, { color: string, ic: import('app-ui/icons/lucide.js').IconNodes }>} */ ({
-  complete: { color: '#0B7A75', ic: ICONS.check },
-  schedule: { color: '#C2570A', ic: ICONS.calendar },
-  delete: { color: '#DC4C3E', ic: MORE.trash2 },
-  select: { color: '#148FAD', ic: MORE.listChecks },
+  complete: { color: SWIPE_TONES.complete, ic: ICONS.check },
+  schedule: { color: SWIPE_TONES.schedule, ic: ICONS.calendar },
+  delete: { color: SWIPE_TONES.delete, ic: MORE.trash2 },
+  select: { color: SWIPE_TONES.select, ic: MORE.squareCheck },
 });
 const FLING = 0.6;   // px/ms
 
@@ -46,6 +49,7 @@ export function swipeRows(host, o) {
     band = document.createElement('div');
     band.className = 'td-swipe-band';
     band.dataset.side = s > 0 ? 'right' : 'left';
+    band.dataset.way = way;
     band.style.background = LOOK[way].color;
     band.append(icon(LOOK[way].ic, { class: 'td-swipe-icon' }));
     row.prepend(band);
@@ -58,7 +62,7 @@ export function swipeRows(host, o) {
     if (i) {
       const far = Math.abs(x) >= reach();
       i.style.opacity = String(Math.min(1, Math.abs(x) / reach()));
-      i.style.transform = far ? 'scale(1.15)' : '';
+      i.style.transform = far ? 'scale(1)' : 'scale(.8)';
     }
   };
   /** the moving parts for a glide: the row's own, and the band with them @returns {[HTMLElement, (k: number) => Record<string, string>][]} */
@@ -98,7 +102,7 @@ export function swipeRows(host, o) {
       if (x) { row.classList.add('is-swiping'); showBand(Math.sign(x)); }
       place(x);
       const now = Math.abs(x) >= reach() && wayOf(x) !== 'none';
-      if (now !== past) { past = now; haptic('threshold'); }
+      if (now !== past) { past = now; haptic('tick'); }
     },
     end: (x, v) => {
       const r = row;

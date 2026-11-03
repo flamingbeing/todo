@@ -19,3 +19,8 @@ export const isColor = key => typeof key === 'string' && BY.has(key);
 export const colorHex = key => (BY.get(/** @type {string} */ (key)) ?? /** @type {{ hex: string }} */ (BY.get(DEFAULT_COLOR))).hex;
 /** @param {unknown} key */
 export const colorName = key => (BY.get(/** @type {string} */ (key)) ?? /** @type {{ name: string }} */ (BY.get(DEFAULT_COLOR))).name;
+
+// A swipe's band under the row: one colour per action (white icon on it), none for 'none'. complete green, schedule
+// purple, delete the accent red, select teal.
+/** @type {Readonly<Record<'complete' | 'schedule' | 'delete' | 'select', string>>} */
+export const SWIPE_TONES = Object.freeze({ complete: '#058527', schedule: '#692EC2', delete: '#DC4C3E', select: '#148FAD' });

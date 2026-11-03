@@ -69,3 +69,15 @@ test('browseRows: the reference order, tabs only while off the bar, hidden ones 
   assert.deepEqual(browseRows(four, ['reporting', 'search'], false), ['filters', 'completed']);
   assert.deepEqual(browseRows(none, 'junk', true).length, 8);
 });
+
+test('every swipe action but none has a band colour (colors.js SWIPE_TONES), none has none', async () => {
+  const { SWIPES } = await import('../src/options.js');
+  const { SWIPE_TONES } = await import('../src/colors.js');
+  for (const s of SWIPES) {
+    if (s === 'none') assert.equal(Object.hasOwn(SWIPE_TONES, s), false);
+    else assert.match(/** @type {Record<string, string>} */ (SWIPE_TONES)[s], /^#[0-9A-F]{6}$/);
+  }
+  assert.deepEqual(Object.keys(SWIPE_TONES).sort(), SWIPES.filter(s => s !== 'none').sort());
+  assert.deepEqual({ ...SWIPE_TONES }, { complete: '#058527', schedule: '#692EC2', delete: '#DC4C3E', select: '#148FAD' });
+  assert.ok(Object.isFrozen(SWIPE_TONES));
+});
