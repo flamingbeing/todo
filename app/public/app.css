@@ -208,6 +208,10 @@ button.td-group-title { display: flex; align-items: center; gap: 6px; width: 100
 .td-date[data-tone="later"] { color: var(--td-d-later); }
 .td-date[data-tone="deadline"], .td-attr [data-tone="deadline"] { color: var(--td-d-week); }
 .td-place { margin-inline-start: auto; color: var(--td-text-2); }
+/* the project (and section) at the right of the meta line takes what room is left and ends in an ellipsis rather than
+   dropping to a line of its own (dark's inset card is 32 px narrower); it wraps only when under 5em is left */
+.td-place:has(> .td-place-name) { flex: 1 1 0; min-width: 5em; justify-content: flex-end; }
+.td-place-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .td-place .td-meta-icon { color: var(--td-place, var(--td-text-3)); }
 /* the fold chevron sits over the row's top right, so the meta line (and its project at the right) keeps the full width */
 .td-row:has(> .td-fold) .td-title { padding-inline-end: 28px; }

@@ -36,6 +36,27 @@ for (const scheme of ['light', 'dark']) {
   });
 }
 
+// a row with a time span, a repeat and a long project / section keeps the two-line 73: in dark's inset card the project
+// shrinks with an ellipsis on the date line instead of dropping to a third line
+for (const scheme of ['light', 'dark']) {
+  test(`a dated row with a long project stays two lines (${scheme})`, async ({ phone }) => {
+    const page = await phone();
+    await page.emulateMedia({ colorScheme: scheme });
+    await signIn(page, 'member');
+    const pid = uniq('p'), sid = uniq('s'), t = uniq('trip');
+    const stamp = { createdAt: Date.now(), updatedAt: Date.now() };
+    await db.put(`spaces/_/projects/${pid}`, { name: 'Weekend trip away', color: 'orange', parentId: null, view: 'list', order: Date.now(), ...stamp });
+    await db.put(`spaces/_/sections/${sid}`, { name: 'On the day itself', projectId: pid, order: 1, collapsed: false, ...stamp });
+    await put(t, { title: t, projectId: pid, sectionId: sid, due: { date: today(), time: '07:30', rrule: 'FREQ=DAILY', string: 'every day' }, duration: 30 });
+    await synced(page);
+    const row = page.locator('#today .td-row').filter({ hasText: t });
+    await expect.poll(() => row.evaluate(r => Math.round(r.getBoundingClientRect().height * 10) / 10), { timeout: 10_000 }).toBe(73);
+    // the project sits on the date line
+    const tops = await row.evaluate(r => [r.querySelector('.td-date').getBoundingClientRect().top, r.querySelector('.td-place').getBoundingClientRect().top]);
+    expect(Math.abs(tops[0] - tops[1])).toBeLessThan(4);
+  });
+}
+
 for (const scheme of ['light', 'dark']) {
   test(`task sheet sizes (${scheme})`, async ({ phone }) => {
     const page = await phone();

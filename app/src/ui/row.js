@@ -86,7 +86,7 @@ function meta(line, c) {
     const s = t.sectionId ? c.data.sections.find(x => x.id === t.sectionId) : null;
     const where = el('span', 'td-place');
     where.style.setProperty('--td-place', colorHex(pid === INBOX ? 'charcoal' : p?.color));
-    where.append(`${pid === INBOX ? 'Inbox' : p?.name ?? 'Inbox'}${s ? ` / ${s.name}` : ''}`, icon(pid === INBOX ? ICONS.inbox : ICONS.hash, { class: 'td-meta-icon' }));
+    where.append(el('span', 'td-place-name', `${pid === INBOX ? 'Inbox' : p?.name ?? 'Inbox'}${s ? ` / ${s.name}` : ''}`), icon(pid === INBOX ? ICONS.inbox : ICONS.hash, { class: 'td-meta-icon' }));
     parts.push(where);
   }
   if (!parts.length) return null;
