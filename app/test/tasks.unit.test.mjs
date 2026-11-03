@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { projectView, todayView, placeText, projectCascade, sectionCascade, cleanFields, cleanDue, isTask, dayOrder, labelsOf, cleanDisplay,
-  plainDisplay } from '../src/tasks.js';
+  plainDisplay, sortKey, ownOrder } from '../src/tasks.js';
 import { upcomingView, completedView, projectTree, projectCounts, todayCount, upcomingCount, narrowTasks, sorter, groupTasks } from '../src/arrange.js';
 import { rescheduled } from '../src/recur.js';
 import { taskOps, refusal, tasksGone } from '../src/task-ops.js';
@@ -228,6 +228,19 @@ test('projects: add at the end with a known colour; delete takes sub-projects, s
   assert.deepEqual([s.data.projects.map(p => p.id), s.data.sections.length, s.data.tasks.map(x => x.title)], [[], 0, ['in inbox']]);
 });
 
+test('sections: a description on add and edit (trimmed, up to 2000; empty clears it)', async () => {
+  const s = store();
+  await s.ops.addSection('p', 'One', undefined, '  first notes ');
+  await s.ops.addSection('p', 'Two', undefined, '   ');
+  assert.equal(s.data.sections[0].description, 'first notes');
+  assert.equal('description' in s.data.sections[1], false);
+  await s.ops.editSection(s.data.sections[1], ' Dos ', 'y'.repeat(2100));
+  assert.deepEqual([s.data.sections[1].name, s.data.sections[1].description.length], ['Dos', 2000]);
+  await s.ops.editSection(s.data.sections[0], 'One', '');
+  assert.equal(s.data.sections[0].description, null);
+  assert.equal(await s.ops.editSection(s.data.sections[0], '', 'x'), 'A section needs a name');
+});
+
 test('sections: add, rename, fold, delete with their tasks', async () => {
   const s = store();
   const { id } = await s.ops.addSection('p', 'One');
@@ -422,4 +435,34 @@ test("Today grouped by none or priority keeps the day's own order (dayOrder), no
   assert.deepEqual(g({ group: 'none' }), [['a', 'b', 'c']]);
   assert.deepEqual(g({ group: 'none' }, dayOrder), [['b', 'c', 'a']]);
   assert.deepEqual(g({ group: 'priority' }, dayOrder), [['b', 'c', 'a']]);
+});
+
+test('sortKey: the name sort leaves out leading symbols, emoji and punctuation', () => {
+  assert.equal(sortKey('  ** Buy milk'), 'Buy milk');
+  assert.equal(sortKey('\u{1F6D2} groceries'), 'groceries');
+  assert.equal(sortKey('#1 thing'), '1 thing');
+  assert.equal(sortKey('...'), '');
+  const names = ['zebra', '\u{2B50} apple', '- Mango', '(banana)'].map(title => t(title));
+  assert.deepEqual(names.sort(sorter('name', 'asc')).map(x => x.title), ['\u{2B50} apple', '(banana)', '- Mango', 'zebra']);
+});
+
+test('ownOrder: a filter or label page keeps its smart order (no hand drag); other lists do not', () => {
+  assert.equal(ownOrder('labels:l1'), true);
+  assert.equal(ownOrder('filters:f1'), true);
+  for (const v of ['inbox', 'today', 'upcoming', 'project:p1', 'search']) assert.equal(ownOrder(v), false, v);
+});
+
+test('smart order: date and time (an undated task by its deadline), then priority, then deadline, then manual, then created', () => {
+  const day = { date: '2026-11-03' };
+  const a = t('a', { due: { ...day, time: '09:00' }, priority: 4 });
+  const b = t('b', { due: day, priority: 1 });
+  const c = t('c', { due: day, priority: 2, deadline: '2026-11-05' });
+  const d = t('d', { due: day, priority: 2, deadline: '2026-11-04' });
+  const e = t('e', { due: day, priority: 2, order: 1, createdAt: 5 });
+  const f = t('f', { due: day, priority: 2, order: 1, createdAt: 2 });
+  const g = t('g', { due: day, priority: 2, order: 0 });
+  const h = t('h', { deadline: '2026-11-04' });   // undated: by its deadline's day, after the 3rd
+  const i = t('i');                               // neither: last
+  const all = [i, h, g, f, e, d, c, b, a];
+  assert.deepEqual(all.sort(dayOrder).map(x => x.title), ['a', 'b', 'd', 'c', 'g', 'f', 'e', 'h', 'i']);
 });

@@ -11,7 +11,7 @@ import { holdMenu, startSelect, tickRows, selecting, endSelect, scheduleTasks, d
 /** @typedef {import('../screens/views.js').Ctx} Ctx */
 /**
  * @typedef {object} Lists
- * @property {Record<string, 'tree' | 'days' | null>} hosts  each list host's id and its kind
+ * @property {Record<string, 'tree' | 'days' | 'own' | null>} hosts  each list host's id and its kind
  * @property {() => string} top  the host on screen (its id), or ''
  * @property {() => string} projectId  the project the project page shows
  * @property {(o: import('../screens/views.js').AddContext) => void} add  quick add for a place
@@ -52,7 +52,8 @@ export function wire(ctx, l) {
   const bar = document.querySelector('nav.ui-tabbar');
   if (bar instanceof HTMLElement) holdTabBar(bar, () => { void openTabBarSettings(); });
   const fab = document.getElementById('fab');
-  if (fab) dragFab(fab, ctx, { kind: () => l.hosts[l.top()] ?? null, projectId: () => (l.top() === INBOX ? INBOX : l.projectId()),
+  // (the + is never dragged onto a filter's or label's page: no place there to drop it into)
+  if (fab) dragFab(fab, ctx, { kind: () => { const k = l.hosts[l.top()]; return k === 'own' ? null : k ?? null; }, projectId: () => (l.top() === INBOX ? INBOX : l.projectId()),
     host: () => (l.top() ? document.getElementById(l.top()) : null), add: l.add, newSection: l.newSection });
 }
 

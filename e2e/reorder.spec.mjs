@@ -125,3 +125,26 @@ test('on Today the postpone place shows while a row is dragged; let go there, it
   await page.locator('.toast').filter({ hasText: 'Moved to Tomorrow' }).getByRole('button', { name: 'Undo' }).click();
   await expect.poll(async () => (await get(a))?.due?.date, { timeout: 15_000 }).toBe(today());
 });
+
+test('a label page keeps its smart order: a held row does not move, the toast says so', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const name = uniq('own'), a = uniq('own-a'), b = uniq('own-b');
+  await db.put(`spaces/_/labels/${name}`, { name, color: 'green', favorite: true, order: -1e12 - Date.now(), updatedAt: Date.now() });
+  await put(a, { title: `A ${a}`, labels: [name], order: 1 });
+  await put(b, { title: `B ${b}`, labels: [name], order: 2 });
+  await synced(page);
+  await gesturesReady(page);
+  await openTab(page, 'browse');
+  await page.locator('#browse').getByRole('button', { name: new RegExp(`^${name}`) }).click();
+  await expect(page.locator('#place-page')).toBeVisible();
+  await expect(page.locator(rowIn('place', b))).toBeVisible();
+  await still(page, '#place');
+  await press(page, rowIn('place', b));
+  await slide(page, { to: rowIn('place', a), dy: 4 }, 8);
+  await expect(page.locator('.toast').filter({ hasText: 'Filters and labels keep their smart order' })).toBeVisible();
+  await letGo(page);
+  await expect(page.locator('#place .td-drop-line')).toHaveCount(0);
+  expect((await get(b))?.order).toBe(2);
+  expect((await get(a))?.order).toBe(1);
+});

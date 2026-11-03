@@ -17,7 +17,7 @@ import { MORE } from '../icons-more.js';
 import { REFUSED } from '../items.js';
 import { placeInTree, placeAt, renumbered } from '../order.js';
 import { dayKey } from '../dates.js';
-import { cleanDisplay, plainDisplay } from '../tasks.js';
+import { cleanDisplay, plainDisplay, ownOrder, OWN_ORDER } from '../tasks.js';
 import { groupMove, slotIn, postponed, sortedNote, addFor } from '../group-drop.js';
 import { edgeScroll, scrollerOf, shownSpan } from './edge-scroll.js';
 
@@ -25,9 +25,10 @@ import { edgeScroll, scrollerOf, shownSpan } from './edge-scroll.js';
 /** @typedef {import('../screens/views.js').Ctx} Ctx */
 /** @typedef {import('../screens/views.js').AddContext} AddContext */
 /**
- * The kind of list a host holds: 'tree' (a project's sections, or the Inbox) or 'days' (Today, Upcoming); a host
- * grouped by Display says so itself (data-grouped: the grouping), and is 'groups'.
- * @typedef {{ kind: () => 'tree' | 'days' | null, projectId: () => string }} ListKind
+ * The kind of list a host holds: 'tree' (a project's sections, or the Inbox), 'days' (Today, Upcoming) or 'own' (a
+ * filter's or label's page: its smart order, never dragged; a row is still held for its menu); a host grouped by
+ * Display says so itself (data-grouped: the grouping), and is 'groups'.
+ * @typedef {{ kind: () => 'tree' | 'days' | 'own' | null, projectId: () => string }} ListKind
  */
 /**
  * A place between rows: the group (its section, day or Display group), the rows there without the moving ones, the
@@ -38,7 +39,7 @@ import { edgeScroll, scrollerOf, shownSpan } from './edge-scroll.js';
 
 const HOLD_MS = 500, SLOP = 10, INDENT = 24, MAX_DEPTH = 4, BOARD_EDGE = 40;
 const depthOf = (/** @type {HTMLElement} */ r) => Number(r.style.getPropertyValue('--depth')) || 0;
-/** a host's kind now @param {HTMLElement} host @param {ListKind} o @returns {'tree' | 'days' | 'groups' | null} */
+/** a host's kind now @param {HTMLElement} host @param {ListKind} o @returns {'tree' | 'days' | 'own' | 'groups' | null} */
 const kindOf = (host, o) => (host.dataset.grouped ? 'groups' : o.kind());
 /** sorted by Display (a calendar's own order is not: data-sorted="cal") @param {HTMLElement} host */
 const sortedHost = host => host.hasAttribute('data-sorted') && host.dataset.sorted !== 'cal';
@@ -229,6 +230,8 @@ export function dragRows(host, ctx, o) {
     if (!p.moved) {
       // a sorted list keeps Display's order: say so, and offer the hand-made one
       if (sortedHost(host)) { sorted(); return; }
+      // a filter's or a label's page keeps its smart order (no hand-made one): say so
+      if (kindOf(host, o) === 'own' || (!host.dataset.grouped && ownOrder(o.view()))) { sorted(OWN_ORDER); return; }
       p.moved = true;
       p.line = dropLine();
       p.sx = host.scrollLeft;
@@ -240,13 +243,15 @@ export function dragRows(host, ctx, o) {
     vert.poke();
     side.poke();
   };
-  /** the drag stood down in a sorted list: the row settles, a toast offers manual order */
-  const sorted = () => {
+  /** the drag stood down in a sorted list: the row settles, a toast offers manual order (note: a list with no manual
+   * order, said without the offer) @param {string} [note] */
+  const sorted = note => {
     const was = /** @type {NonNullable<typeof p>} */ (p);
     p = null;
     delete host.dataset.holding;
     release('drag');
     settleRow(was.row, was.kids);
+    if (note) { ctx.toast(note); return; }
     const view = o.view(), d = ctx.display(view);
     ctx.toast(sortedNote(d.sort), { action: { label: 'Manual order', run: () => {
       const s = ctx.app.settings, all = { .../** @type {Record<string, unknown>} */ (s.get('display') ?? {}) }, next = cleanDisplay({ ...ctx.display(view), sort: 'manual' }, view);
