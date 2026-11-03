@@ -1,6 +1,6 @@
 // Productivity numbers, pure: from the completed tasks (done with a doneAt time) work out the days' counts, today's and this
 // week's totals, the goals and the streak. No points: counts only. Loaded with the Productivity page (lazyModules), never at startup.
-import { dayKey, addDays, weekOf } from './dates.js';
+import { dayKey, addDays, weekOf, weekdayOf } from './dates.js';
 
 /** @typedef {import('./items.js').Task} Task */
 
@@ -20,27 +20,34 @@ export function doneByDay(tasks) {
 }
 
 /**
- * @param {Task[]} tasks @param {{ today?: string, daily?: number, weekly?: number, weekStart?: number }} [o]
+ * @param {Task[]} tasks @param {{ today?: string, daily?: number, weekly?: number, weekStart?: number, daysOff?: number[], vacation?: boolean }} [o]
+ *   daysOff: weekdays (0 Sunday) that never break a streak; vacation: the days since the last met one wait (the streak holds).
  *   daily / weekly: the goals (0: none). A day counts for the streak when it met the daily goal (with none: when anything was done);
  *   a day without a finish ends the streak, except that today may still be open (the streak then runs up to yesterday).
  * @returns {{ today: number, week: number, streak: number, best: number, days: { day: string, n: number }[], daily: number, weekly: number, max: number }}
  *   days: the last 7 days, oldest first
  */
-export function productivity(tasks, { today = dayKey(), daily = 0, weekly = 0, weekStart = 1 } = {}) {
+export function productivity(tasks, { today = dayKey(), daily = 0, weekly = 0, weekStart = 1, daysOff = [], vacation = false } = {}) {
   const by = doneByDay(tasks), n = (/** @type {string} */ k) => by.get(k) ?? 0;
   const need = Math.max(1, daily || 1);
   const met = (/** @type {string} */ k) => n(k) >= need;
+  // (Settings > Productivity: a day off that is not met neither counts nor breaks a streak)
+  const off = (/** @type {string} */ k) => daysOff.includes(weekdayOf(k));
   const first = weekOf(today, weekStart);
   let week = 0;
   for (let k = first; k <= today; k = addDays(k, 1)) week += n(k);
+  // the streak back from today (today not met yet does not break it); in vacation mode the days since the last met one wait
   let streak = 0, k = met(today) ? today : addDays(today, -1);
-  while (met(k) && streak < 5000) { streak++; k = addDays(k, -1); }
-  // the longest run anywhere in the history
+  const start = [...by.keys()].sort()[0] ?? today;
+  for (; k >= start; k = addDays(k, -1)) {
+    if (met(k)) streak++;
+    else if (!off(k) && !(vacation && !streak)) break;
+  }
+  // the longest run anywhere in the history (days off bridge it)
   let best = 0;
   const days = [...by.keys()].filter(d => met(d)).sort();
-  for (let i = 0, run = 0; i < days.length; i++) {
-    run = i && days[i] === addDays(days[i - 1], 1) ? run + 1 : 1;
-    if (run > best) best = run;
+  for (let d = days[0], run = 0; d && d <= today; d = addDays(d, 1)) {
+    if (met(d)) { run++; if (run > best) best = run; } else if (!off(d)) run = 0;
   }
   const last7 = Array.from({ length: 7 }, (_, i) => { const day = addDays(today, i - 6); return { day, n: n(day) }; });
   return { today: n(today), week, streak, best: Math.max(best, streak), days: last7, daily: cleanGoal(daily), weekly: cleanGoal(weekly),

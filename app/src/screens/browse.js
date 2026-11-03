@@ -17,7 +17,7 @@ import { openFiltersLabels } from './filters.js';
 import { colorHex } from '../colors.js';
 import { dayKey } from '../dates.js';
 import { byOrder, placeAt } from '../order.js';
-import { screens } from '../shell.js';
+import { screens, tabButton, openSettingsPage } from '../shell.js';
 import { el, sheetHead } from './pick.js';
 
 /** @typedef {import('./views.js').Ctx} Ctx */
@@ -55,7 +55,7 @@ let watching = false;
 
 /** @param {Ctx} ctx @param {HTMLElement} host */
 export function drawBrowse(ctx, host) {
-  if (!watching) { watching = true; ctx.app.settings.watch('showCounts', () => drawBrowse(ctx, host)); }
+  if (!watching) { watching = true; for (const k of ['showCounts', 'browseHidden', 'tabs']) ctx.app.settings.watch(k, () => drawBrowse(ctx, host)); }
   const data = ctx.data(), today = dayKey(), counts = projectCounts(data.tasks);
   const showCounts = !!ctx.app.settings.get('showCounts');
   const n = (/** @type {number} */ v) => (showCounts ? v : null);
@@ -74,24 +74,34 @@ export function drawBrowse(ctx, host) {
   gear.type = 'button';
   gear.id = 'browse-settings';
   gear.setAttribute('aria-label', 'Settings');
-  gear.append(icon(ICONS.settings));
+  gear.append(icon(MORE.settings));
   gear.addEventListener('click', () => screens()?.push('#settings-page'));
   const bell = /** @type {HTMLButtonElement} */ (el('button', 'td-round'));
   bell.type = 'button';
   bell.id = 'browse-bell';
   bell.setAttribute('aria-label', 'Notification settings');
   bell.append(icon(MORE.bell));
-  bell.addEventListener('click', () => screens()?.push('#settings-page'));
+  bell.addEventListener('click', () => { void openSettingsPage('Notifications'); });
   const end = el('span', 'td-bar-browse-end');
   end.append(bell, gear);
   top.replaceChildren(me, end);
 
-  // Inbox, Today and Upcoming are tabs; Browse keeps the places that are not
+  // Inbox, Today and Upcoming show here only while they are off the tab bar; Settings > Navigation menu hides any row
+  // (option browseHidden, this device; Completed always stays)
+  const hidden = /** @type {string[]} */ (ctx.app.settings.get('browseHidden') ?? []);
+  const shown = (/** @type {string} */ id) => !hidden.includes(id);
+  const offBar = (/** @type {string} */ id) => { const t = tabButton(id); return !t || t.hidden || t.hasAttribute('data-off-bar'); };
+  const tab = (/** @type {string} */ id, /** @type {string} */ label, /** @type {import('app-ui/icons/lucide.js').IconNodes} */ ic, /** @type {number} */ c) => (shown(id) && offBar(id)
+    ? [row({ label, ic, flat: true, count: n(c), run: () => tabButton(id)?.click() })] : []);
   const places = card('Places', [
-    row({ label: 'Search', ic: MORE.search, flat: true, run: () => { const f = /** @type {HTMLInputElement | null} */ (document.getElementById('search-text')); if (f) f.value = ''; screens()?.push('#search-page'); } }),
-    row({ label: 'Filters & Labels', ic: MORE.layoutGrid, flat: true, run: openFiltersLabels }),
-    row({ label: 'Reporting', ic: MORE.trendingUp, flat: true, run: () => screens()?.push('#productivity-page') }),
+    ...tab('inbox', 'Inbox', ICONS.inbox, counts.get(INBOX) ?? 0),
+    ...tab('today', 'Today', ICONS.calendar, todayCount(data.tasks, today)),
+    ...tab('upcoming', 'Upcoming', MORE.calendarDays, upcomingCount(data.tasks, today)),
+    ...(shown('search') ? [row({ label: 'Search', ic: MORE.search, flat: true, run: () => { const f = /** @type {HTMLInputElement | null} */ (document.getElementById('search-text')); if (f) f.value = ''; screens()?.push('#search-page'); } })] : []),
+    ...(shown('filters') ? [row({ label: 'Filters & Labels', ic: MORE.layoutGrid, flat: true, run: openFiltersLabels })] : []),
+    ...(shown('reporting') ? [row({ label: 'Reporting', ic: MORE.trendingUp, flat: true, run: () => screens()?.push('#productivity-page') })] : []),
     row({ label: 'Completed', ic: ICONS.circleCheck, flat: true, run: () => screens()?.push('#completed-page') }),
+    ...(shown('templates') && ctx.canWrite() ? [row({ label: 'Templates', ic: MORE.layoutTemplate, flat: true, run: () => { void import('./templates.js').then(m => m.newFromTemplate(ctx)); } })] : []),
   ]);
   places.classList.add('is-flat');
 

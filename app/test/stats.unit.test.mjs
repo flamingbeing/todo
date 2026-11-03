@@ -46,3 +46,16 @@ test('goals come back cleaned, and no tasks give zeros', () => {
   assert.deepEqual([p.today, p.week, p.streak, p.best, p.daily, p.weekly], [0, 0, 0, 0, 3, 0]);
   assert.equal(p.days.length, 7);
 });
+
+test('days off never break the streak; vacation holds it over the days since the last one met', () => {
+  // 2026-11-02 Mon ... 2026-11-06 Fri; 2026-11-07 Sat and 2026-11-08 Sun off
+  const tasks = ['2026-11-04', '2026-11-05', '2026-11-06', '2026-11-09'].map(d => done(d));
+  assert.equal(productivity(tasks, { today: '2026-11-09' }).streak, 1, 'the weekend breaks it');
+  const off = productivity(tasks, { today: '2026-11-09', daysOff: [0, 6] });
+  assert.equal(off.streak, 4);
+  assert.equal(off.best, 4);
+  const away = ['2026-11-01', '2026-11-02'].map(d => done(d));
+  assert.equal(productivity(away, { today: '2026-11-06' }).streak, 0);
+  assert.equal(productivity(away, { today: '2026-11-06', vacation: true }).streak, 2);
+  assert.equal(productivity([], { today: '2026-11-06', vacation: true }).streak, 0);
+});

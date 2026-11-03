@@ -50,7 +50,8 @@ export function chart(days, max, daily, today) {
 /** @param {Ctx} ctx @param {HTMLElement} host */
 export function drawProductivity(ctx, host) {
   const today = dayKey(), s = ctx.app.settings;
-  const p = productivity(ctx.data().tasks, { today, daily: cleanGoal(s.get('dailyGoal')), weekly: cleanGoal(s.get('weeklyGoal')), weekStart: s.get('weekStart') === 0 ? 0 : 1 });
+  const p = productivity(ctx.data().tasks, { today, daily: cleanGoal(s.get('dailyGoal')), weekly: cleanGoal(s.get('weeklyGoal')), weekStart: s.get('weekStart') === 0 ? 0 : 1,
+    daysOff: /** @type {number[]} */ (s.get('daysOff') ?? []), vacation: !!s.get('vacation') });
   const tiles = el('div', 'td-stats');
   tiles.append(tile('Done today', p.today, p.daily), tile('Done this week', p.week, p.weekly));
   const streak = el('div', 'td-card td-streak');

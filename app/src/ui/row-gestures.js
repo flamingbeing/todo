@@ -42,6 +42,8 @@ export function wire(ctx, l) {
       if (w === 'complete') { ctx.complete(t, row); return true; }
       if (w === 'schedule') { scheduleTasks(ctx, [t]); return true; }
       if (w === 'delete') return deleteTasks(ctx, [t]);
+      // (Settings > General: a swipe can start select mode with this task ticked)
+      if (w === 'select') { startSelect(ctx, host, [tid]); return true; }
       return false;
     } });
     twoFingerSelect(host, { can: () => ctx.canWrite(), tick: ids => tickRows(ctx, host, ids) });

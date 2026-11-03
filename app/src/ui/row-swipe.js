@@ -8,11 +8,12 @@ import { drag, glide, haptic, icon } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { MORE } from '../icons-more.js';
 
-/** @typedef {'complete' | 'schedule' | 'delete' | 'none'} Swipe */
+/** @typedef {'complete' | 'schedule' | 'delete' | 'select' | 'none'} Swipe */
 const LOOK = /** @type {Record<Exclude<Swipe, 'none'>, { color: string, ic: import('app-ui/icons/lucide.js').IconNodes }>} */ ({
   complete: { color: '#0B7A75', ic: ICONS.check },
   schedule: { color: '#C2570A', ic: ICONS.calendar },
   delete: { color: '#DC4C3E', ic: MORE.trash2 },
+  select: { color: '#148FAD', ic: MORE.listChecks },
 });
 const FLING = 0.6;   // px/ms
 
@@ -110,11 +111,12 @@ export function swipeRows(host, o) {
         void glide(slide(), x, 0, v).done.then(reset);
         return;
       }
-      // Complete and Delete take the row off the far side; Schedule springs it back behind the sheet
-      const off = way === 'schedule' ? 0 : Math.sign(x) * width;
+      // Complete and Delete take the row off the far side; Schedule and Select spring it back (a sheet, or select mode)
+      const back = way === 'schedule' || way === 'select';
+      const off = back ? 0 : Math.sign(x) * width;
       const kept = parts;
       void glide(slide(), x, off, v).done.then(() => {
-        if (way === 'schedule') reset();
+        if (back) reset();
         else { band?.remove(); r.classList.remove('is-swiping'); row = null; band = null; parts = []; side = 0; past = false; }
         // (an action that did not go ahead, a delete not confirmed, puts the row back)
         void Promise.resolve(o.run(way, id, r)).then(ok => { if (ok === false) settle(kept); });

@@ -113,6 +113,8 @@ export function views(app) {
     calendar: () => import('./calendar.js'),
     marks: () => import('../markdown.js'),
     section: () => import('./section-page.js'),
+    tone: () => import('./tone.js'),
+    party: () => import('./party.js'),
   });
   /** a list's Display choices on this device @param {string} view */
   const disp = view => cleanDisplay(/** @type {any} */ (app.settings.get('display'))?.[view], view);
@@ -160,10 +162,17 @@ export function views(app) {
       await new Promise(r => setTimeout(r, 150));
       if (!next) await glide([[row, x => ({ opacity: String(1 - x), transform: `translateX(${x * 12}px)` })]], 0, 1).done;
     }
-    const { refused, ticked, moved, reopened } = await app.complete(t, { next });
+    const party = app.settings.get('goalParty') ? await lazy.need('party') : null;
+    const before = party ? party.doneToday(data.tasks) : 0;
+    const { refused, ticked, moved, reopened } = await app.complete(t, { next, keepSubs: app.settings.get('resetSubs') === false });
     if (refused) { toast(REFUSED); redraw(); return; }
-    if (moved) undo.show('Task completed', async () => { if (await app.unmove(t, moved, reopened)) toast(REFUSED); });
-    else undo.show('Task completed', async () => { if (await app.untick(ticked)) toast(REFUSED); });
+    // (Settings: the complete tone, and a cheer when this one meets the daily goal; a repeating task's move counts too)
+    if (app.settings.get('tone')) void lazy.withMod('tone', m => m.playTone());
+    const met = !!party?.metNow(before, before + 1, Number(app.settings.get('dailyGoal') ?? 0));
+    if (met) party?.cheer();
+    const said = met ? 'Task completed. Daily goal reached' : 'Task completed';
+    if (moved) undo.show(said, async () => { if (await app.unmove(t, moved, reopened)) toast(REFUSED); });
+    else undo.show(said, async () => { if (await app.untick(ticked)) toast(REFUSED); });
   };
 
   // ---- where the person is: the tab page, and the screen pushed over it
