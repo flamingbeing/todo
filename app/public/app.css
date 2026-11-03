@@ -828,7 +828,7 @@ html[data-board-swipe] .td-board .td-row { touch-action: pan-y; }
    view's number circles do, so the week turns into the calendar without a jump. */
 .td-wcal { overflow: hidden; background: light-dark(#f7f7f7, #262626); }
 .td-wcal > .td-weeks-head { padding: 0 8px; }
-.td-weeks { height: calc(44px * 5); padding: 0 8px; overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y proximity; scrollbar-width: none; }
+.td-weeks { height: calc(44px * 5);   /* (JS sets the height: rows to the month end) */ padding: 0 8px; overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y proximity; scrollbar-width: none; }
 .td-weeks::-webkit-scrollbar { display: none; }
 .td-weeks-head, .td-weeks-row { display: grid; grid-template-columns: repeat(7, 1fr); justify-items: center; }
 .td-weeks-row { height: 44px; scroll-snap-align: start; }
@@ -836,6 +836,9 @@ html[data-board-swipe] .td-board .td-row { touch-action: pan-y; }
 .td-wcell { min-height: 0; height: 44px; justify-content: center; gap: 0; width: 100%; }
 .td-wcell.is-alt { background: light-dark(#fff, #313131); border-radius: 10px; }
 .td-wcell:disabled .td-wday-num { opacity: .55; }
+.td-wcell { position: relative; }
+.td-wcell[data-has]::after { content: ''; position: absolute; left: 50%; bottom: 1px; width: 4px; height: 4px; margin-left: -2px; border-radius: 2px; background: var(--td-text-3); }
+.td-wcell:disabled[data-has]::after { opacity: .5; }
 .td-wcell-mon { font-size: 12px; line-height: 14px; margin-bottom: -4px; }
 .td-strip-handle { display: grid; place-items: center; width: 100%; height: 28px; padding: 0; border: 0; background: none; cursor: pointer; }
 .td-strip-grab { width: 32px; height: 4px; border-radius: 2px; background: var(--td-text-3); }

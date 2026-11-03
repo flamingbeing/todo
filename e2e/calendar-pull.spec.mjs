@@ -2,7 +2,6 @@
 // open is committed, the handle has no held press pill, the caret is a filled triangle).
 import { test, expect, signIn, synced, openTab, gesturesReady, boxOf } from './fixtures.mjs';
 
-const FULL = 20 + 5 * 44;   // HEAD + ROWS * ROW in week-strip.js
 
 test('the pull: few rows at the first move, a hard clamp at the end, coral only after the open commits', async ({ phone }) => {
   const page = await phone();
@@ -24,6 +23,10 @@ test('the pull: few rows at the first move, a hard clamp at the end, coral only 
   // press: nothing has moved, the title is not coral
   expect(await strip.locator('.td-month').getAttribute('data-out')).toBeNull();
   await page.mouse.move(x, y + 12, { steps: 3 });
+  // the grid runs from the shown week to the month's end: 4 to 6 rows of 44 (plus the 20 px letters)
+  const rowsOut = await strip.locator('.td-weeks').evaluate(e => e.getBoundingClientRect().height / 44);
+  expect(rowsOut).toBeGreaterThanOrEqual(4); expect(rowsOut).toBeLessThanOrEqual(6); expect(Number.isInteger(rowsOut)).toBe(true);
+  const FULL = 20 + rowsOut * 44;
   // the first move draws a handful of weeks, not sixty at once
   expect(await strip.locator('.td-weeks-row').count()).toBeLessThan(20);
   await page.evaluate(() => window.__idle.splice(0).forEach(f => f()));   // (then the rest, a year ahead)
