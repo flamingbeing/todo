@@ -120,6 +120,8 @@ export function views(app) {
     section: () => import('./section-page.js'),
     tone: () => import('./tone.js'),
     party: () => import('./party.js'),
+    confetti: () => import('./confetti.js'),
+    gap: () => import('../ui/gap.js'),
   });
   /** a list's Display choices on this device @param {string} view */
   const disp = view => cleanDisplay(/** @type {any} */ (app.settings.get('display'))?.[view], view);
@@ -152,6 +154,13 @@ export function views(app) {
     onFold: t => { void app.editTask(t, { collapsed: isOpen(t) }).then(r => r && toast(REFUSED)); },
     marks: (span, text) => { void lazy.withMod('marks', m => m.showMarks(span, text, { links: false })); }, ...o });
 
+  // (the add button pops back 1.1 to 1 only when a sheet has just closed: app.css [data-fab-pop], dropped after the pop)
+  document.addEventListener('close', e => {
+    if (!(e.target instanceof HTMLDialogElement) || document.querySelector('dialog[open]')) return;
+    document.body.setAttribute('data-fab-pop', '');
+    setTimeout(() => document.body.removeAttribute('data-fab-pop'), 450);
+  }, true);
+
   /** done: the box fills, the row fades out, then the save and the undo toast @param {Task} t @param {HTMLElement | null} [row] */
   // A repeating task stays open and moves to its next date (recur.js, loaded then); past its last one it is done.
   const complete = async (t, row) => {
@@ -165,8 +174,11 @@ export function views(app) {
     }
     if (row) {
       await new Promise(r => setTimeout(r, 150));
+      // (every completion bursts from the checkbox as the row starts to fade; off under reduced motion)
+      const bit = row.querySelector('.td-check');
+      if (bit) void lazy.withMod('confetti', m => m.burst(bit));
       // (the ring has filled and its check drawn, 150 ms: app.css; then the row fades, and the list drawn again closes the gap)
-      if (!next) { row.classList.add('is-leaving'); await glide([[row, x => ({ opacity: String(1 - x), transform: `translateX(${x * 12}px)` })]], 0, 1).done; }
+      if (!next) { row.classList.add('is-leaving'); await glide([[row, x => ({ opacity: String(1 - x), transform: `translateX(${x * 12}px)` })]], 0, 1).done; await (await lazy.need('gap')).closeGap(row); }
     }
     const party = app.settings.get('goalParty') ? await lazy.need('party') : null;
     const before = party ? party.doneToday(data.tasks) : 0;

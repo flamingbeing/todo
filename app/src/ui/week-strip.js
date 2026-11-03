@@ -208,7 +208,7 @@ function build(host, s) {
     if (calm) { land(); return Promise.resolve(); }
     // (a live height, on purpose: the list below the calendar has to be pushed down or pulled up with it, which only
     // layout does, and one spring per settle is all that runs; the drag's own frames are the finger's)
-    run = spring(x => setH(baseH + x), from, want ? span() : 0, v);
+    run = spring(x => setH(baseH + x), from, want ? span() : 0, v, { response: .15 });
     const mine = run;
     return mine.done.then(landed => { if (landed && run === mine) land(); });
   };

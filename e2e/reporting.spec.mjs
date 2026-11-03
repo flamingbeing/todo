@@ -37,7 +37,12 @@ test('a completion under Today, the kind filter, the Productivity link', async (
   await expect(host.locator('.td-rep-row:not([data-kind="completed"])')).toHaveCount(0);
   await page.locator('#reporting-filter').click();
   await pick.getByRole('option', { name: 'All' }).click();
-  await expect(host.locator('.td-rep-row[data-kind="added"]', { hasText: t })).toHaveCount(1);
+  // the filter resets to one page; tests running in parallel share the database, so newer rows can push ours onto the next
+  const added = host.locator('.td-rep-row[data-kind="added"]', { hasText: t });
+  await expect(async () => {
+    if (!(await added.count())) await host.locator('.td-rep-more').click({ timeout: 1000 }).catch(() => {});
+    await expect(added).toHaveCount(1, { timeout: 500 });
+  }).toPass({ timeout: 10_000 });
 
   // the chart: Productivity; its back goes to Reporting
   await page.locator('#reporting-chart').click();
