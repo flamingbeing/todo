@@ -44,6 +44,11 @@ test('the pull: few rows at the first move, a hard clamp at the end, coral only 
   await expect.poll(h).toBe(FULL);
   await expect.poll(() => strip.locator('.td-weeks .td-wcell').count()).toBeGreaterThanOrEqual(53 * 7);
   expect(await strip.locator('.td-month-caret').evaluate(e => getComputedStyle(e).clipPath)).toContain('polygon');
+  // scrolling the open grid weeks ahead keeps the month it opened on (the reference never follows the grid)
+  const t0 = await strip.locator('.td-month-name').textContent();
+  await strip.locator('.td-weeks').evaluate(e => { e.scrollTop += 44 * 8; });
+  await page.waitForTimeout(150);
+  expect(await strip.locator('.td-month-name').textContent()).toBe(t0);
   // pull it shut again: the coral clears with the first move, the handle (no held press) stays bare
   const o = await boxOf(page, '#upcoming-strip .td-strip-handle');
   const x2 = o.x + o.width / 2, y2 = o.y + o.height / 2;

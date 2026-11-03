@@ -314,11 +314,9 @@ function build(host, s) {
     const key = String(b.dataset.day);
     void settle(false, run?.running() ? run.stop() : span(), 0, still()).then(() => go(key, true));
   });
-  // the weeks scroll: the title follows the top row, more weeks are drawn near the end
+  // the weeks scroll: the title keeps the month it opened on (the reference does; it never follows the grid),
+  // more weeks are drawn near the end
   grid.addEventListener('scroll', () => {
-    const i = Math.max(0, Math.round(grid.scrollTop / ROW)), a = addDays(first, i * 7);
-    topKey = s.pick >= a && s.pick <= addDays(a, 6) ? s.pick : addDays(a, 3);
-    title();
     if (filled && grid.scrollTop + grid.clientHeight > grid.scrollHeight - 13 * ROW) ensure(rows + CHUNK);
   }, { passive: true });
   // the handle: dragged down, the calendar grows under the finger (from the one week to five rows); up, it shrinks;
