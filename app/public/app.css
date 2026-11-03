@@ -192,7 +192,7 @@ button.td-group-title { display: flex; align-items: center; gap: 6px; width: 100
 [data-priority="4"].is-done > .td-check, [data-priority="4"] > .td-check[aria-checked="true"] { --ring: var(--td-text-3); }
 .td-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: 14px 12px 14px 0;
   border: 0; background: none; text-align: start; cursor: pointer; color: var(--td-text); }
-.td-title { font-size: 17px; line-height: 22px; overflow-wrap: anywhere; }
+.td-title { font-size: 17px; line-height: 21px; overflow-wrap: anywhere; }
 /* a title and its meta line, no description: 14 + 21 + 8 + 17 + 14 = 74 pt, the two-line row of the references (222 px at 3x) */
 .td-title + .td-meta { margin-top: 6px; }
 .is-done .td-title { color: var(--td-text-2); }

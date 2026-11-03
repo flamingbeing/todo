@@ -71,13 +71,14 @@ test('a pushed Settings page hides the tab bar until Back leaves Settings', asyn
   await expect(page.locator('#settings-host')).toBeHidden();
 });
 
-test('the app opts in to the tab fade, the keyboard bar fade and the held press', async ({ phone }) => {
+test('the app opts in to the tab rise, the sheet bar fade, the keyboard bar fade and the held press', async ({ phone }) => {
   const page = await phone();
   await page.goto(APP, { waitUntil: 'domcontentloaded' });
-  await expect(page.locator('html')).toHaveAttribute('data-slide', 'fade');
+  await expect(page.locator('html')).toHaveAttribute('data-slide', 'rise');
+  await expect(page.locator('html')).toHaveAttribute('data-sheet-bar', 'fade');
   await expect(page.locator('html')).toHaveAttribute('data-keyboard-bar', 'fade');
   await expect(page.locator('html')).toHaveAttribute('data-ripple', 'hold');
-  // a tab tap switches the page (the kit fades the tab's pill and the page instead of sliding)
+  // a tab tap switches the page (the kit rises the page instead of sliding it)
   await page.locator('.ui-tabbar [data-tab-id="upcoming"]').click();
   await expect(page.locator('#upcoming-page')).toBeVisible();
   await expect(page.locator('.ui-tabbar [data-tab-id="upcoming"]')).toHaveAttribute('aria-current', 'page');

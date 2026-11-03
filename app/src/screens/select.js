@@ -264,9 +264,9 @@ export function startSelect(ctx, host, ids = [], { done = false } = {}) {
   };
   on = { host, ids: picked, stop, draw };
   cancel.addEventListener('click', stop);
-  const toggleAll = () => {
-    const ids = shownIds();
-    if (ids.every(id => picked.has(id))) picked.clear(); else for (const id of ids) picked.add(id);
+  // (the menu names the action when it opens; a row that arrives before the tap must not turn "Deselect all" into select-all)
+  const setAll = (/** @type {boolean} */ yes) => {
+    if (yes) for (const id of shownIds()) picked.add(id); else picked.clear();
     draw();
   };
   const notDone = async (/** @type {Task[]} */ list) => {
@@ -289,7 +289,7 @@ export function startSelect(ctx, host, ids = [], { done = false } = {}) {
   more.addEventListener('click', () => {
     const list = chosen(), n = list.length, allOn = shownIds().every(id => picked.has(id));
     openMenu(more, [
-      { label: allOn ? 'Deselect all' : 'Select all', icon: MORE.listChecks, run: toggleAll },
+      { label: allOn ? 'Deselect all' : 'Select all', icon: MORE.listChecks, run: () => setAll(!allOn) },
       ...(n ? [null,      { label: `Duplicate ${n}`, icon: MORE.copy, run: async () => {
         for (const t of list) if (await ctx.app.duplicateTask(t)) { ctx.toast(REFUSED); break; }
         stop();

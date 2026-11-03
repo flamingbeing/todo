@@ -279,8 +279,9 @@ test('the sheet\'s ••• menu: the added-on line, its rows in order, Move to
   await page.locator('#task-sheet .td-sheet-more').click();
   await expect(page.locator('.ui-menu-note')).toContainText('Added on');
   await expect(page.locator('#task-sheet .ui-menu-panel')).toBeVisible();
-  const mb = await page.locator('#task-sheet .ui-menu-panel').boundingBox();
-  expect(mb && Math.abs(mb.y + mb.height - (page.viewportSize()?.height ?? 844))).toBeLessThan(2);
+  // (the panel rises a few px as it opens: measured once it has settled at the foot of the page)
+  await expect.poll(async () => { const mb = await page.locator('#task-sheet .ui-menu-panel').boundingBox();
+    return mb ? Math.abs(mb.y + mb.height - (page.viewportSize()?.height ?? 844)) : 999; }, { timeout: 5000 }).toBeLessThan(2);
   await expect(page.getByRole('menuitem')).toHaveText(['Edit task', 'Duplicate task', 'Complete forever', 'Copy link to task', 'Hide completed sub-tasks',
     'View activity', 'Email to this task', 'Delete task']);
   expect(await AxeBuilder(page)).toEqual([]);

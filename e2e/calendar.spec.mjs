@@ -25,7 +25,12 @@ async function calendar(page, kind = '') {
   const tile = sheet.getByRole('radiogroup', { name: 'Layout' }).getByRole('radio', { name: /^(Calendar|\d-day)$/ });
   await tile.click();
   await expect(tile).toHaveAttribute('aria-checked', 'true');
-  if (kind) await sheet.locator('.td-seg').getByRole('radio', { name: kind }).click();
+  if (kind) {
+    // (the Layout row opens its own small sheet: Agenda, N-day and Month)
+    await sheet.getByRole('button', { name: /^Layout/ }).click();
+    await page.locator('#pick-sheet').getByRole('option', { name: kind }).click();
+    await expect(sheet.getByRole('button', { name: /^Layout/ })).toContainText(kind);
+  }
   await sheet.getByRole('button', { name: /^(Done|Save)$/ }).click();
   await expect(sheet).toBeHidden();
 }
