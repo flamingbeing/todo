@@ -17,7 +17,7 @@ import { dayKey, timeKey, addDays, dueOf, minutesClock } from '../dates.js';
 import { minutesSpan } from '../dates-cal.js';
 import { colorHex } from '../colors.js';
 import { edgeScroll, edgeSpeed, shownSpan } from '../ui/edge-scroll.js';
-import { HOUR, columnCount, weekColumns, minutesOf, timeOf, yOf, minOf, snap, blockHeight, openAt, lanes, monthCells, dropPatch,
+import { HOUR, SNAP, DAY, PLAN, columnCount, weekColumns, minutesOf, timeOf, yOf, minOf, snap, blockHeight, openAt, lanes, monthCells, dropPatch,
   unchanged, periodTitle, stepPeriod, periodOf, occurrences } from '../cal.js';
 import { el } from './pick.js';
 import { rowList, addRow } from '../ui/row.js';
@@ -129,6 +129,7 @@ export function drawCalendar(ctx, o, force = false) {
   underBar(sticky);
   pager(st, root, pane, kind === 'month' ? 'month' : 'week');
   holds(ctx, root, st);
+  resizes(ctx, root);
   sheetDraw?.();
   if (kind !== 'month' && !st.opened) requestAnimationFrame(() => { if (st && root.isConnected && root.offsetParent) { st.opened = true; scrollToOpen(root, sticky, byDay, first, last); } });
 }
@@ -285,7 +286,7 @@ function week(ctx, o, st, p) {
       more.addEventListener('click', () => setOpen(true));
       cell.append(more);
     }
-    for (const t of p.ghosts.get(key) ?? []) if (minutesOf(dueOf(t.due)?.time) === null) cell.append(ghost(t, null));
+    for (const t of p.ghosts.get(key) ?? []) if (minutesOf(dueOf(t.due)?.time) === null) cell.append(ghost(ctx, t, null, key));
     anyAllDay ||= allDay.length > 0;
     allRow.append(cell);
 
@@ -309,7 +310,7 @@ function week(ctx, o, st, p) {
     for (const t of p.ghosts.get(key) ?? []) {
       const s = minutesOf(dueOf(t.due)?.time);
       if (s === null) continue;
-      const g = ghost(t, s);
+      const g = ghost(ctx, t, s, key);
       g.style.top = `${yOf(s)}px`;
       g.style.height = `${blockHeight(s, t.duration)}px`;
       col.append(g);
@@ -360,14 +361,18 @@ function block(ctx, t, start, fill) {
   }
   main.addEventListener('click', () => ctx.openTask(t));
   b.append(ring, main);
+  if (!t.done && ctx.canWrite()) b.append(el('span', 'td-cv-resize'));
   return b;
 }
 
-/** a repeating task's later date: faded and dashed, for the eye only @param {Task} t @param {number | null} start */
-function ghost(t, start) {
-  const g = el('div', start === null ? 'td-cv-chip td-cv-ghost' : 'td-cv-block td-cv-ghost', start === null ? t.title : '');
+/** a repeating task's later date: faded and dashed; a tap opens the task it repeats (it is not a task of its own yet)
+ * @param {Ctx} ctx @param {Task} t @param {number | null} start @param {string} key  the day it falls on */
+function ghost(ctx, t, start, key) {
+  const g = /** @type {HTMLButtonElement} */ (el('button', start === null ? 'td-cv-chip td-cv-ghost' : 'td-cv-block td-cv-ghost', start === null ? t.title : ''));
+  g.type = 'button';
   if (start !== null) g.append(el('span', 'td-cv-block-title', t.title));
-  g.setAttribute('aria-hidden', 'true');
+  g.setAttribute('aria-label', `${t.title}, repeats on ${dayText(key)}`);
+  g.addEventListener('click', () => ctx.openTask(t));
   return g;
 }
 
@@ -560,7 +565,7 @@ function holds(ctx, root, st) {
     if (!ctx.canWrite() || !e.isPrimary || e.button > 0) return;
     const at0 = /** @type {Element} */ (e.target);
     const item = /** @type {HTMLElement | null} */ (at0.closest('[data-cal-id]'));
-    if (!item || at0.closest('.td-cv-ring') || item.classList.contains('is-done')) return;
+    if (!item || at0.closest('.td-cv-ring, .td-cv-resize') || item.classList.contains('is-done')) return;
     const task = ctx.data().tasks.find(t => t.id === item.dataset.calId);
     if (!task) return;
     const id = e.pointerId, x0 = e.clientX, y0 = e.clientY, grab = e.clientY - item.getBoundingClientRect().top, isBlock = item.classList.contains('td-cv-block');
@@ -701,6 +706,74 @@ function holds(ctx, root, st) {
     addEventListener('pointercancel', up);
     root.addEventListener('touchmove', touch, { passive: false });
   }, { passive: true });
+}
+
+/** A block's foot dragged up or down: its duration, in steps of 15 minutes (at least 15, not past midnight), one save
+ * and Undo. A mouse or pen takes it at once; a finger holds it first (350 ms), so a swipe from there still scrolls.
+ * @param {Ctx} ctx @param {HTMLElement} root */
+function resizes(ctx, root) {
+  root.addEventListener('pointerdown', e => {
+    const foot = /** @type {Element} */ (e.target).closest('.td-cv-resize');
+    if (!foot || !ctx.canWrite() || !e.isPrimary || e.button > 0) return;
+    const b = /** @type {HTMLElement} */ (foot.closest('.td-cv-block'));
+    const task = ctx.data().tasks.find(t => t.id === b.dataset.calId);
+    const start = minutesOf(dueOf(task?.due)?.time);
+    if (!task || start === null) return;
+    const id = e.pointerId, y0 = e.clientY, sc = scroller(root), s0 = sc.scrollTop, was = task.duration ?? null, from = was || PLAN;
+    let dur = from, y = y0;
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    let timer;
+    const begin = () => {
+      if (!claim('drag')) { done(); return; }
+      b.classList.add('is-resizing');
+      foot.setAttribute('data-end', minutesClock(start + dur));
+      haptic('long');
+    };
+    const size = () => {
+      const next = Math.max(SNAP, Math.min(DAY - start, Math.round((from + minOf(y - y0 + sc.scrollTop - s0)) / SNAP) * SNAP));
+      if (next === dur) return;
+      dur = next;
+      b.style.height = `${blockHeight(start, dur)}px`;
+      foot.setAttribute('data-end', minutesClock(start + dur));
+      haptic('tick');
+    };
+    const move = (/** @type {PointerEvent} */ ev) => {
+      if (ev.pointerId !== id) return;
+      y = ev.clientY;
+      if (!b.classList.contains('is-resizing')) { if (Math.abs(y - y0) > SLOP) done(); return; }
+      size();
+    };
+    const touch = (/** @type {TouchEvent} */ ev) => { if (b.classList.contains('is-resizing') && ev.cancelable) ev.preventDefault(); };
+    const done = () => {
+      clearTimeout(timer);
+      removeEventListener('pointermove', move);
+      removeEventListener('pointerup', up);
+      removeEventListener('pointercancel', up);
+      root.removeEventListener('touchmove', touch);
+    };
+    const up = async (/** @type {PointerEvent} */ ev) => {
+      if (ev.pointerId !== id) return;
+      done();
+      if (!b.classList.contains('is-resizing')) return;
+      release('drag');
+      b.classList.remove('is-resizing');
+      foot.removeAttribute('data-end');
+      const eat = (/** @type {MouseEvent} */ c) => { c.preventDefault(); c.stopPropagation(); };
+      root.addEventListener('click', eat, { capture: true, once: true });
+      setTimeout(() => root.removeEventListener('click', eat, true), 400);
+      if (ev.type === 'pointercancel' || dur === from) { b.style.height = `${blockHeight(start, from)}px`; return; }
+      if (await ctx.app.editTask(task, { duration: dur })) { ctx.toast(REFUSED); b.style.height = `${blockHeight(start, from)}px`; return; }
+      ctx.undo.show(`Duration ${minutesSpan(start, start + dur)}`, async () => {
+        const now = ctx.data().tasks.find(x => x.id === task.id) ?? task;
+        if (await ctx.app.editTask(now, { duration: was })) ctx.toast(REFUSED);
+      });
+    };
+    if (e.pointerType === 'touch') timer = setTimeout(begin, HOLD_MS); else begin();
+    addEventListener('pointermove', move, { passive: true });
+    addEventListener('pointerup', up);
+    addEventListener('pointercancel', up);
+    root.addEventListener('touchmove', touch, { passive: false });
+  });
 }
 
 /** what is under the finger: an hour of a day (the block's top, `grab` px above the finger), the all-day row, a day's

@@ -8,7 +8,7 @@
 // Today's columns are its days (Overdue, Today), Upcoming's its days, a list in no group one column.
 import { icon } from '@core/ui';
 import { ICONS } from '../icons.js';
-import { projectView, projectOf, isTask } from '../tasks.js';
+import { projectView, projectOf, isTask, dayOrder } from '../tasks.js';
 import { sorter, narrowTasks, groupTasks } from '../arrange.js';
 import { flatten } from '../tree.js';
 import { dayKey } from '../dates.js';
@@ -31,11 +31,13 @@ export const arranged = (d, labels, today) => ({ cmp: sorter(d.sort, d.dir),
  * value; not Overdue, which has Reschedule) -> how many tasks it shows. data-gkey: the groups a row is dragged between
  * (ui/row-drag.js). @param {Ctx} ctx
  * @param {{ into: HTMLElement, tasks: import('../items.js').Task[], d: import('../tasks.js').Display, c: import('../ui/row.js').RowContext,
- *   base: import('./views.js').AddContext, resched: (sec: HTMLElement, tasks: import('../items.js').Task[]) => void }} o
+ *   base: import('./views.js').AddContext, resched: (sec: HTMLElement, tasks: import('../items.js').Task[]) => void, byDay?: boolean }} o
+ *   byDay: a day's list (Today), in the day's own order (dayOrder) whatever the grouping
  */
-export function drawGroups(ctx, { into, tasks, d, c, base, resched }) {
+export function drawGroups(ctx, { into, tasks, d, c, base, resched, byDay }) {
   const data = ctx.data(), all = data.tasks.filter(isTask);
-  const gs = groupTasks(narrowTasks(tasks.filter(t => isTask(t) && (!t.done || d.completed)), d, data.labels, c.today), d, { projects: data.projects, labels: data.labels, today: c.today });
+  const gs = groupTasks(narrowTasks(tasks.filter(t => isTask(t) && (!t.done || d.completed)), d, data.labels, c.today), d,
+    { projects: data.projects, labels: data.labels, today: c.today, ...(byDay ? { manual: dayOrder } : {}) });
   into.replaceChildren(...gs.map(g => {
     const sec = el('section', 'td-group');
     const day = d.group === 'date' && g.key[0] === '1' ? g.key.slice(1) : undefined;

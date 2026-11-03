@@ -34,10 +34,11 @@ export function groupName(group, key, c) {
  * A task dragged from one group to another (or within its own: then only its place changes) -> the move, or null
  * when that group takes no drop (Overdue: a task is not made late by hand).
  * @param {Task} task @param {string} group  Display's grouping @param {string} from  the group it was in @param {string} to  the group let go in
- * @param {{ labels: Label[], projects: Project[], today: string }} c @returns {GroupMove | null}
+ * @param {{ labels: Label[], projects: Project[], today: string, byDay?: boolean }} c  byDay: a day's list (Today), kept in
+ *   its own order whatever the grouping @returns {GroupMove | null}
  */
 export function groupMove(task, group, from, to, c) {
-  const key = group === 'date' ? 'dayOrder' : 'order', title = groupName(group, to, c);
+  const key = group === 'date' || c.byDay ? 'dayOrder' : 'order', title = groupName(group, to, c);
   if (from === to) return { fields: {}, key, title, was: {} };
   if (group === 'date') {
     if (to === '0') return null;

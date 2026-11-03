@@ -140,3 +140,10 @@ test('by deadline: a day sets it, No deadline clears it, Overdue takes no drop; 
   assert.equal(addFor('deadline', '0', { labels: [] }, {}), null);
   assert.equal(sortedNote('deadline'), 'This list is in deadline order');
 });
+
+test("a day's list (Today) keeps its own order whatever the grouping", () => {
+  const t = task({ priority: 2 });
+  assert.equal(groupMove(t, 'priority', '2', '1', c)?.key, 'order');
+  assert.equal(groupMove(t, 'priority', '2', '1', { ...c, byDay: true })?.key, 'dayOrder');
+  assert.equal(groupMove(t, 'none', '', '', { ...c, byDay: true })?.key, 'dayOrder');
+});

@@ -143,6 +143,45 @@ test('week: blocks, all-day chips, the now line; a slot tap adds, the ring compl
   await expect(page.getByRole('button', { name: 'Undo' })).toBeVisible();
 });
 
+test("week: a block's foot dragged down lengthens it (Undo); a faded future repeat opens its task", async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const now = today(), long = uniq('long'), rep = uniq('rep');
+  const name = await seed({
+    [long]: { due: { date: now, time: '10:00' }, duration: 30 },
+    [rep]: { due: { date: now, time: '15:00', rrule: 'FREQ=DAILY', string: 'every day' } },
+  });
+  await synced(page);
+  await gesturesReady(page);
+  await project(page, name);
+  // Display: Calendar with future occurrences
+  await page.locator('#display-btn').click();
+  const sheet = page.locator('#display-sheet');
+  await sheet.getByRole('radiogroup', { name: 'Layout' }).getByRole('radio', { name: 'Calendar' }).click();
+  await sheet.getByRole('checkbox', { name: 'Future occurrences' }).check();
+  await sheet.getByRole('button', { name: /^(Done|Save)$/ }).click();
+  await expect(sheet).toBeHidden();
+  const sel = `#project-page .td-cv-block[data-cal-id="${long}"]`;
+  await expect(page.locator(sel)).toHaveCSS('height', `${HOUR / 2}px`);
+
+  // the foot held and pulled an hour down: 90 minutes; Undo: 30 again
+  await centre(page, sel);
+  const b = await box(page.locator(sel));
+  await finger(page, `${sel} .td-cv-resize`, steps(0, HOUR, 8), { hold: 500, wait: 80 });
+  await expect.poll(async () => (await task(long))?.duration, { timeout: 15_000 }).toBe(90);
+  await expect(page.locator(sel)).toHaveCSS('height', `${HOUR * 1.5}px`);
+  expect((await box(page.locator(sel))).y).toBeCloseTo(b.y, 0);
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect.poll(async () => (await task(long))?.duration ?? null, { timeout: 15_000 }).toBe(30);
+
+  // tomorrow's faded copy of the daily task: a tap opens the task
+  const ghost = page.locator('#project-page .td-cv-ghost').filter({ hasText: rep }).first();
+  await expect(ghost).toBeVisible();
+  await ghost.click();
+  await expect(page.locator('#task-sheet')).toBeVisible();
+  await expect(page.locator('#task-sheet .td-task-title')).toHaveValue(rep);
+});
+
 test('month: chips on their day, "+N more" opens the day, a chip dragged to another day; passes axe', async ({ phone }) => {
   const page = await phone();
   await signIn(page, 'member');

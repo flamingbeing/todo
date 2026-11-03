@@ -296,7 +296,7 @@ export function dragRows(host, ctx, o) {
     if (was.over) { await postpone(ctx, task); return; }
     if (!g || host.hasAttribute('data-sorted')) return;
     const kind = kindOf(host, o);
-    const refused = kind === 'groups' ? await dropInGroup(ctx, task, String(host.dataset.grouped), was.from, was.i0, g)
+    const refused = kind === 'groups' ? await dropInGroup(ctx, task, String(host.dataset.grouped), was.from, was.i0, g, host.hasAttribute('data-by-day'))
       : kind === 'tree' ? await dropInTree(ctx, task, g, was.depth, Math.max(0, ...was.kids.map(k => depthOf(k) - was.base)), o.projectId())
         : await dropInDay(ctx, task, g);
     if (refused) ctx.toast(REFUSED);
@@ -353,11 +353,12 @@ async function postpone(ctx, task) {
  * A task let go in a list grouped by Display: the group's value (group-drop.js), its place there by hand-made order,
  * one save (its subtasks follow a new project), and Undo naming the new group.
  * @param {Ctx} ctx @param {Task} task @param {string} group @param {string} from @param {number} i0  where it was in its group
- * @param {Gap} g @returns {Promise<string>}
+ * @param {Gap} g @param {boolean} byDay  a day's list (Today): its place is the day's order
+ * @returns {Promise<string>}
  */
-async function dropInGroup(ctx, task, group, from, i0, g) {
+async function dropInGroup(ctx, task, group, from, i0, g, byDay) {
   const data = ctx.data(), to = String(g.gkey);
-  const m = groupMove(task, group, from, to, { labels: data.labels, projects: data.projects, today: dayKey() });
+  const m = groupMove(task, group, from, to, { labels: data.labels, projects: data.projects, today: dayKey(), byDay });
   if (!m || (from === to && g.at === i0)) return '';
   const { value, renumber } = slotIn(/** @type {Task[]} */ (tasksFor(ctx, g.ids)), g.at, task, m.key);
   const refused = await ctx.app.placeTask(task, { ...m.place, ...(m.key === 'order' ? { order: value } : { dayOrder: value }), fields: m.fields }, renumber, m.key);
