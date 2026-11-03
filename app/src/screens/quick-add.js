@@ -181,6 +181,7 @@ export function openQuickAdd(ctx, start, hold = null) {
     prioChip.replaceChildren(flag, el('span', '', v.priority === 4 ? 'Priority' : `P${v.priority}`));
     prioChip.setAttribute('aria-label', v.priority === 4 ? 'Priority' : `Priority: P${v.priority}`);
     prioC.box.hidden = v.priority === 4 && !on('qaPriority');
+    prioC.box.dataset.p = String(v.priority);
     setX(prioC, v.priority !== 4, () => { unmark(['priority']); delete manual.priority; base.priority = undefined; });
     labelChip.replaceChildren(icon(ICONS.tag), el('span', '', v.labels.length ? v.labels.join(', ') : 'Labels'));
     labelChip.setAttribute('aria-label', v.labels.length ? `Labels: ${v.labels.join(', ')}` : 'Labels');

@@ -46,7 +46,7 @@ test('results in groups, accents ignored, recent searches kept and cleared', asy
 
 // Search is a page pushed from Browse (Back returns to Browse); Settings > Navigation bar can also put it on the bar, where it is a
 // tab (no Back). Both routes open the same page.
-test('Search can be switched onto the tab bar, and Browse still pushes it', async ({ phone }) => {
+test('Search can be switched onto the tab bar; off it, Browse pushes it', async ({ phone }) => {
   const page = await phone();
   await signIn(page, 'member');
   const tab = page.locator('.ui-tabbar [data-tab-id="search"]');
@@ -65,6 +65,30 @@ test('Search can be switched onto the tab bar, and Browse still pushes it', asyn
   await expect(page.locator('#search-text')).toBeFocused();
   await expect(page.locator('.ui-bar-back')).toBeHidden();
 
-  await openSearch(page);
-  await expect(page.locator('.ui-bar-back')).toBeVisible();
+  // on the bar, Browse has no Search row of its own
+  await openTab(page, 'browse');
+  await expect(page.locator('#browse .td-browse-row').filter({ hasText: /^Search/ })).toHaveCount(0);
+});
+
+test('"/" opens Search with the field focused, off the bar and as a tab; typed in a field it is just a character', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  await synced(page);
+  await openTab(page, 'inbox');
+  await page.keyboard.press('/');
+  await expect(page.locator('#search-page')).toBeVisible();
+  await expect(page.locator('#search-text')).toBeFocused();
+  await expect(page.locator('#search-text')).toHaveValue('');
+  // in the field it types
+  await page.keyboard.press('/');
+  await expect(page.locator('#search-text')).toHaveValue('/');
+  await page.locator('.ui-bar-back').click();
+
+  await openSettings(page, 'Navigation bar');
+  await page.getByRole('switch', { name: 'On the tab bar: Search' }).click();
+  await openTab(page, 'inbox');
+  await page.keyboard.press('/');
+  await expect(page.locator('#search-page')).toBeVisible();
+  await expect(page.locator('#search-text')).toBeFocused();
+  await expect(page.locator('.ui-bar-back')).toBeHidden();
 });
