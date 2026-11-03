@@ -119,7 +119,7 @@ export function views(app) {
   /** a list's Display choices on this device @param {string} view */
   const disp = view => cleanDisplay(/** @type {any} */ (app.settings.get('display'))?.[view], view);
   app.settings.watch('display', () => redraw());
-  for (const k of ['weekStart', 'dailyGoal', 'weeklyGoal']) app.settings.watch(k, () => redraw());
+  for (const k of ['weekStart', 'dailyGoal', 'weeklyGoal', 'daysOff', 'vacation']) app.settings.watch(k, () => redraw());
 
   /** @type {Ctx} */
   const ctx = {
@@ -246,6 +246,8 @@ export function views(app) {
     $('section-done').hidden = top !== 'section-page';
     subtitle();
     $('browse-top').hidden = top !== 'browse-page';
+    // (a screen's own bar buttons, made when it is drawn: Reporting's filter and chart)
+    for (const b of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.ui-bar-end [data-page]'))) b.hidden = b.dataset.page !== top;
     paint(top);
   };
 
@@ -466,6 +468,7 @@ export function views(app) {
       void lazy.withMod('filters', m => m.drawPlace(ctx, place, $('place'), $('place-empty'), disp(v), inCal(v) ? ts => drawCal(v, $('place'), $('place-empty'), ts, { projectId: INBOX }) : undefined));
     }
     else if (id === 'completed-page') void lazy.withMod('completed', m => m.drawCompleted(ctx, $('completed'), $('completed-empty')));
+    else if (id === 'reporting-page') void lazy.withMod('activity', m => m.drawReporting(ctx, $('reporting')));
     else if (id === 'productivity-page') void lazy.withMod('completed', m => m.drawProductivity(ctx, $('productivity')));
     else fresh.delete(id);
   };
