@@ -125,6 +125,7 @@ export function taskRow(line, c) {
   });
 
   const main = /** @type {HTMLButtonElement} */ (el('button', 'td-row-main'));
+  main.setAttribute('data-press-parent', '');   // app-ui paints the press and its ripple on the whole row, never a pill on the words
   main.type = 'button';
   const name = plainRow(t) ? t.title.slice(2) : t.title, head = el('span', 'td-title', name);
   // (a title that may have marks: drawn again with them once markdown.js is in)

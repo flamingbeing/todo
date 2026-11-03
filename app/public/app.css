@@ -589,11 +589,14 @@ button:is(.td-group-title, .td-add-row, .td-suggest-item, .td-sched-row, .td-bro
 .td-row, .td-row * { -webkit-tap-highlight-color: transparent; }
 /* a press shades the whole row, square to its card: app-ui's button press is an inset shade with the button's round
    corners, which on the words' button alone (it starts after the circle) showed as a pill in the middle of the row */
-.td-row > .td-row-main:is(:active, [data-pressed]) { box-shadow: none; }
-.td-row:has(> .td-row-main:is(:active, [data-pressed], [data-ripple="hold"])):not(.is-lifted, .is-swiping),
-#task-sheet .td-row:has(> .td-row-main:is(:active, [data-pressed])) { background: var(--td-selected); }
-/* (the tint stays after the lift until the task sheet opens: html[data-ripple="hold"] keeps the kit's hold on the row's words) */
-.td-list:not(.td-board) .td-row:has(> .td-row-main[data-ripple="hold"]) { background: var(--td-selected); }
+/* the words carry data-press-parent (app.js), so app-ui paints the press and its ripple on the row, square to the card;
+   the row's own tint replaces the kit's inset shade (a lifted row keeps its lift shadow) */
+.td-row > .td-row-main:is(:active, [data-pressed]) { box-shadow: none; background-image: none; }
+.td-row:has(> .td-row-main:is(:active, [data-pressed])):not(.is-lifted, .is-swiping) { box-shadow: none; }
+.td-row:is(:has(> .td-row-main:is(:active, [data-pressed])), [data-ripple="hold"]):not(.is-lifted, .is-swiping),
+#task-sheet .td-row:has(> .td-row-main:is(:active, [data-pressed])) { background-color: var(--td-selected); }
+/* (the tint stays after the lift until the task sheet opens: html[data-ripple="hold"] keeps the kit's hold on the row) */
+.td-list:not(.td-board) .td-row[data-ripple="hold"] { background-color: var(--td-selected); }
 .td-row.is-swiping { overflow: hidden; }
 .td-row.is-swiping > :not(.td-swipe-band, .td-fold) { position: relative; z-index: 1; }
 .td-row.is-swiping > .td-fold { z-index: 1; }
