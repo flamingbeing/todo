@@ -14,7 +14,7 @@
 // after the one add); an unsent name is kept as a draft. Pasting two or
 // more lines offers to add one task per line.
 import { APP } from '../config.js';
-import { icon, draftSlot, confirmModal, plural, haptic } from '@core/ui';
+import { icon, draftSlot, confirmModal, plural, haptic, lazyModules } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { MORE } from '../icons-more.js';
 import { INBOX, REFUSED } from '../items.js';
@@ -48,6 +48,8 @@ const nextExample = () => {
   return EXAMPLES[i];
 };
 const PRIORITY_COLOR = ['', 'var(--td-p1)', 'var(--td-p2)', 'var(--td-p3)', 'var(--td-text-2)'];
+// the opening motion (grows out of the add button) loads on first use, not at startup
+const lazy = lazyModules({ morph: () => import('../ui/quick-add-morph.js') });
 const d = () => /** @type {HTMLDialogElement} */ (document.getElementById('add-sheet'));
 /** @type {Awaited<ReturnType<typeof dateLibs>> | null} */
 let libs = null;
@@ -473,7 +475,7 @@ export function openQuickAdd(ctx, start, hold = null) {
   }
   reparse();
   if (desc.value) grow(desc);
-  if (!sheet.open) sheet.showModal();
+  if (!sheet.open) { lazy.loaded('morph')?.aim(sheet); sheet.showModal(); void lazy.need('morph').catch(() => {}); }
   if (hold) hold.handTo(title); else title.focus();
   title.setSelectionRange(title.value.length, title.value.length);
   const onClose = () => { list.hidden = true; try { draft.stop(); } catch { /* storage blocked */ } };

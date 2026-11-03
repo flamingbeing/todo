@@ -13,6 +13,7 @@ const name = '#add-sheet .td-add-title';
 const openAdd = async page => {
   await page.locator('#fab').click();
   await expect(page.locator('#add-sheet')).toBeVisible();
+  await page.evaluate(() => Promise.all(document.getElementById('add-sheet').getAnimations().map(a => a.finished)));   // (the card grows from the add button: measure it once settled)
   // the date libraries are in (the words they read are marked)
   await page.waitForFunction(() => performance.getEntriesByType('resource').some(e => /chrono\.js/.test(e.name)), null, { timeout: 15_000 });
 };

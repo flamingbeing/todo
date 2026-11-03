@@ -375,8 +375,20 @@ span.td-chip { height: 26px; padding: 0 8px; cursor: default; }
    220ms on the kit's curve): the name, the description, a row of outlined chips, a hairline, then the project and a
    small round send button */
 #add-sheet.td-sheet { height: auto; min-height: 0; box-sizing: border-box; width: 100%; max-width: 40rem; margin: auto auto 0; border-radius: 12px 12px 0 0; background: var(--td-card); }
-#add-sheet.td-sheet[open] { animation: ui-rise 220ms var(--spring-snappy); }
 #add-sheet.td-sheet::backdrop { background: rgb(0 0 0 / .4); }
+/* motion: opens in 300ms decelerating (no overshoot) as a card growing out of the add button (--qa-* set by
+   ui/quick-add-morph.js; without them it rises from the add button's usual corner); closes in 280ms fading and dropping
+   35px; the scrim fades both ways. Transform and opacity only. */
+@media (prefers-reduced-motion: no-preference) {
+  #add-sheet.td-sheet { --qa-dx: 36vw; --qa-dy: 40px; --qa-s: .12; transform-origin: 50% 50%;
+    transition: opacity 280ms cubic-bezier(.4, 0, 1, 1), transform 280ms cubic-bezier(.4, 0, 1, 1), display 280ms allow-discrete, overlay 280ms allow-discrete; }
+  #add-sheet.td-sheet:not([open]) { opacity: 0; transform: translateY(35px); }
+  #add-sheet.td-sheet[open] { animation: td-qa-open 300ms cubic-bezier(0, 0, .2, 1); }
+  #add-sheet.td-sheet::backdrop { transition: background-color 280ms linear, display 280ms allow-discrete, overlay 280ms allow-discrete; }
+  #add-sheet.td-sheet:not([open])::backdrop { background-color: rgb(0 0 0 / 0); }
+  @starting-style { #add-sheet.td-sheet[open]::backdrop { background-color: rgb(0 0 0 / 0); } }
+}
+@keyframes td-qa-open { from { opacity: 0; transform: translate(var(--qa-dx), var(--qa-dy)) scale(var(--qa-s)); } 40% { opacity: 1; } }
 .td-add { display: grid; gap: 10px; padding: 4px 12px 0; }
 .td-grab { justify-self: center; width: 28px; height: 3px; margin-top: 2px; border-radius: 2px; background: var(--td-text-3); opacity: .6; }
 .td-add-title, .td-add-desc { box-sizing: border-box; width: 100%; padding: 0; border: 0; outline: 0; background: none; resize: none; }
@@ -417,7 +429,11 @@ div.td-chip { gap: 0; padding: 0; cursor: default; }
 /* "#": a floating card above the sheet (fixed, placed by quick-add.js): a title row, then a short list that scrolls */
 .td-suggest.is-card { position: fixed; z-index: 3; display: flex; flex-direction: column; box-sizing: border-box; margin: 0; padding: 0; max-height: 244px; overflow: hidden;
   border-radius: 14px; background: light-dark(#fff, #2c2c2c); box-shadow: 0 6px 24px rgb(0 0 0 / .35), 0 0 0 .5px var(--td-hair); }
-.td-suggest.is-card[hidden] { display: none; }
+/* leaves by fading the container in 130ms (its rows are already gone) */
+@media (prefers-reduced-motion: no-preference) {
+  .td-suggest.is-card { transition: opacity 130ms linear, display 130ms allow-discrete; }
+  .td-suggest.is-card[hidden] { opacity: 0; }
+}
 .td-suggest-head { flex: none; padding: 12px 16px 6px; font-size: 14px; color: var(--td-text-2); }
 .td-suggest-head[hidden] { display: none; }
 .td-suggest-items { display: grid; align-content: start; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 6px; }
@@ -475,7 +491,13 @@ div.td-chip { gap: 0; padding: 0; cursor: default; }
 /* the kit centres a button's content; these rows read from the start */
 button:is(.td-group-title, .td-add-row, .td-suggest-item, .td-sched-row, .td-browse-row, .td-attr, .td-choice, .td-danger-row, .td-browse-fold, .td-add-place) { justify-content: flex-start; }
 /* the add button steps aside while a sheet is open */
-body:has(dialog[open]) .ui-fab.td-fab { display: none; }
+@media (prefers-reduced-motion: reduce) { body:has(dialog[open]) .ui-fab.td-fab { display: none; } }
+/* (with motion: it fades and shrinks as the card grows from it, then pops back 1.1 to 1 when the sheet has gone) */
+@media (prefers-reduced-motion: no-preference) {
+  body:has(dialog[open]) .ui-fab.td-fab { opacity: 0; scale: .8; pointer-events: none; transition: opacity 120ms linear, scale 120ms linear; }
+  body:not(:has(dialog[open])) .ui-fab.td-fab:not(.is-dragging) { animation: td-fab-pop 200ms cubic-bezier(0, 0, .2, 1) 80ms backwards; }
+}
+@keyframes td-fab-pop { from { opacity: 0; scale: 1.1; } }
 
 /* the date sheet: a left-aligned title, a pill field with a calendar icon, the shortcut rows, a calendar of weeks, a hairline panel of
    Add time / Repeat, and a small red Save pill floating bottom right */

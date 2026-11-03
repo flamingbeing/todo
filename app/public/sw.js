@@ -100,6 +100,7 @@ const SHELL = [
   'src/ui/edge-scroll.js',
   'src/ui/empty-art.js',
   'src/ui/menu.js',
+  'src/ui/quick-add-morph.js',
   'src/ui/row-drag.js',
   'src/ui/row-gestures.js',
   'src/ui/row-swipe.js',
