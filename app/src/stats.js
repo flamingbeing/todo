@@ -53,3 +53,42 @@ export function productivity(tasks, { today = dayKey(), daily = 0, weekly = 0, w
   return { today: n(today), week, streak, best: Math.max(best, streak), days: last7, daily: cleanGoal(daily), weekly: cleanGoal(weekly),
     max: Math.max(1, ...last7.map(d => d.n), cleanGoal(daily)) };
 }
+
+/** completed tasks per local day and project: day -> project id -> count (the Inbox is 'inbox')
+ * @param {Task[]} tasks @returns {Map<string, Map<string, number>>} */
+export function doneByDayProject(tasks) {
+  /** @type {Map<string, Map<string, number>>} */
+  const out = new Map();
+  for (const t of tasks) {
+    if (!t || !t.done || typeof t.doneAt !== 'number' || !Number.isFinite(t.doneAt)) continue;
+    const k = dayKey(new Date(t.doneAt)), pid = t.projectId || 'inbox';
+    const m = out.get(k) ?? new Map();
+    m.set(pid, (m.get(pid) ?? 0) + 1);
+    out.set(k, m);
+  }
+  return out;
+}
+
+/** @typedef {{ key: string, n: number, parts: { pid: string, n: number }[], off: boolean, today: boolean }} Bar */
+
+/**
+ * The Productivity page's bars, newest first: the last 7 days (daily) or the last 4 weeks (weekly, each from its first
+ * day), each split by project (largest first; ties by project id). off: a day off (Settings > Productivity), daily only.
+ * @param {Task[]} tasks @param {{ today?: string, weekly?: boolean, weekStart?: number, daysOff?: number[] }} [o] @returns {Bar[]}
+ */
+export function bars(tasks, { today = dayKey(), weekly = false, weekStart = 1, daysOff = [] } = {}) {
+  const by = doneByDayProject(tasks);
+  /** @param {string} from @param {number} len @param {string} key @param {boolean} off */
+  const bar = (from, len, key, off) => {
+    /** @type {Map<string, number>} */
+    const sum = new Map();
+    for (let i = 0; i < len; i++) for (const [pid, n] of by.get(addDays(from, i)) ?? []) sum.set(pid, (sum.get(pid) ?? 0) + n);
+    const parts = [...sum].map(([pid, n]) => ({ pid, n })).sort((a, b) => b.n - a.n || (a.pid < b.pid ? -1 : 1));
+    return { key, n: parts.reduce((s, p) => s + p.n, 0), parts, off, today: today >= from && today < addDays(from, len) };
+  };
+  if (weekly) {
+    const first = weekOf(today, weekStart);
+    return Array.from({ length: 4 }, (_, i) => { const w = addDays(first, -7 * i); return bar(w, 7, w, false); });
+  }
+  return Array.from({ length: 7 }, (_, i) => { const d = addDays(today, -i); return bar(d, 1, d, daysOff.includes(weekdayOf(d))); });
+}
