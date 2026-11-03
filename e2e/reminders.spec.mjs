@@ -13,7 +13,7 @@ test('tick reminders in the task sheet; they are saved on the task', async ({ ph
   await put(t, { title: t, due: { date: today(), time: '23:00' } });
   await synced(page);
   await clickOpens(page.locator('#today .td-row').filter({ hasText: t }).locator('.td-row-main'), page.locator(sheet));
-  const row = page.locator(`${sheet} button.td-attr[aria-label^="Reminder"]`);
+  const row = page.locator(`${sheet} .td-attr-chips [aria-label^="Reminder"]`);
   await expect(row).toHaveAttribute('aria-label', 'Reminder');
   await row.click();
   await page.getByRole('menuitemradio', { name: '30 minutes before' }).click();

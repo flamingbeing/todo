@@ -17,7 +17,7 @@ test('the sheet\'s Deadline row sets a day only; the row shows it; No deadline c
   await synced(page);
   const row = page.locator('#today .td-row').filter({ hasText: t });
   await clickOpens(row.locator('.td-row-main'), page.locator('#task-sheet'));
-  const attr = page.locator('#task-sheet .td-attr[aria-label^="Deadline"]');
+  const attr = page.locator('#task-sheet .td-attr-chips [aria-label^="Deadline"]');
   await expect(attr).toHaveAttribute('aria-label', 'Deadline');
   await attr.click();
   await expect(page.locator(sheet)).toBeVisible();

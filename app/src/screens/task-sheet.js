@@ -1,15 +1,17 @@
-// The task sheet (#task-sheet), laid out as the reference's iOS task view: the project as a breadcrumb at the top left
-// ("Work / This week ›", opens the place picker) with two grey circles at the right, "•••" (the menu) and "×" (close);
-// the ring and the title; then flat rows, icon at 30 and words at 56 with a hairline from the words on: Description,
-// Date, Deadline (once set), Priority, Labels (tinted chips), Reminders (once set); grey pills under them for what is not
-// a row (Reminder, Deadline, Move to…); a grey band, the sub-tasks; a band, the comments, with the comment field docked
-// at the bottom. Every change saves as it is made (on change or when a
-// field is left), through the write queue; there is no Save button, and closing keeps what was typed. The "•••" has
+// The task sheet (#task-sheet), laid out as the reference's task view: the project as a breadcrumb at the top left
+// ("Work / This week ›", opens the place picker) and "•••" (the menu) at the right, no Close button (swipe down, the
+// backdrop, Esc and Back close it); the ring and the title; the Date row (the description row joins once it has text);
+// under them ONE sideways-scrolling row of pills (.ui-scroll-x): Description (focuses the field), Priority, Reminders,
+// Labels, Deadline, Move to…, each opening its picker, a set value showing in its pill ("P1" with the flag in its colour,
+// the label names, the date, the reminder summary); a grey band, the sub-tasks ("Add sub-task" in the accent); a band, the
+// comments, with the comment field docked at the bottom. Every change saves as it is made (on change or when a
+// field is left), through the write queue; there is no Save button, and closing keeps what was typed. The "•••" is a
+// bottom action sheet (the kit's panel, skinned in app.css) with
 // Edit task (a full page: edit-task.js), Duplicate, Complete forever (a repeating task), Copy link, Hide completed
 // sub-tasks, View activity, Email and Delete (with an undo). "Add sub-task" and the "+" in the
 // Sub-tasks header open quick add above the keyboard for it (the sheet stays at its height behind). Opening a subtask shows it in the same sheet, with its parent's name
 // at the top to go back up.
-// On a phone it opens at half the screen with the list showing above (app-ui's detents, index.html: "medium large"); a
+// On a phone it opens at half the screen with the list showing above (app-ui's detents, index.html: "medium large"; app.css makes the medium one 55% of the screen); a
 // drag up takes it to full height, a drag down back to half, and once more closes it. Focusing a field that takes
 // typing (the title, the description or a comment) takes it to full height at once, so the keyboard
 // leaves room for the whole card. A panel (840 px and wider) keeps its own height.
@@ -110,9 +112,6 @@ function draw(ctx) {
   }
   const more = /** @type {HTMLButtonElement} */ (el('button', 'td-sheet-more td-sheet-circle'));
   more.type = 'button'; more.setAttribute('aria-label', 'More'); more.setAttribute('aria-haspopup', 'menu'); more.append(icon(MORE.ellipsis));
-  const shut = /** @type {HTMLButtonElement} */ (el('button', 'td-sheet-close td-sheet-circle'));
-  shut.type = 'button'; shut.setAttribute('aria-label', 'Close'); shut.append(icon(MORE.x));
-  shut.addEventListener('click', () => d().close());
   // (Copy link: this page's address with #task=<id>, which opens this task's sheet on load; a viewer can copy it too)
   const copyLink = { label: 'Copy link to task', icon: MORE.link, run: async () => {
     try { await navigator.clipboard.writeText(taskLink(t.id)); ctx.toast('Link copied'); } catch { ctx.toast('Could not copy the link'); }
@@ -145,7 +144,7 @@ function draw(ctx) {
       { label: 'Delete task', icon: MORE.trash2, danger: true, run: () => remove() },
     ] : [copyLink, activity, email], { label: 'Task', sheet: true, note: made ? `Added on ${made}` : '' });
   });
-  head.append(up, more, shut);
+  head.append(up, more);   // (no Close button: swipe down, the backdrop, Esc and Back close it)
 
   // the card: box, title, description
   const card = el('div', 'td-card td-task-card');
@@ -172,6 +171,7 @@ function draw(ctx) {
     if (!v) { title.value = current(ctx)?.title ?? ''; return; }
     if (v !== current(ctx)?.title) void save({ title: v });
   });
+  desc.addEventListener('blur', () => { descRow.hidden = !desc.value; });
   desc.addEventListener('change', () => { if (desc.value !== (current(ctx)?.description ?? '')) void save({ description: desc.value }); });
   // the words with their marks (bold, links: markdown.js) laid over each field while it is not being edited; a tap
   // between links reaches the field below (the layer lets taps through, but not on its links)
@@ -195,11 +195,13 @@ function draw(ctx) {
   card.append(box, words);
   // the description: the first row, its lines icon at the left; empty, its placeholder in grey
   const descRow = el('div', 'td-attr td-attr-desc');
+  descRow.hidden = true;   // (shown once the description has text, or while it is being typed; the Description pill opens it)
   const descWords = el('div', 'td-task-words');
   descWords.append(desc, views[1]);
   descRow.append(icon(MORE.textAlignStart, { class: 'td-attr-icon' }), descWords);
 
-  // the rows: description, date, deadline, priority, labels, reminders; the pills under them
+  // the rows: description (once it has text), date; under them one sideways-scrolling row of pills: Description,
+  // Priority, Reminders, Labels, Deadline, Move to… (a set value shows in its pill)
   const rows = el('div', 'td-attrs');
   const scroll = el('div', 'td-sheet-scroll');
   const place = /** @type {HTMLButtonElement} */ (up), date = attrRow(ICONS.calendar, 'Date', []), prio = attrRow(MORE.flag, 'Priority', []);
@@ -231,11 +233,12 @@ function draw(ctx) {
     openMenu(remind, LEADS.map(([lead, label]) => ({ label, icon: MORE.bell, checked: has.includes(lead),
       run: () => save({ reminders: has.includes(lead) ? has.filter(x => x !== lead) : [...has, lead] }) })), { label: 'Reminders' });
   });
-  const chipRow = el('div', 'td-attr-chips');
+  const chipRow = el('div', 'td-attr-chips ui-scroll-x');
   const moveTo = attrRow(MORE.folderInput, 'Move to…', [el('span', 'td-attr-text', 'Move to…')]);
-  moveTo.classList.add('is-chip');
-  moveTo.disabled = !writable;
+  const descChip = attrRow(MORE.textAlignStart, 'Description', [el('span', 'td-attr-text', 'Description')]);
+  for (const b of [moveTo, descChip, deadline, remind, prio, labels]) { b.classList.add('is-chip'); b.disabled = !writable; }
   moveTo.addEventListener('click', move);
+  descChip.addEventListener('click', () => { descRow.hidden = false; desc.focus(); });
 
   // subtasks
   const subs = el('section', 'td-subtasks');
@@ -279,33 +282,24 @@ function draw(ctx) {
     date.replaceChildren(cal, dueText, ...(due?.repeats ? [icon(ICONS.repeat, { class: 'td-meta-icon td-repeat' })] : []));
     date.setAttribute('aria-label', due ? `Date: ${due.text}${long}` : 'Date');
     const dl = deadlineLine(now.deadline, dayKey());
-    deadline.replaceChildren(icon(ICONS.target, { class: 'td-attr-icon td-deadline-icon' }), el('span', `td-attr-text${dl ? '' : ' td-attr-empty'}`, dl ? dl.text : 'Deadline'));
+    deadline.replaceChildren(icon(ICONS.target, { class: 'td-attr-icon td-deadline-icon' }), el('span', 'td-attr-text', dl ? dl.text : 'Deadline'));
     if (dl) /** @type {HTMLElement} */ (deadline.lastElementChild).dataset.tone = dl.tone;
     deadline.setAttribute('aria-label', dl ? `Deadline: ${dl.text}` : 'Deadline');
     const rem = cleanReminders(now.reminders);
     const remText = rem.length ? rem.map(leadText).join(', ').replace(/ before/g, '') : '';
     remind.replaceChildren(icon(MORE.alarmClock, { class: 'td-attr-icon' }), el('span', 'td-attr-text', remText ? `Reminders: ${remText}` : 'Reminder'));
     remind.setAttribute('aria-label', remText ? `Reminders: ${remText}` : 'Reminder');
+    // priority: "P1".."P3" with the flag in its colour once set (4 is the default and shows the plain word)
     const flag = icon(MORE.flag, { class: `td-attr-icon td-flag${p < 4 ? ' is-filled' : ''}` });
     flag.style.color = PRIORITY_COLOR[p];
-    prio.replaceChildren(flag, el('span', 'td-attr-text', `Priority ${p}`));
-    prio.setAttribute('aria-label', `Priority ${p}`);
+    prio.replaceChildren(flag, el('span', 'td-attr-text', p < 4 ? `P${p}` : 'Priority'));
+    prio.setAttribute('aria-label', p < 4 ? `Priority P${p}` : 'Priority');
     const mine = labelsOf(now, data.labels);
-    const chips = mine.map(l => {
-      // (the label's colour at a fifth, the words in the text colour)
-      const chip = el('span', 'td-chip td-label-chip', l.name);
-      chip.style.setProperty('--c', colorHex(l.color));
-      return chip;
-    });
-    labels.replaceChildren(icon(ICONS.tag, { class: 'td-attr-icon' }), ...(chips.length ? chips : [el('span', 'td-attr-text td-attr-empty', 'Labels')]));
+    labels.replaceChildren(icon(ICONS.tag, { class: 'td-attr-icon' }), el('span', 'td-attr-text', mine.length ? mine.map(l => l.name).join(', ') : 'Labels'));
     labels.setAttribute('aria-label', mine.length ? `Labels: ${mine.map(l => l.name).join(', ')}` : 'Labels');
-    // Description, Date, Priority and Labels are always rows; Deadline and Reminders are rows once set, else grey pills
-    // beside Move to… (as the reference's Reminder and Move to… buttons)
-    const isSet = new Map(/** @type {[HTMLButtonElement, boolean][]} */ ([[deadline, !!dl], [remind, !!remText]]));
-    for (const [b, set] of isSet) b.classList.toggle('is-chip', !set);
-    rows.replaceChildren(descRow, date, ...(dl ? [deadline] : []), prio, labels, ...(remText ? [remind] : []));
-    chipRow.replaceChildren(...(remText ? [] : [remind]), ...(dl ? [] : [deadline]), ...(writable ? [moveTo] : []));
-    chipRow.hidden = !chipRow.children.length;
+    descRow.hidden = !desc.value && document.activeElement !== desc;
+    rows.replaceChildren(descRow, date);
+    chipRow.replaceChildren(...(writable ? [descChip, prio, remind, labels, deadline, moveTo] : [prio, remind, labels, deadline]));
 
     // its subtasks, open and done (a done one shows ticked); the header counts them, "+" adds one, the chevron folds the list
     const all = byOrder(data.tasks.filter(k => k.parentId === now.id));

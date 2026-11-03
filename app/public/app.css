@@ -1193,6 +1193,8 @@ html[data-look="ios"] .td-section-desc { border-top: 1px solid var(--td-hair); m
    title (20 px semibold at x 56); rows 48.5 px apart, icon centred on x 30, words at 56, hairlines from 56; grey pills;
    5 px grey bands between the details, the sub-tasks and the comments; the comment pill docked at the bottom */
 #task-sheet.td-sheet { background: var(--td-card); border-radius: 20px 20px 0 0; }
+/* at the medium detent the card is 55% of the screen, as in the reference (the kit measures this height on open; large stays for typing) */
+#task-sheet:not([data-detent="large"]) { height: 55dvh; }
 #task-sheet .ui-sheet-grabber::before { top: 8px; width: 39px; height: 5px; border-radius: 3px; background: light-dark(#cccccd, #5a5a5a); }
 #task-sheet .td-sheet-body { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0; }
 #task-sheet .td-sheet-head { flex: none; gap: 8px; height: 44px; padding: 0 16px 0 8px; }
@@ -1214,6 +1216,7 @@ html[data-look="ios"] .td-section-desc { border-top: 1px solid var(--td-hair); m
 #task-sheet .td-attr-icon { left: 20px; width: 20px !important; height: 20px !important; color: var(--td-text-2); }
 #task-sheet .td-attr-icon[data-tone] { color: var(--td-d-tone, var(--td-text-2)); }
 #task-sheet .td-attr-desc { align-items: flex-start; }
+#task-sheet .td-attr-desc[hidden] { display: none; }
 #task-sheet .td-attr-desc .td-attr-icon { top: 14px; translate: none; }
 #task-sheet .td-attr-desc .td-task-words { flex: 1; }
 #task-sheet .td-task-desc, #task-sheet .td-md-desc { padding: 13px 0 12px; font-size: 16px; line-height: 22px; color: var(--td-text); }
@@ -1232,8 +1235,10 @@ html[data-look="ios"] .td-section-desc { border-top: 1px solid var(--td-hair); m
 /* the pills under the rows (Reminder, Deadline, Move to…): grey, 35 px, radius 8, icon 16 + 16 px words */
 #task-sheet .td-attr-chips { display: flex; gap: 8px; margin: 0; padding: 12px 16px 16px; overflow-x: auto; scrollbar-width: none; }
 #task-sheet .td-attr-chips::-webkit-scrollbar { display: none; }
-#task-sheet .td-attr.is-chip { position: static; flex: none; width: auto; min-height: 35px; height: 35px; gap: 8px; padding: 0 14px; border-radius: 8px; flex-wrap: nowrap;
-  background: var(--td-chip); color: var(--td-text); font-size: 16px; font-weight: 500; white-space: nowrap; }
+#task-sheet .td-attr.is-chip { position: static; flex: none; width: auto; min-height: 35px; height: 35px; gap: 8px; padding: 0 14px; border-radius: 18px; flex-wrap: nowrap;
+  border: 1px solid var(--td-hair); background: none; color: var(--td-text); font-size: 14px; font-weight: 400; white-space: nowrap; }
+#task-sheet .td-attr.is-chip:is(:active, [data-pressed]) { background: var(--td-selected); }
+#task-sheet .td-attr-chips { padding-block: 4px 16px; }
 #task-sheet .td-attr.is-chip::after { display: none; }
 #task-sheet .td-attr.is-chip .td-attr-icon { position: static; translate: none; width: 16px !important; height: 16px !important; color: var(--td-text); }
 #task-sheet .td-attr.is-chip .td-attr-text { flex: none; color: inherit; }
@@ -1253,7 +1258,8 @@ html[data-look="ios"] .td-section-desc { border-top: 1px solid var(--td-hair); m
 #task-sheet .td-subtasks .td-row::after { left: calc(56px + var(--depth, 0) * 24px); }
 #task-sheet .td-add-sub { justify-content: flex-start; gap: 0; width: 100%; min-height: 48px; margin: 0; padding: 0 16px 0 56px; position: relative; border-radius: 0; background: none;
   color: var(--td-text); font-size: 16px; font-weight: 400; }
-#task-sheet .td-add-sub .td-add-icon { position: absolute; left: 20px; width: 20px; height: 20px; color: var(--td-text-2); }
+#task-sheet .td-add-sub .td-add-icon { position: absolute; left: 20px; width: 20px; height: 20px; color: var(--td-accent); }
+#task-sheet .td-add-sub { color: var(--td-accent); }
 #task-sheet .td-comments { padding-bottom: 8px; }
 #task-sheet .td-comment-list { margin: 0; border-radius: 0; background: none; }
 #task-sheet .td-comment { padding: 6px 16px 6px 56px; }
@@ -1421,3 +1427,10 @@ html[data-fab="center"] .ui-fab.td-fab { inset-inline-end: auto; inset-inline-st
 .modal[aria-labelledby] p { white-space: pre-line; }
 #display-btn { position: relative; }
 #display-btn.has-dot::after { content: ""; position: absolute; top: 12px; right: 11px; width: 6px; height: 6px; border-radius: 50%; background: var(--td-accent); }
+
+/* the "•••" menu as its own action sheet over the dimmed task sheet: a flat surface with a 20 px top radius, the added-on line, icons at the left,
+   a press shades the whole row (the rise and fade of its opening come from the kit) */
+.td-menu.ui-menu-panel { border-radius: 20px 20px 0 0; background: light-dark(#fff, #1c1c1e); box-shadow: 0 -2px 24px rgb(0 0 0 / .18); }
+.td-menu.ui-menu-panel .ui-menu-item { position: relative; width: 100%; padding: 0 20px; border-radius: 0; }
+.td-menu.ui-menu-panel .ui-menu-item:is(:active, [data-pressed]) { background: var(--td-selected); }
+.td-menu-layer:has(> .td-menu.ui-menu-panel) > .td-menu-veil { background: rgb(0 0 0 / .4); }

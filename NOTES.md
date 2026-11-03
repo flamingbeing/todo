@@ -150,3 +150,5 @@ text changed). Nothing is saved, so there is no format to migrate.
   in `unknown` for a "did you mean" line. A query with no words (only filters, phrases or leave-outs) lists matches
   newest first (`newest(record)`, default `updatedAt`).
 - Later: a `toJSON`/`loadJSON` cache of the index (rebuild at start is cheap below ~10k records).
+
+- Task sheet (3 Nov): the medium detent is `55dvh` in app.css (the kit measures it on open); the attribute pills are `button.td-attr.is-chip` in one `.td-attr-chips.ui-scroll-x` row, pill text contained in its aria-label (axe), find them by aria-label in specs. The ••• action sheet's open motion is the kit's (app-ui rc.85); app.css only skins it.

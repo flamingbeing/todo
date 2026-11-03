@@ -117,7 +117,7 @@ test('the + on Upcoming dates the new task for the day in sight; the sheet sets 
   await serverHas(t);
 
   await clickOpens(row(page, '#upcoming', t).locator('.td-row-main'), page.locator('#task-sheet'));
-  await page.locator('#task-sheet .td-attr[aria-label^="Priority"]').click();
+  await page.locator('#task-sheet .td-attr-chips [aria-label^="Priority"]').click();
   await page.getByRole('menuitemradio', { name: 'Priority 1' }).click();
   await expect(row(page, '#upcoming', t)).toHaveAttribute('data-priority', '1');
   // "Add sub-task" opens quick add over the sheet (one add, then it closes and the sheet shows the new sub-task)
@@ -231,11 +231,21 @@ test('the sheet\'s ••• menu: the added-on line, its rows in order, Move to
   await clickOpens(row(page, '#today', t).locator('.td-row-main'), page.locator('#task-sheet'));
   // Move to… is a grey pill under the rows, not a menu row; the header has ••• and ×
   await expect(page.locator('#task-sheet .td-attr.is-chip').filter({ hasText: 'Move to…' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
+  await expect(page.locator('#task-sheet [aria-label="Close"]')).toHaveCount(0);
+  // the pills: one sideways-scrolling row, in order
+  await expect(page.locator('#task-sheet .ui-scroll-x')).toHaveCount(1);
+  await expect(page.locator('#task-sheet .ui-scroll-x > button')).toHaveText(['Description', 'Priority', 'Reminder', 'Labels', 'Deadline', 'Move to…']);
+  const box = await page.locator('#task-sheet').boundingBox();
+  const vh = page.viewportSize()?.height ?? 844;
+  expect(box && box.height / vh).toBeGreaterThan(0.52);
+  expect(box && box.height / vh).toBeLessThan(0.58);
   for (const scheme of ['light', 'dark']) { await page.emulateMedia({ colorScheme: scheme }); expect(await AxeBuilder(page)).toEqual([]); }
   await page.emulateMedia({ colorScheme: 'light' });
   await page.locator('#task-sheet .td-sheet-more').click();
   await expect(page.locator('.ui-menu-note')).toContainText('Added on');
+  await expect(page.locator('#task-sheet .ui-menu-panel')).toBeVisible();
+  const mb = await page.locator('#task-sheet .ui-menu-panel').boundingBox();
+  expect(mb && Math.abs(mb.y + mb.height - (page.viewportSize()?.height ?? 844))).toBeLessThan(2);
   await expect(page.getByRole('menuitem')).toHaveText(['Edit task', 'Duplicate task', 'Complete forever', 'Copy link to task', 'Hide completed sub-tasks',
     'View activity', 'Email to this task', 'Delete task']);
   expect(await AxeBuilder(page)).toEqual([]);
