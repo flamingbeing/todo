@@ -4,9 +4,9 @@
 // days: the weekday's letter over the day's number, today's in a filled accent circle, the day picked in a soft one. A
 // swipe sideways goes a week on or back (not before this week); a tap on a day scrolls the list to it, and scrolling the
 // list moves the pick. The month opens from the handle under the week: dragging it down grows the calendar under the
-// finger, row by row, from the one week to six rows; dragging up shrinks it back; let go, it settles open or shut by
+// finger, row by row, from the one week to five rows (stopping dead at both ends); dragging up shrinks it back; let go, it settles open or shut by
 // distance and speed (a tap on the handle or the month title toggles; less motion: it just switches). Out, the month
-// title is in the accent colour from the first pull (the caret turns up once open) and the weeks run on in a scroller from this week, with more drawn
+// title is in the accent colour once the open is committed (at the let-go; it clears as a close starts), the caret up and the weeks run on in a scroller from this week, with more drawn
 // near the end (a year and more ahead), the title following the top row's month; past days are disabled; a day picked
 // there closes the calendar and scrolls the list to it. A task dragged onto a day moves to it
 // (row-drag.js reads data-drop-day); a long press on a day opens the quick add dated that day. The week starts on the
@@ -214,7 +214,8 @@ function build(host, s) {
     if (calm) { land(); return Promise.resolve(); }
     // (a live height, on purpose: the list below the calendar has to be pushed down or pulled up with it, which only
     // layout does, and one spring per settle is all that runs; the drag's own frames are the finger's)
-    run = spring(x => setH(baseH + x), from, want ? span() : 0, v, { response: .1 });
+    // (clamped: the reference stops dead at both ends, so the let-go speed never carries it past full or below the week)
+    run = spring(x => setH(baseH + Math.min(span(), Math.max(0, x))), from, want ? span() : 0, v, { response: .1 });
     const mine = run;
     return mine.done.then(landed => { if (landed && run === mine) land(); });
   };
@@ -320,13 +321,14 @@ function build(host, s) {
     title();
     if (filled && grid.scrollTop + grid.clientHeight > grid.scrollHeight - 13 * ROW) ensure(rows + CHUNK);
   }, { passive: true });
-  // the handle: dragged down, the calendar grows under the finger (from the one week to six rows); up, it shrinks;
+  // the handle: dragged down, the calendar grows under the finger (from the one week to five rows); up, it shrinks;
   // let go, it settles by distance and speed
   let moved = false;
   drag(handle, { axis: 'y', mouse: true, name: 'cards',
-    start: () => { moved = false; if (open) { pulling = true; sync(); } if (busy && run?.running()) { moved = true; return run.stop(); } return open ? span() : 0; },
+    start: () => { moved = false; if (busy && run?.running()) { moved = true; return run.stop(); } return open ? span() : 0; },
     // (no bounds: the reference stops dead at the ends, the kit's rubber band is not wanted; d is clamped instead)
-    move: d => { moved = true; if (!busy) prep(); setH(baseH + Math.min(span(), Math.max(0, d))); },
+    // (from open, the coral title clears at the first move, not at the touch: a press that never moves keeps it)
+    move: d => { moved = true; if (open && !pulling) { pulling = true; sync(); } if (!busy) prep(); setH(baseH + Math.min(span(), Math.max(0, d))); },
     end: (d, v) => {
       pulling = false;
       if (!moved) { sync(); return; }

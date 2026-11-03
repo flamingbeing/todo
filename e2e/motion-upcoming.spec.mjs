@@ -16,6 +16,8 @@ test('day circle fades in 60 ms, caret turns in 100 ms, Overdue head not sticky,
   await expect(page.locator('#upcoming-strip .td-wday')).toHaveCount(7);
   expect(await css('#upcoming-strip .td-wday-num', 'transitionDuration')).toBe('0.06s');
   expect(await css('.td-month-caret', 'transitionDuration')).toBe('0.1s');
+  // the title's coral fades in 100 ms (not snapped by the glass theme's button transition)
+  expect(await css('#upcoming-strip .td-month', 'transitionProperty')).toContain('color');
   await expect(page.locator('#upcoming .td-group:not(.td-day) > .td-group-head').first()).toBeVisible();
   expect(await css('#upcoming .td-group:not(.td-day) > .td-group-head', 'position')).not.toBe('sticky');
   expect(await css('#upcoming .td-day > .td-group-head', 'position')).toBe('sticky');

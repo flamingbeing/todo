@@ -31,7 +31,14 @@ test('the pull: few rows at the first move, a hard clamp at the end, coral only 
   // far past the end: clamped at the five rows, no stretch; still white while the finger is down
   expect(await h()).toBeLessThanOrEqual(FULL);
   expect(await strip.locator('.td-month').getAttribute('data-out')).toBeNull();
+  // let go at full with the finger's speed: the settle never carries it past full (no overshoot, stops dead)
+  const peak = page.evaluate(() => new Promise(res => {
+    const c = document.querySelector('#upcoming-strip .td-wcal'), t0 = performance.now(); let max = 0;
+    const f = () => { max = Math.max(max, c.getBoundingClientRect().height); if (performance.now() - t0 < 400) requestAnimationFrame(f); else res(max); };
+    requestAnimationFrame(f);
+  }));
   await page.mouse.up();
+  expect(await peak, 'no overshoot past the five rows').toBeLessThanOrEqual(FULL + .5);
   await expect(strip.locator('.td-month')).toHaveAttribute('aria-expanded', 'true');
   await expect(strip.locator('.td-month')).toHaveAttribute('data-out', '');
   await expect.poll(h).toBe(FULL);
@@ -42,11 +49,14 @@ test('the pull: few rows at the first move, a hard clamp at the end, coral only 
   const x2 = o.x + o.width / 2, y2 = o.y + o.height / 2;
   await page.mouse.move(x2, y2);
   await page.mouse.down();
+  // a press alone keeps the coral (it clears with the first move, not at the touch)
+  expect(await strip.locator('.td-month').getAttribute('data-out')).toBe('');
   await page.mouse.move(x2, y2 - 20, { steps: 3 });
   await expect(strip.locator('.td-month')).not.toHaveAttribute('data-out', /.*/);
   await page.mouse.move(x2, y2 - 60, { steps: 4 });
   await page.mouse.move(x2, y2 - 500, { steps: 8 });
-  expect(await h()).toBeGreaterThanOrEqual(0);
+  // far past the top: clamped at the one week (the calendar never shrinks below the week's height)
+  expect(await h()).toBeGreaterThanOrEqual(40);
   await page.mouse.up();
   await expect(strip.locator('.td-month')).toHaveAttribute('aria-expanded', 'false');
   await expect(strip.locator('.td-wcal')).toBeHidden();
