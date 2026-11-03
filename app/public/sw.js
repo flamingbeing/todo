@@ -65,6 +65,7 @@ const SHELL = [
   'src/screens/calendar.js',
   'src/screens/comments.js',
   'src/screens/completed.js',
+  'src/screens/confetti.js',
   'src/screens/display.js',
   'src/screens/edit-task.js',
   'src/screens/filters.js',

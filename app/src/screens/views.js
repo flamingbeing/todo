@@ -120,6 +120,7 @@ export function views(app) {
     section: () => import('./section-page.js'),
     tone: () => import('./tone.js'),
     party: () => import('./party.js'),
+    confetti: () => import('./confetti.js'),
   });
   /** a list's Display choices on this device @param {string} view */
   const disp = view => cleanDisplay(/** @type {any} */ (app.settings.get('display'))?.[view], view);
@@ -165,6 +166,9 @@ export function views(app) {
     }
     if (row) {
       await new Promise(r => setTimeout(r, 150));
+      // (every completion bursts from the checkbox as the row starts to fade; off under reduced motion)
+      const bit = row.querySelector('.td-check');
+      if (bit) void lazy.withMod('confetti', m => m.burst(bit));
       // (the ring has filled and its check drawn, 150 ms: app.css; then the row fades, and the list drawn again closes the gap)
       if (!next) { row.classList.add('is-leaving'); await glide([[row, x => ({ opacity: String(1 - x), transform: `translateX(${x * 12}px)` })]], 0, 1).done; }
     }

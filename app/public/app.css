@@ -1395,6 +1395,12 @@ html[data-fab="center"] .ui-fab.td-fab { inset-inline-end: auto; inset-inline-st
 .td-days > .td-day[aria-pressed="true"] { border-color: var(--td-fill); background: var(--td-fill); color: #fff; }
 /* the licences */
 .td-licence { margin: 0 20px; padding: 12px; border-radius: 10px; background: var(--td-selected); color: var(--td-text); font-size: 12px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* the completion burst (screens/confetti.js): bits fly from the checkbox, then fall and fade over 2 s */
+.td-confetti { position: fixed; z-index: 40; width: 0; height: 0; pointer-events: none; }
+.td-confetti-bit { position: absolute; left: -4px; top: -4px; width: 8px; height: 8px; border-radius: 2px; will-change: transform, opacity; }
+@media (prefers-reduced-motion: reduce) { .td-confetti { display: none; } }
+/* a row held over the list: the neighbours slide one row's height out of its way, 150 ms, near-linear (ui/row-drag.js) */
+@media (prefers-reduced-motion: no-preference) { .td-row.is-sliding { transition: transform 150ms cubic-bezier(.3,0,.7,1); } }
 /* the goal celebration (screens/party.js) */
 .td-party { position: fixed; left: 50%; top: 40%; z-index: 40; width: 0; height: 0; pointer-events: none; }
 .td-party-bit { position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 3px; }

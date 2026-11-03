@@ -189,9 +189,36 @@ export function dragRows(host, ctx, o) {
   // the list scrolls near its top and foot (above Today's postpone place when it shows, and not while over it); a board
   // near its sides too
   const vert = edgeScroll({ el: sc, span: () => shownSpan(sc(), p?.zone ? p.zone.getBoundingClientRect().top - 8 : undefined),
-    at: () => p?.fy ?? 0, on: () => !!p?.moved && !p.over, moved: () => { if (p) p.gaps = undefined; follow(); } });
+    at: () => p?.fy ?? 0, on: () => !!p?.moved && !p.over, moved: () => { if (p) { unslide(); p.gaps = undefined; } follow(); } });
   const side = edgeScroll({ el: () => host, axis: 'x', zone: BOARD_EDGE, span: () => { const b = host.getBoundingClientRect(); return [b.left, b.right]; },
     at: () => p?.fx ?? 0, on: () => !!p?.moved && board(), moved: () => follow() });
+
+  /** neighbours that have slid out of the way: one row height, 150 ms (app.css .is-sliding) @type {Map<HTMLElement, number>} */
+  const slid = new Map();
+  /** the rows between the lifted one's place and the gap slide one row's height; the rest are back */
+  const slide = (/** @type {NonNullable<typeof p>} */ q, /** @type {Gap | null} */ g) => {
+    /** @type {Map<HTMLElement, number>} */
+    const want = new Map();
+    const og = q.gaps?.find(x => x.group.contains(q.row))?.group;
+    if (g && og) {
+      const moving = new Set([q.row, ...q.kids]);
+      const h = [q.row, ...q.kids].reduce((n, r) => n + r.offsetHeight, 0);
+      const rows = /** @type {HTMLElement[]} */ ([...og.querySelectorAll('.td-row')]).filter(r => !moving.has(r));
+      const o = rows.filter(r => q.row.compareDocumentPosition(r) & Node.DOCUMENT_POSITION_PRECEDING).length;
+      if (g.group === og) {
+        if (g.at > o) rows.slice(o, g.at).forEach(r => want.set(r, -h));
+        else rows.slice(g.at, o).forEach(r => want.set(r, h));
+      } else {
+        rows.slice(o).forEach(r => want.set(r, -h));
+        const tr = /** @type {HTMLElement[]} */ ([...g.group.querySelectorAll('.td-row')]).filter(r => !moving.has(r));
+        tr.slice(g.at).forEach(r => want.set(r, h));
+      }
+    }
+    for (const [r] of slid) if (!want.has(r)) { r.style.transform = ''; slid.delete(r); r.classList.remove('is-sliding'); }
+    for (const [r, y] of want) { if (slid.get(r) === y) continue; r.classList.add('is-sliding'); r.style.transform = `translateY(${y}px)`; slid.set(r, y); }
+  };
+  /** every neighbour back at once (before the places are measured again, and at the let-go) */
+  const unslide = () => { for (const [r] of slid) { r.classList.remove('is-sliding'); r.style.transform = ''; } slid.clear(); };
 
   /** the week strip's day under the finger @type {HTMLElement | null} */
   let lit = null;
@@ -216,6 +243,7 @@ export function dragRows(host, ctx, o) {
     if (g !== q.gap || depth !== q.depth) haptic('tick');
     q.gap = g; q.depth = depth;
     q.line?.show(g, depth);
+    if (!b) slide(q, g);
     if (kind === 'days') {
       const cell = /** @type {HTMLElement | undefined} */ (document.elementsFromPoint(q.fx, q.fy).find(n => n instanceof HTMLElement && n.dataset.dropDay)) ?? null;
       if (cell !== lit) { lit?.classList.remove('is-drop'); lit = cell; lit?.classList.add('is-drop'); if (cell) haptic('tick'); }
@@ -283,6 +311,7 @@ export function dragRows(host, ctx, o) {
     const r = was.row;
     was.line?.remove();
     was.zone?.remove();
+    unslide();
     const task = ctx.data().tasks.find(t => t.id === r.dataset.id);
     if (!task || e.type === 'pointercancel') { settleRow(r, was.kids); return; }
     if (!was.moved) { settleRow(r, was.kids); o.menu(task, r); return; }
