@@ -1,7 +1,7 @@
 // dates.js: day maths, the tone and words of a due date, group headers. node --test app/test/dates.unit.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dayKey, timeKey, addDays, daysBetween, isDay, isTime, weekdayName, shortDate, dateTone, dayWords, deadlineLine, dueLine, dayTitle, dayHeading, timeText, minutesClock, minutesText, weekOf } from '../src/dates.js';
+import { dayKey, timeKey, addDays, daysBetween, isDay, isTime, weekdayName, shortDate, dateTone, dayWords, deadlineLine, dueLine, dayTitle, dayHeading, timeText, minutesClock, minutesText, weekOf, nextWeekOf, weekendOf } from '../src/dates.js';
 import { minutesSpan, monthGrid, monthTitle } from '../src/dates-cal.js';
 
 const T = '2026-11-01';   // a Sunday
@@ -107,4 +107,15 @@ test('a deadline in words: today, tomorrow, "in N days" within two weeks, else t
 
 test('a duration in words', () => {
   assert.deepEqual([15, 45, 60, 90, 150, 180].map(minutesText), ['15 min', '45 min', '1 h', '1 h 30 min', '2 h 30 min', '3 h']);
+});
+
+test('nextWeekOf / weekendOf: the day General sets for "Next week" and "This weekend"', () => {
+  // 2026-11-02 Mon ... 2026-11-07 Sat, 2026-11-08 Sun
+  assert.equal(nextWeekOf('2026-11-02'), '2026-11-09', 'Monday: the next Monday, never today');
+  assert.equal(nextWeekOf('2026-11-04', 5), '2026-11-06', 'Friday as next week, from a Wednesday');
+  assert.equal(nextWeekOf('2026-11-08', 0), '2026-11-15');
+  assert.equal(weekendOf('2026-11-04'), '2026-11-07');
+  assert.equal(weekendOf('2026-11-04', 0), '2026-11-08');
+  assert.equal(weekendOf('2026-11-07'), '2026-11-14', 'on a Saturday: the next weekend');
+  assert.equal(weekendOf('2026-11-08', 0), '2026-11-15');
 });

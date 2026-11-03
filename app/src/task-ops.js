@@ -53,10 +53,10 @@ export function taskOps({ save, id, data, now = Date.now, drop = () => {} }) {
   /** a task and its open subtasks, done (doneAt now) -> '' or the reason, and the tasks it ticked (an undo unticks them).
    * A repeating task with a next date (next) stays open and moves to it instead: moved is the date it had, reopened its
    * done subtasks, open again for the next time (an undo, unmove, puts both back).
-   * @param {Task} task @param {{ next?: string | null }} [o] @returns {Promise<{ refused: string, ticked: Task[], moved?: import('./dates.js').Due, reopened?: Task[] }>} */
-  const complete = async (task, { next } = {}) => {
+   * @param {Task} task @param {{ next?: string | null, keepSubs?: boolean }} [o] @returns {Promise<{ refused: string, ticked: Task[], moved?: import('./dates.js').Due, reopened?: Task[] }>} */
+  const complete = async (task, { next, keepSubs } = {}) => {
     if (next && task.due?.rrule) {
-      const reopened = descendants(task.id, data().tasks).filter(t => t.done);
+      const reopened = keepSubs ? [] : descendants(task.id, data().tasks).filter(t => t.done);
       return { refused: await first([put(COLL, { ...task, due: cleanDue({ ...task.due, date: next }) }, task), ...reopened.map(t => put(COLL, { ...t, done: false, doneAt: null }, t))]),
         ticked: [], moved: task.due, reopened };
     }

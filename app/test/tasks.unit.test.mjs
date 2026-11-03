@@ -166,6 +166,16 @@ test('a repeating task ticked moves to its next date and reopens its done subtas
   assert.equal(s.data.tasks[0].due.date, '2026-11-01');
 });
 
+test('Reset sub-tasks off (keepSubs): a repeating task moves on and its done subtasks stay done', async () => {
+  const due = { date: '2026-11-01', rrule: 'FREQ=WEEKLY', string: 'every week' };
+  const s = store({ tasks: [t('r', { due }), t('a', { parentId: 'r', done: true, doneAt: 5 }), t('b', { parentId: 'r' })] });
+  const r = await s.ops.complete(s.data.tasks[0], { next: '2026-11-08', keepSubs: true });
+  assert.equal(r.refused, '');
+  assert.deepEqual(r.reopened, []);
+  assert.deepEqual(s.data.tasks.map(x => [x.id, x.done]), [['r', false], ['a', true], ['b', false]]);
+  assert.equal(s.data.tasks[0].due.date, '2026-11-08');
+});
+
 test('delete takes the subtasks; move takes them to the new project and section', async () => {
   const s = store({ tasks: [t('p'), t('c', { parentId: 'p' }), t('x')] });
   await s.ops.moveTask(s.data.tasks[0], { projectId: 'w', sectionId: 's' });

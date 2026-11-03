@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cleanReminders, leadText, leadShort, dueMs, firesOf, dueNow, nextAt } from '../src/reminders.js';
+import { cleanReminders, leadText, leadShort, dueMs, firesOf, dueNow, nextAt, autoReminders } from '../src/reminders.js';
 import { cleanFields } from '../src/tasks.js';
 
 const at = (d, t) => new Date(`${d}T${t}:00`).getTime();
@@ -63,4 +63,13 @@ test('cleanFields cleans reminders', () => {
   assert.deepEqual(cleanFields({ reminders: [30, 30, 0] }).reminders, [0, 30]);
   assert.deepEqual(cleanFields({ reminders: null }).reminders, []);
   assert.equal('reminders' in cleanFields({ title: 'x' }), false);
+});
+
+test('autoReminders: a due time and no reminder of its own gets the automatic lead; off (-1) or no time adds none', () => {
+  assert.deepEqual(autoReminders({ date: '2026-11-05', time: '14:00' }, [], 30), [30]);
+  assert.deepEqual(autoReminders({ date: '2026-11-05', time: '14:00' }, undefined, 0), [0]);
+  assert.deepEqual(autoReminders({ date: '2026-11-05', time: '14:00' }, [10], 30), [10], 'its own reminders win');
+  assert.deepEqual(autoReminders({ date: '2026-11-05' }, [], 30), [], 'no time: none');
+  assert.deepEqual(autoReminders({ date: '2026-11-05', time: '14:00' }, [], -1), [], 'off');
+  assert.deepEqual(autoReminders(null, [], 30), []);
 });

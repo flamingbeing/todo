@@ -102,3 +102,13 @@ export const dayHeading = (key, today) => `${weekdayName(key)}, ${shortDate(key,
 
 /** the first day of key's week (weekStart 1: Monday, 0: Sunday) @param {string} key @param {number} [weekStart] */
 export const weekOf = (key, weekStart = 1) => addDays(key, -((weekdayOf(key) - weekStart + 7) % 7));
+
+/** "Next week": the next given weekday after today, never today itself (option nextWeekDay, 1 = Monday)
+ * @param {string} today @param {number} [day] */
+export const nextWeekOf = (today, day = 1) => addDays(today, ((day - weekdayOf(today) + 7) % 7) || 7);
+/** "This weekend": the next given day (option weekendDay, 6 Saturday or 0 Sunday); on a weekend day, the next weekend
+ * (Today already names today) @param {string} today @param {number} [day] */
+export const weekendOf = (today, day = 6) => {
+  const wd = weekdayOf(today);
+  return addDays(today, (wd === 6 || wd === 0) ? ((day - wd + 7) % 7 || 7) + (day === 0 && wd === 6 ? 7 : 0) : (day - wd + 7) % 7);
+};

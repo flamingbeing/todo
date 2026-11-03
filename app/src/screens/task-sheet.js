@@ -21,12 +21,12 @@ import { byOrder } from '../order.js';
 import { rowList } from '../ui/row.js';
 import { openMenu } from '../ui/menu.js';
 import { el, pickPlace } from './pick.js';
-import { pickDate } from './scheduler.js';
+import { pickDate, dayOptions } from './scheduler.js';
 import { pickLabels, ticksOf, onIds } from './labels.js';
 import { hasMarks, showMarks } from '../markdown.js';
 import { commentsSection } from './comments.js';
 import { openEditTask } from './edit-task.js';
-import { LEADS, cleanReminders, leadText, dueMs } from '../reminders.js';
+import { LEADS, cleanReminders, leadText, dueMs, autoReminders } from '../reminders.js';
 
 /** @typedef {import('../items.js').Task} Task */
 /** @typedef {import('./views.js').Ctx} Ctx */
@@ -125,7 +125,7 @@ function draw(ctx) {
       { label: hideDone ? 'Show completed sub-tasks' : 'Hide completed sub-tasks', icon: hideDone ? MORE.eye : MORE.circleSlash, run: () => { hideDone = !hideDone; refresh?.(ctx); } },
       activity,
       email,
-      { label: 'Move to…', icon: ICONS.folderInput, run: () => move() },
+      { label: 'Move to…', icon: MORE.folderInput, run: () => move() },
       null,
       { label: 'Delete task', icon: MORE.trash2, danger: true, run: () => remove() },
     ] : [copyLink, activity, email], { label: 'Task', sheet: true, note: made ? `Added on ${made}` : '' });
@@ -194,10 +194,14 @@ function draw(ctx) {
     if (at && await ctx.app.moveTask(at, { ...to, parentId: null })) ctx.toast(REFUSED);
   }); };
   place.addEventListener('click', move);
-  date.addEventListener('click', () => { const now = current(ctx); pickDate(now?.due, (due, duration) => save({ due, ...(duration !== undefined ? { duration } : {}) }),
-    { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1), duration: now?.duration ?? null }); });
+  date.addEventListener('click', () => { const now = current(ctx); pickDate(now?.due, (due, duration) => {
+    // (Settings > Reminders: a due time on a task with no reminder gets the automatic one)
+    const auto = autoReminders(due, now?.reminders, ctx.app.settings.get('autoReminder'));
+    save({ due, ...(duration !== undefined ? { duration } : {}), ...(auto.length && !now?.reminders?.length ? { reminders: auto } : {}) });
+  },
+    { data: ctx.data(), ...dayOptions(ctx.app.settings), duration: now?.duration ?? null }); });
   deadline.addEventListener('click', () => { const now = current(ctx); if (now) pickDate(now.deadline ? { date: now.deadline } : null, d => save({ deadline: d?.date ?? null }),
-    { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1), dateOnly: true }); });
+    { data: ctx.data(), ...dayOptions(ctx.app.settings), dateOnly: true }); });
   labels.addEventListener('click', () => { const now = current(ctx); if (now) pickLabels(ctx, ticksOf(now, ctx.data().labels), ticks => save({ labels: onIds(ticks) })); });
   prio.addEventListener('click', () => openMenu(prio, [1, 2, 3, 4].map(p => ({ label: `Priority ${p}`, icon: MORE.flag, color: PRIORITY_COLOR[p],
     checked: priorityOf(/** @type {Task} */ (current(ctx))) === p, run: () => save({ priority: p }) })), { label: 'Priority' }));

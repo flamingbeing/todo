@@ -12,7 +12,7 @@
 import { icon } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { INBOX } from '../items.js';
-import { dayKey, addDays, weekdayOf, timeText, dueOf, isDay, minutesText, dateTone } from '../dates.js';
+import { dayKey, addDays, weekdayOf, timeText, dueOf, isDay, minutesText, dateTone, nextWeekOf, weekendOf } from '../dates.js';
 import { MORE } from '../icons-more.js';
 import { colorHex } from '../colors.js';
 import { parse } from '../parse.js';
@@ -21,7 +21,7 @@ import { openMenu } from '../ui/menu.js';
 import { el } from './pick.js';
 
 /** @typedef {import('../dates.js').Due} Due */
-/** @typedef {{ data?: import('../items.js').Data, weekStart?: number, dateOnly?: boolean, duration?: number | null, durationRow?: boolean, clearable?: boolean }} ScheduleOptions
+/** @typedef {{ data?: import('../items.js').Data, weekStart?: number, nextWeekDay?: number, weekendDay?: number, dateOnly?: boolean, duration?: number | null, durationRow?: boolean, clearable?: boolean }} ScheduleOptions
  * dateOnly: the Deadline sheet, a day and nothing else (no time, no repeat); duration: the task's (null: none), for the Duration row
  * (durationRow false: handed back as it was, no row); clearable: No date even with no date given (several tasks, some dated) */
 /** the Duration menu's lengths, in minutes */
@@ -40,6 +40,12 @@ const dayLong = key => `${DAYS[weekdayOf(key)]} ${+key.slice(8, 10)} ${MONTHS[+k
 const dayShort = key => `${+key.slice(8, 10)} ${MONTHS[+key.slice(5, 7) - 1]}`;
 /** @param {string} label @param {string} [cls] */
 const textButton = (label, cls = '') => { const b = /** @type {HTMLButtonElement} */ (el('button', cls, label)); b.type = 'button'; return b; };
+
+/** the day options the date sheet reads (General: Start the week on, "Next week" and "Weekend" as)
+ * @param {{ get: (k: string) => unknown }} settings */
+export const dayOptions = settings => ({
+  weekStart: Number(settings.get('weekStart') ?? 1), nextWeekDay: Number(settings.get('nextWeekDay') ?? 1), weekendDay: Number(settings.get('weekendDay') ?? 6),
+});
 
 /**
  * Opens the scheduler for a date (null: none yet); done gets the new date, or null for "No date", and the duration
@@ -92,10 +98,9 @@ export function pickDate(due, done, o = {}) {
   const sayDue = v => `${dayLong(v.date)}${v.time ? ` ${timeText(v.time)}` : ''}${v.rrule ? ` · ${describe({ rrule: v.rrule, fromDone: v.fromDone })}` : ''}`;
 
   // ---- the shortcut rows
-  const wd = weekdayOf(today);
-  // (on Saturday or Sunday, This weekend is the next Saturday: Today already names today)
-  const sat = addDays(today, (6 - wd + 7) % 7 || 7);
-  const mon = addDays(today, ((8 - wd) % 7) || 7);
+  // (General: "Next week" and "Weekend" as set; on a weekend day, This weekend is the next one: Today already names today)
+  const sat = weekendOf(today, o.weekendDay ?? 6);
+  const mon = nextWeekOf(today, o.nextWeekDay ?? 1);
   /** @type {[string, import('app-ui/icons/lucide.js').IconNodes, string, string | null][]} */
   const quick = [
     ['Today', ICONS.calendar, 'today', today], ['Tomorrow', MORE.sun, 'tomorrow', addDays(today, 1)],

@@ -18,7 +18,7 @@ import { MORE } from '../icons-more.js';
 import { INBOX, REFUSED } from '../items.js';
 import { placeText } from '../tasks.js';
 import { dueLine, deadlineLine, dayKey, minutesText } from '../dates.js';
-import { LEADS, cleanReminders, leadShort, dueMs } from '../reminders.js';
+import { LEADS, cleanReminders, leadShort, dueMs, autoReminders } from '../reminders.js';
 import { colorHex } from '../colors.js';
 import { byOrder, orderBetween } from '../order.js';
 import { projectTree } from '../arrange.js';
@@ -26,7 +26,7 @@ import { parse, shiftRanges, dueWords } from '../parse.js';
 import { dateLibs } from '../recur.js';
 import { openMenu } from '../ui/menu.js';
 import { el } from './pick.js';
-import { pickDate, DURATIONS } from './scheduler.js';
+import { pickDate, DURATIONS, dayOptions } from './scheduler.js';
 import { pickLabels, onIds } from './labels.js';
 
 /** @typedef {import('./views.js').Ctx} Ctx */
@@ -103,7 +103,7 @@ export function openQuickAdd(ctx, start, hold = null) {
   const context = () => {
     const data = ctx.data();
     return { projects: data.projects.filter(p => p.id !== INBOX), sections: data.sections, labels: data.labels.map(l => l.name), projectId: base.projectId,
-      now: new Date(), smartDates: smart(), ignore, chrono: libs?.chrono ?? null, RRule: libs?.RRule ?? null };
+      now: new Date(), smartDates: smart(), ignore, chrono: libs?.chrono ?? null, RRule: libs?.RRule ?? null, ...dayOptions(ctx.app.settings) };
   };
   const reparse = () => {
     ignore = shiftRanges(was, title.value, ignore);
@@ -216,7 +216,7 @@ export function openQuickAdd(ctx, start, hold = null) {
   const deadlineOf = date => (date ? { date } : null);
   const openDeadline = () => pickDate(deadlineOf(value().deadline), d => {
     unmark(['deadline']); manual.deadline = d?.date ?? null; reparse(); title.focus();
-  }, { data: ctx.data(), weekStart: Number(settings.get('weekStart') ?? 1), dateOnly: true });
+  }, { data: ctx.data(), ...dayOptions(settings), dateOnly: true });
   deadC.main.addEventListener('click', openDeadline);
   /** a picked date (null: none) goes into the name as words that read back as it; else the chip alone holds it @param {Due | null} due */
   const writeDate = async due => {
@@ -246,7 +246,7 @@ export function openQuickAdd(ctx, start, hold = null) {
     await writeDate(due);
     if (duration !== undefined && duration !== value().duration) { unmark(['duration']); manual.duration = duration; }
     reparse(); title.focus();
-  }, { data: ctx.data(), weekStart: Number(settings.get('weekStart') ?? 1), duration: value().duration, durationRow: false }));
+  }, { data: ctx.data(), ...dayOptions(settings), duration: value().duration, durationRow: false }));
   const openPriority = (/** @type {HTMLElement} */ at) => openMenu(at, [1, 2, 3, 4].map(p => ({
     label: `Priority ${p}`, icon: MORE.flag, color: PRIORITY_COLOR[p], checked: value().priority === p,
     run: () => { unmark(['priority']); manual.priority = p; reparse(); title.focus(); } })), { label: 'Priority', ...(at === moreChip ? { pop: true } : {}) });
@@ -391,7 +391,7 @@ export function openQuickAdd(ctx, start, hold = null) {
     }
     return ctx.app.addTask({ title: p.title, description: about || undefined, projectId: v.projectId, sectionId: v.sectionId, parentId: v.parentId,
       priority: v.priority, labels: ids.length ? [...new Set(ids)] : undefined, due: v.due ?? undefined, deadline: v.deadline ?? undefined, order: atDrop(v) ?? (settings.get('addToTop') ? topOf(v) : undefined),
-      duration: v.duration ?? undefined, reminders: v.reminders.length && v.due ? v.reminders : undefined });
+      duration: v.duration ?? undefined, reminders: (r => (r.length && v.due ? r : undefined))(autoReminders(v.due, v.reminders, settings.get('autoReminder'))) });
   };
   const clearAll = () => {
     title.value = ''; desc.value = ''; desc.style.height = ''; ignore = []; was = '';
