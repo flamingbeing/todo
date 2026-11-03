@@ -1,5 +1,5 @@
 // A row held and let go opens its menu; Select task starts select mode: taps tick rows (grey, a filled circle), the top bar counts
-// them, and the bottom bar sets their priority; the "…" menu's Select tasks, Select all, then Complete N with Undo
+// them (a back arrow and "N tasks selected", the ticked row grey), and the five-icon bottom bar sets their priority; the "…" menu's Select tasks, Select all, then Complete N with Undo
 // and Delete N (asked first) with Undo. The menu and both bars pass axe.
 import AxeBuilder from './axe.mjs';
 import { test, expect, signIn, synced, uniq, today, db, finger, fingers, line, gesturesReady, openTab, boxOf } from './fixtures.mjs';
@@ -24,14 +24,19 @@ test('hold opens the row\'s menu; Select task, a tap, and Priority for both', as
   await expect(page.locator('#task-sheet')).toBeHidden();
   expect(await AxeBuilder(page)).toEqual([]);
   await menu.getByRole('menuitem', { name: 'Select task' }).click();
-  await expect(page.locator('.td-select-count')).toHaveText('1 selected');
+  await expect(page.locator('.td-select-count')).toHaveText('1 task selected');
   await page.locator(`${rowIn('today', b)} .td-row-main`).click();
-  await expect(page.locator('.td-select-count')).toHaveText('2 selected');
+  await expect(page.locator('.td-select-count')).toHaveText('2 tasks selected');
   await expect(page.locator(rowIn('today', b))).toHaveClass(/is-selected/);
-  // the boxes are selection circles: the ticked one filled with a check, the others an empty grey ring
-  const fill = sel => page.locator(`${sel} > .td-check`).evaluate(e => [getComputedStyle(e).backgroundColor, getComputedStyle(e.firstElementChild).opacity]);
-  await expect.poll(async () => (await fill(rowIn('today', b)))[1]).toBe('1');
-  await expect.poll(async () => (await fill(rowIn('today', b)))[0]).not.toBe('rgba(0, 0, 0, 0)');
+  // the picked row is told by a grey tint over the whole row, not a filled circle; the top bar is a back arrow, no Select all
+  await expect(page.locator(`${rowIn('today', b)} > .td-check`)).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(page.locator('.td-select-top').getByRole('button')).toHaveCount(1);
+  await expect(page.locator('.td-select-top').getByRole('button', { name: 'Cancel selection' })).toBeVisible();
+  await expect(page.locator('.td-select-top').getByRole('button', { name: 'Select all' })).toHaveCount(0);
+  // the bar: five icon-only buttons, flat and full width
+  const names = await page.locator('.td-select-bar button').evaluateAll(bs => bs.map(x => [x.getAttribute('aria-label'), x.textContent.trim()]));
+  expect(names).toEqual([['Date', ''], ['Move', ''], ['Labels', ''], ['Priority', ''], ['More actions', '']]);
+  expect((await boxOf(page, '.td-select-bar')).width).toBeGreaterThanOrEqual(389);
   await expect(page.locator(rowIn('today', b))).toHaveCSS('background-color', 'rgb(240, 240, 240)');
   await expect(page.locator('#task-sheet')).toBeHidden();
   expect(await AxeBuilder(page)).toEqual([]);
@@ -54,8 +59,9 @@ test('"Select tasks" from the Inbox\'s "…": Select all, Complete N with Undo',
   await expect(page.locator(rowIn('inbox', b))).toBeVisible();
   await page.locator('#more-btn').click();
   await page.getByRole('menuitem', { name: 'Select tasks' }).click();
-  await expect(page.locator('.td-select-count')).toHaveText('0 selected');
-  await page.locator('.td-select-top').getByRole('button', { name: 'Select all' }).click();
+  await expect(page.locator('.td-select-count')).toHaveText('0 tasks selected');
+  await page.locator('.td-select-bar').getByRole('button', { name: 'More actions' }).click();
+  await page.getByRole('menuitem', { name: 'Select all' }).click();
   // (the Inbox is shared with tests running at once: rows that arrive after Select all are not selected, so the count
   // is checked against the ticked rows, not every row)
   await expect.poll(async () => {
@@ -64,10 +70,11 @@ test('"Select tasks" from the Inbox\'s "…": Select all, Complete N with Undo',
     return said >= 2 && said === ticked;
   }, { timeout: 10_000 }).toBe(true);
   // just the two: all off, then each
-  await page.locator('.td-select-top').getByRole('button', { name: 'Deselect all' }).click();
+  await page.locator('.td-select-bar').getByRole('button', { name: 'More actions' }).click();
+  await page.getByRole('menuitem', { name: 'Deselect all' }).click();
   await page.locator(`${rowIn('inbox', a)} .td-row-main`).click();
   await page.locator(`${rowIn('inbox', b)} .td-row-main`).click();
-  await expect(page.locator('.td-select-count')).toHaveText('2 selected');
+  await expect(page.locator('.td-select-count')).toHaveText('2 tasks selected');
   await page.locator('.td-select-bar').getByRole('button', { name: 'More actions' }).click();
   await page.getByRole('menuitem', { name: 'Complete 2' }).click();
   await expect.poll(async () => [(await get(a))?.done, (await get(b))?.done], { timeout: 15_000 }).toEqual([true, true]);
@@ -117,7 +124,7 @@ test('two fingers dragged down over three rows select those three', async ({ pho
   const mid = async id => { const r = await boxOf(page, rowIn('project', id)); return r.y + r.height / 2; };
   const y0 = await mid(ids[0]), y2 = await mid(ids[2]);
   await fingers(page, [line(120, y0, 0, y2 - y0, 14), line(260, y0, 0, y2 - y0, 14)], { wait: 24 });
-  await expect(page.locator('.td-select-count')).toHaveText('3 selected');
+  await expect(page.locator('.td-select-count')).toHaveText('3 tasks selected');
   for (const id of ids.slice(0, 3)) await expect(page.locator(rowIn('project', id))).toHaveClass(/is-selected/);
   await expect(page.locator(rowIn('project', ids[3]))).not.toHaveClass(/is-selected/);
 });
@@ -139,7 +146,7 @@ test('"…" > Deadline sets and clears the deadline on every selected task, with
   await page.getByRole('menuitem', { name: 'Select tasks' }).click();
   await page.locator(`${rowIn('inbox', a)} .td-row-main`).click();
   await page.locator(`${rowIn('inbox', b)} .td-row-main`).click();
-  await expect(page.locator('.td-select-count')).toHaveText('2 selected');
+  await expect(page.locator('.td-select-count')).toHaveText('2 tasks selected');
   const more = () => page.locator('.td-select-bar').getByRole('button', { name: 'More actions' }).click();
   const got = async () => [(await get(a))?.deadline ?? null, (await get(b))?.deadline ?? null];
 
@@ -183,7 +190,7 @@ test('Completed\'s Select: two done tasks picked, Not done brings both back, Und
   await page.locator('#completed').getByRole('button', { name: 'Select' }).click();
   await page.locator(`${rowIn('completed', a)} .td-row-main`).click();
   await page.locator(`${rowIn('completed', b)} .td-row-main`).click();
-  await expect(page.locator('.td-select-count')).toHaveText('2 selected');
+  await expect(page.locator('.td-select-count')).toHaveText('2 tasks selected');
   await expect(page.locator(`${rowIn('completed', a)}.is-selected`)).toBeVisible();
   expect(await AxeBuilder(page)).toEqual([]);
   await page.locator('.td-select-bar').getByRole('button', { name: 'Not done' }).click();

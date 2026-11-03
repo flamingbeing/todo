@@ -76,7 +76,7 @@ test('quick add: {words} make the deadline, the "…" menu has Deadline, the tas
   const t2 = uniq('form');
   await page.fill(name, t2);
   await expect(chip).toBeHidden();
-  await page.locator('#add-sheet .td-chip-more').click();
+  await page.locator('#add-sheet .td-chip-plus').click();
   await page.getByRole('menuitem', { name: 'Deadline' }).click();
   await expect(page.locator(sheet)).toBeVisible();
   await page.locator(`${sheet} .td-cal-day[data-day="${day(6)}"]`).click();

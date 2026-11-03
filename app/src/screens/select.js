@@ -1,8 +1,9 @@
 // What a held task row offers, and select mode. A row held and let go without moving opens its menu: Select task,
 // Schedule, Priority, Move to and Delete. Select task (or "Select tasks" in a page's "…") starts select mode on that
-// page: a tap ticks a row on or off (its background goes grey), the top bar reads Cancel, "N selected" and Select all,
-// and a glass bar at the bottom (in the tab bar's place) sets a Date, a project (Move), a Priority, or under "…"
-// duplicates, sets a Deadline or Labels, completes or deletes them (the last two with Undo). Esc or Cancel ends it, as does each action.
+// page: a tap ticks a row on or off (its whole row goes grey), the top bar is a back arrow and "N tasks selected", and a
+// slim flat bar of five icons at the bottom (in the tab bar's place) sets a Date, a project (Move), Labels, a Priority,
+// or under "…" selects all, duplicates, sets a Deadline, completes or deletes them (the last two with Undo). Esc or the
+// back arrow ends it, as does each action.
 // (The kit's select mode is for one list; a page here has a list per section or day, and a hold here lifts a row for a
 // drag, so this one is the app's own.)
 import { confirmModal, plural, haptic, icon } from '@core/ui';
@@ -199,25 +200,25 @@ export function startSelect(ctx, host, ids = [], { done = false } = {}) {
   const rowsOf = () => /** @type {HTMLElement[]} */ ([...host.querySelectorAll('.td-row')]);
   const shownIds = () => rowsOf().map(r => String(r.dataset.id));
 
-  // the top: Cancel, "N selected", Select all
+  // the top: a back arrow and "N tasks selected" (Select all is in the bar's More menu)
   const top = el('div', 'td-select-top');
   top.setAttribute('role', 'toolbar');
   top.setAttribute('aria-label', 'Selected tasks');
-  const cancel = button('Cancel', 'td-text-btn');
+  const cancel = button('Cancel selection', 'td-text-btn td-select-cancel', MORE.arrowLeft, true);
   const count = el('p', 'td-select-count');
   count.setAttribute('aria-live', 'polite');
-  const all = button('Select all', 'td-text-btn');
-  top.append(cancel, count, all);
+  top.append(cancel, count);
 
-  // the bar at the bottom: Date, Move, Priority, "…"
+  // the bar at the bottom: five icons, Date, Move, Labels, Priority, "…" (each named for screen readers)
   const bar = el('div', 'ui-action-bar td-select-bar');
   bar.setAttribute('role', 'toolbar');
   bar.setAttribute('aria-label', 'Actions for the selected tasks');
-  const date = button('Date', 'td-select-act', ICONS.calendar), move = button('Move', 'td-select-act', ICONS.hash);
-  const prio = button('Priority', 'td-select-act', MORE.flag), more = button('More actions', 'td-select-act td-select-more', ICONS.ellipsis, true);
+  const date = button('Date', 'td-select-act', ICONS.calendar, true), move = button('Move', 'td-select-act', ICONS.hash, true);
+  const labels = button('Labels', 'td-select-act', ICONS.tag, true);
+  const prio = button('Priority', 'td-select-act', MORE.flag, true), more = button('More actions', 'td-select-act td-select-more', ICONS.ellipsis, true);
   more.setAttribute('aria-haspopup', 'menu');
-  const back = button('Not done', 'td-select-act', MORE.history), gone = button('Delete', 'td-select-act', MORE.trash2);
-  bar.append(...(done ? [back, gone] : [date, move, prio, more]));
+  const back = button('Not done', 'td-select-act', MORE.history, true), gone = button('Delete', 'td-select-act', MORE.trash2, true);
+  bar.append(...(done ? [back, gone] : [date, move, labels, prio, more]));
   document.body.append(top, bar);
 
   const chosen = () => tasksOf(ctx, picked).filter(t => isTask(t) && !!t.done === done);
@@ -229,9 +230,8 @@ export function startSelect(ctx, host, ids = [], { done = false } = {}) {
       r.querySelector('.td-row-main')?.setAttribute('aria-pressed', String(yes));
     }
     const n = picked.size;
-    count.textContent = `${n} selected`;
-    all.textContent = n && shownIds().every(id => picked.has(id)) ? 'Deselect all' : 'Select all';
-    for (const b of [date, move, prio, more, back, gone]) b.disabled = !n;
+    count.textContent = `${plural(n, 'task')} selected`;
+    for (const b of [date, move, labels, prio, back, gone]) b.disabled = !n;
   };
   // the rows are drawn again on each change: tick them again
   const watch = new MutationObserver(() => draw());
@@ -264,11 +264,11 @@ export function startSelect(ctx, host, ids = [], { done = false } = {}) {
   };
   on = { host, ids: picked, stop, draw };
   cancel.addEventListener('click', stop);
-  all.addEventListener('click', () => {
+  const toggleAll = () => {
     const ids = shownIds();
     if (ids.every(id => picked.has(id))) picked.clear(); else for (const id of ids) picked.add(id);
     draw();
-  });
+  };
   const notDone = async (/** @type {Task[]} */ list) => {
     stop();
     if (await ctx.app.untick(list)) { ctx.toast(REFUSED); return; }
@@ -284,26 +284,27 @@ export function startSelect(ctx, host, ids = [], { done = false } = {}) {
   gone.addEventListener('click', async () => { if (await deleteTasks(ctx, chosen())) stop(); });
   date.addEventListener('click', () => scheduleTasks(ctx, chosen(), stop));
   move.addEventListener('click', () => moveTasks(ctx, chosen(), stop));
+  labels.addEventListener('click', () => labelTasks(ctx, chosen(), stop));
   prio.addEventListener('click', () => priorityMenu(ctx, prio, chosen(), stop));
   more.addEventListener('click', () => {
-    const list = chosen(), n = list.length;
+    const list = chosen(), n = list.length, allOn = shownIds().every(id => picked.has(id));
     openMenu(more, [
-      { label: `Duplicate ${n}`, icon: MORE.copy, run: async () => {
+      { label: allOn ? 'Deselect all' : 'Select all', icon: MORE.listChecks, run: toggleAll },
+      ...(n ? [null,      { label: `Duplicate ${n}`, icon: MORE.copy, run: async () => {
         for (const t of list) if (await ctx.app.duplicateTask(t)) { ctx.toast(REFUSED); break; }
         stop();
       } },
       { label: 'Deadline', icon: ICONS.target, run: () => deadlineTasks(ctx, list, stop) },
-      { label: 'Labels', icon: ICONS.tag, run: () => labelTasks(ctx, list, stop) },
       { label: `Complete ${n}`, icon: ICONS.circleCheck, run: () => { stop(); void completeTasks(ctx, list); } },
       null,
-      { label: `Delete ${n}`, icon: MORE.trash2, danger: true, run: async () => { if (await deleteTasks(ctx, list)) stop(); } },
+      { label: `Delete ${n}`, icon: MORE.trash2, danger: true, run: async () => { if (await deleteTasks(ctx, list)) stop(); } }] : []),
     ], { label: 'More actions' });
   });
 
   host.classList.add('is-selecting');
   html.classList.add('td-selecting');
   draw();
-  (picked.size ? all : cancel).focus({ preventScroll: true });
+  cancel.focus({ preventScroll: true });
 }
 
 /** a text button, or an icon over its label (bare: the label is its name only) @param {string} label @param {string} cls

@@ -100,8 +100,7 @@ test('quick add\'s "…" > Labels makes one, and select mode puts a label on sev
   await page.getByRole('menuitem', { name: 'Select tasks' }).click();
   await page.locator(`#inbox .td-row[data-id="${a}"] .td-row-main`).click();
   await page.locator(`#inbox .td-row[data-id="${b}"] .td-row-main`).click();
-  await page.locator('.td-select-bar').getByRole('button', { name: 'More actions' }).click();
-  await page.getByRole('menuitem', { name: 'Labels' }).click();
+  await page.locator('.td-select-bar').getByRole('button', { name: 'Labels' }).click();
   await expect(pick).toBeVisible();
   await pick.getByRole('searchbox').fill(name);
   await pick.getByRole('checkbox', { name }).click();
