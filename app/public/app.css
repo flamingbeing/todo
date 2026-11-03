@@ -192,7 +192,7 @@ button.td-group-title { display: flex; align-items: center; gap: 6px; width: 100
 [data-priority="4"].is-done > .td-check, [data-priority="4"] > .td-check[aria-checked="true"] { --ring: var(--td-text-3); }
 .td-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: 14px 12px 14px 0;
   border: 0; background: none; text-align: start; cursor: pointer; color: var(--td-text); }
-.td-title { font-size: 16px; line-height: 21px; overflow-wrap: anywhere; }
+.td-title { font-size: 17px; line-height: 22px; overflow-wrap: anywhere; }
 /* a title and its meta line, no description: 14 + 21 + 8 + 17 + 14 = 74 pt, the two-line row of the references (222 px at 3x) */
 .td-title + .td-meta { margin-top: 6px; }
 .is-done .td-title { color: var(--td-text-2); }
@@ -471,7 +471,8 @@ div.td-chip { gap: 0; padding: 0; cursor: default; }
 
 /* the "…" menus (the kit's menu layer, placed under their button by ui/menu.js) */
 .td-menu-layer[popover] { inset: 0; width: auto; height: auto; margin: 0; padding: 0; border: 0; background: none; overflow: visible; color: inherit; }
-.td-menu { min-width: 220px; border-radius: 14px; }
+.td-menu { min-width: 180px; border-radius: 14px; }
+.td-menu .td-menu-icon { order: -1; }
 .td-menu .ui-menu-item { display: flex; align-items: center; gap: 12px; min-height: 44px; font-size: 16px; }
 .td-menu-icon { width: 20px !important; height: 20px !important; flex: none; color: var(--td-text-2); }
 /* a floating card stacked upward from its chip (ui/menu.js `pop`): a title row, the icon on the left of each label */
@@ -585,8 +586,10 @@ button:is(.td-group-title, .td-add-row, .td-suggest-item, .td-sched-row, .td-bro
 /* a press shades the whole row, square to its card: app-ui's button press is an inset shade with the button's round
    corners, which on the words' button alone (it starts after the circle) showed as a pill in the middle of the row */
 .td-row > .td-row-main:is(:active, [data-pressed]) { box-shadow: none; }
-.td-row:has(> .td-row-main:is(:active, [data-pressed])):not(.is-lifted, .is-swiping),
+.td-row:has(> .td-row-main:is(:active, [data-pressed], [data-ripple="hold"])):not(.is-lifted, .is-swiping),
 #task-sheet .td-row:has(> .td-row-main:is(:active, [data-pressed])) { background: var(--td-selected); }
+/* (the tint stays after the lift until the task sheet opens: html[data-ripple="hold"] keeps the kit's hold on the row's words) */
+.td-list:not(.td-board) .td-row:has(> .td-row-main[data-ripple="hold"]) { background: var(--td-selected); }
 .td-row.is-swiping { overflow: hidden; }
 .td-row.is-swiping > :not(.td-swipe-band, .td-fold) { position: relative; z-index: 1; }
 .td-row.is-swiping > .td-fold { z-index: 1; }
@@ -773,7 +776,8 @@ html[data-board-swipe] .td-board .td-row { touch-action: pan-y; }
 .td-display-sheet [data-fill] { display: flex; flex-direction: column; min-height: 100%; }
 .td-display-bar { position: sticky; bottom: 0; margin-top: auto; display: flex; align-items: center; justify-content: space-between; padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px)); background: light-dark(#eeedeb, #1e1e1e); }
 /* Done (Save) is a red pill at the right; Reset all, a grey pill at the left, shows after the first change */
-.td-display-reset { height: 44px; min-width: 96px; padding: 0 20px; border: 0; border-radius: 22px; background: light-dark(#dcdad7, #3a3a3a); color: var(--td-text); font-size: 16px; cursor: pointer; }
+.td-display-reset { height: 44px; padding: 0 8px; border: 0; background: none; color: var(--td-text-2); font-size: 16px; cursor: pointer; }
+#display-sheet { --d-sheet-in: 333ms; }
 .td-display-reset[hidden] { display: none; }
 .td-display-save { min-width: 84px; height: 44px; margin-inline-start: auto; border-radius: 22px; }
 
@@ -1468,3 +1472,6 @@ html[data-fab="center"] .ui-fab.td-fab { inset-inline-end: auto; inset-inline-st
 .td-remind-x .ui-icon { width: 18px; height: 18px; }
 .td-remind-add { color: var(--td-accent-text, var(--td-accent)); font-weight: 500; }
 .td-remind-add .td-choice-icon { color: var(--td-accent-text, var(--td-accent)); }
+
+/* "+ Add task" at a list's end: a full-width filled rounded button (the reference); the board's own add row keeps its look */
+.td-list:not(.td-board) .td-group > .td-add-row, .td-list:not(.td-board) > .td-add-row { width: calc(100% - 32px); margin: 8px 16px; padding: 0 16px; border-radius: 12px; background: var(--td-selected); color: var(--td-text); }

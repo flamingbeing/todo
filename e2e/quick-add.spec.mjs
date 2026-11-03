@@ -214,3 +214,14 @@ test('the layout: a compact card, + / project / Date in one row with a round sen
   await expect(page.locator('#settings-page')).toBeVisible();
   await expect(page.getByText('Quick Add actions')).toBeVisible();
 });
+
+test('the tab bar and the add button fade out while the keyboard is up', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  await synced(page);
+  await expect(page.locator('html')).toHaveAttribute('data-keyboard-bar', 'fade');
+  await page.evaluate(() => document.documentElement.classList.add('ui-keyboard-open'));
+  await expect.poll(() => page.locator('.ui-tabbar').evaluate(e => getComputedStyle(e).opacity)).toBe('0');
+  await page.evaluate(() => document.documentElement.classList.remove('ui-keyboard-open'));
+  await expect.poll(() => page.locator('.ui-tabbar').evaluate(e => getComputedStyle(e).opacity)).toBe('1');
+});

@@ -395,6 +395,8 @@ export function views(app) {
     if (!plain && !m) { void lazy.need('board').then(() => projectList(into, pid, empty)); return; }
     const v = projectView(filtered(), data.sections, pid, plain ? undefined : m?.arranged(d, data.labels, today)), c = rowCtx({});
     const parts = [];
+    // (with sections, the tasks outside them sit under a plain grey "(No section) n" head, as the reference's)
+    if (v.loose.length && v.sections.length) parts.push(groupHead('(No section)', { plain: true, count: v.loose.filter(l => !l.depth && !l.task.done).length }));
     if (v.loose.length) parts.push(rowList(v.loose, c, 'Tasks'));
     for (const { section: s, lines } of v.sections) {
       const sec = document.createElement('section');

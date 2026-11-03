@@ -28,6 +28,10 @@ accounts and task texts and checks only those; they run side by side.
   `e2e/fixtures.mjs`): a test that first waits for the server can take longer than the app's 6 s. A check of order
   among projects, labels or tasks compares only the test's own (others' may come first).
 
+## Display, opt-ins and list rows (reference parity, slice 4)
+
+Display's pickers are `pickOne` sheets (Sorting `tall`); a Calendar's kind is a "Layout" row opening a small sheet (Agenda, N-day, Month: Month is ours, kept so nothing is lost). `html` carries the rc.84 opt-ins `data-slide="fade"`, `data-keyboard-bar="fade"`, `data-ripple="hold"`; `#schedule-sheet` has `data-close-motion="drop"`. Row changes are CSS only (startup budget). Pending in app-ui rc.85: the smaller sheet rise, `slide: 'rise'` for the tab switch stagger, a visible ripple on the core family.
+
 ## UI kit gestures and the `/kit/` gallery (app-ui)
 
 The kit, its gallery and their tests live in [app-ui](https://github.com/flamingbeing/app-ui) since 1.0.0-rc.1

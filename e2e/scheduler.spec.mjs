@@ -148,3 +148,15 @@ test('Duration: a length from the menu or typed minutes waits for Save; the row 
   };
   await expect.poll(async () => { const [want, got] = [await sum(), await shown()]; return `${got}` === `${want}` || `page ${got}, data ${want}`; }, { timeout: 15_000 }).toBe(true);
 });
+
+test('the Date sheet closes with the drop motion: a hold, then it drops and fades', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const t = uniq('drop');
+  await put(t, { title: t, due: { date: day(0) } });
+  await synced(page);
+  await openScheduler(page, t);
+  await expect(page.locator(sheet)).toHaveAttribute('data-close-motion', 'drop');
+  await page.keyboard.press('Escape');
+  await expect(page.locator(sheet)).toBeHidden();
+});
