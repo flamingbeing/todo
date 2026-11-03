@@ -23,6 +23,7 @@ body {
   --td-day-dim: light-dark(#666, #848484);
   --td-tab-pill: light-dark(#fbe9e6, #462326);
   --td-held: light-dark(#fff, #2f2f2f);
+  --td-scrim: .6;   /* the dim behind a sheet (Date and add): the reference hides the page behind a sheet almost fully */
   --td-accent: var(--accent, #dc4c3e);
   /* a filled control with white on it (the + button, Done, send, chosen days): the accent in light; in dark the theme's
      accent is a light tint (white on it about 2:1), so the fill is that hue at full colour and mid lightness (white on
@@ -302,7 +303,7 @@ button.td-group-title { display: flex; align-items: center; gap: 6px; width: 100
 
 /* ---------- sheets: warm ground, round corners, the kit's grabber and detents ---------- */
 .ui-sheet.td-sheet { background: var(--td-sheet); color: var(--td-text); border-radius: 30px 30px 0 0; }
-.ui-sheet.td-sheet::backdrop { background: rgb(0 0 0 / .35); }
+.ui-sheet.td-sheet::backdrop { background: rgb(0 0 0 / var(--td-scrim, .6)); }
 .td-sheet-body { padding: 8px 0 calc(16px + env(safe-area-inset-bottom, 0px)); }
 .td-sheet-head { display: flex; align-items: center; gap: 8px; padding: 4px 16px 12px; }
 .td-sheet-title { flex: 1; min-width: 0; margin: 0; font-size: 17px; font-weight: 600; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -375,7 +376,7 @@ span.td-chip { height: 26px; padding: 0 8px; cursor: default; }
    220ms on the kit's curve): the name, the description, a row of outlined chips, a hairline, then the project and a
    small round send button */
 #add-sheet.td-sheet { height: auto; min-height: 0; box-sizing: border-box; width: 100%; max-width: 40rem; margin: auto auto 0; border-radius: 12px 12px 0 0; background: var(--td-card); }
-#add-sheet.td-sheet::backdrop { background: rgb(0 0 0 / .4); }
+#add-sheet.td-sheet::backdrop { background: rgb(0 0 0 / var(--td-scrim, .6)); }
 /* motion: opens in 300ms decelerating (no overshoot) as a red block the size of the add button growing into the card up-left
    (--qa-* set by ui/quick-add-morph.js; the red fades over the first 60%, the words only show in the last 30%); closes in
    150ms back toward the button after a 60ms hold, scrim in the same time. Transform and opacity only. */
@@ -807,9 +808,11 @@ html[data-board-swipe] .td-board .td-row { touch-action: pan-y; }
 
 .td-strip-top { display: flex; align-items: center; padding: 8px 16px 0; }
 .td-month { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0; border: 0; background: none; color: var(--td-text); font-size: 16px; font-weight: 500; cursor: pointer; }
-.td-month[aria-expanded="true"], .td-month[data-out] { color: var(--td-accent-text); }
-.td-month-chevron { width: 16px !important; height: 16px !important; }
-.td-month-chevron.is-up { transform: rotate(180deg); }
+.td-month[data-out] { color: var(--td-accent); }
+.td-month-caret { width: 10px; height: 7px; background: currentColor; clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.td-month-caret.is-up { transform: rotate(180deg); }
+/* (.td-strip-top: the glass theme's `.glass button` transition would otherwise win and the colour would snap) */
+@media (prefers-reduced-motion: no-preference) { .td-strip-top .td-month { transition: transform var(--d-quick) var(--spring-snappy), color 100ms ease-out; } .td-month-caret { transition: transform 100ms ease-out; } }
 .td-week { display: grid; grid-template-columns: repeat(7, 1fr); padding: 0 8px; }
 .td-wday { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 62px; padding: 0; border: 0; border-radius: 0; background: none; color: var(--td-text); cursor: pointer; }
 .td-wday:disabled { color: var(--td-text-3); cursor: default; }
@@ -821,16 +824,18 @@ html[data-board-swipe] .td-board .td-row { touch-action: pan-y; }
 @media (prefers-reduced-motion: no-preference) { .td-wday-num, .td-cal-num { transition: background-color 60ms linear; } }
 .td-wday.is-drop .td-wday-num { background: color-mix(in srgb, var(--td-accent) 24%, transparent); }
 /* the month calendar: a clip whose height follows the handle's drag (JS sets it), the letters, then a scroller of week
-   rows (48px each, six showing; keep in step with ROW/HEAD/ROWS in week-strip.js). The first row sits where the week
+   rows (44px each, five showing; keep in step with ROW/HEAD/ROWS in week-strip.js). The first row sits where the week
    view's number circles do, so the week turns into the calendar without a jump. */
-.td-wcal { overflow: hidden; }
+.td-wcal { overflow: hidden; background: light-dark(#f7f7f7, #262626); }
 .td-wcal > .td-weeks-head { padding: 0 8px; }
-.td-weeks { height: calc(48px * 6); padding: 0 8px; overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y proximity; scrollbar-width: none; }
+.td-weeks { height: calc(44px * 5); padding: 0 8px; overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y proximity; scrollbar-width: none; }
 .td-weeks::-webkit-scrollbar { display: none; }
 .td-weeks-head, .td-weeks-row { display: grid; grid-template-columns: repeat(7, 1fr); justify-items: center; }
-.td-weeks-row { height: 48px; scroll-snap-align: start; }
+.td-weeks-row { height: 44px; scroll-snap-align: start; }
 .td-weeks-head > span { font-size: 12px; line-height: 20px; color: var(--td-text-2); }
-.td-wcell { min-height: 0; height: 48px; justify-content: center; gap: 0; width: 100%; }
+.td-wcell { min-height: 0; height: 44px; justify-content: center; gap: 0; width: 100%; }
+.td-wcell.is-alt { background: light-dark(#fff, #313131); border-radius: 10px; }
+.td-wcell:disabled .td-wday-num { opacity: .55; }
 .td-wcell-mon { font-size: 12px; line-height: 14px; margin-bottom: -4px; }
 .td-strip-handle { display: grid; place-items: center; width: 100%; height: 28px; padding: 0; border: 0; background: none; cursor: pointer; }
 .td-strip-grab { width: 32px; height: 4px; border-radius: 2px; background: var(--td-text-3); }

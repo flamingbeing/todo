@@ -4,9 +4,9 @@
 // days: the weekday's letter over the day's number, today's in a filled accent circle, the day picked in a soft one. A
 // swipe sideways goes a week on or back (not before this week); a tap on a day scrolls the list to it, and scrolling the
 // list moves the pick. The month opens from the handle under the week: dragging it down grows the calendar under the
-// finger, row by row, from the one week to six rows; dragging up shrinks it back; let go, it settles open or shut by
+// finger, row by row, from the one week to five rows (stopping dead at both ends); dragging up shrinks it back; let go, it settles open or shut by
 // distance and speed (a tap on the handle or the month title toggles; less motion: it just switches). Out, the month
-// title is in the accent colour from the first pull (the caret turns up once open) and the weeks run on in a scroller from this week, with more drawn
+// title is in the accent colour once the open is committed (at the let-go; it clears as a close starts), the caret up and the weeks run on in a scroller from this week, with more drawn
 // near the end (a year and more ahead), the title following the top row's month; past days are disabled; a day picked
 // there closes the calendar and scrolls the list to it. A task dragged onto a day moves to it
 // (row-drag.js reads data-drop-day); a long press on a day opens the quick add dated that day. The week starts on the
@@ -31,9 +31,10 @@ import { underBar } from './stick.js';
  */
 
 const STEP = 28;
-/** the open calendar: a week row's height (keep in step with .td-weeks-row in app.css), the letters row above the weeks,
+/** the open calendar: a week row's height (keep in step with .td-weeks-row in app.css; five rows, as the reference), the letters row above the weeks,
  * the rows the open calendar shows, and the weeks drawn at a time (the first draw reaches a year and more ahead) */
-const ROW = 48, HEAD = 20, ROWS = 6, CHUNK = 26;
+const ROW = 44, HEAD = 20, ROWS = 5, CHUNK = 26;
+const mon = (/** @type {string} */ k) => +k.slice(0, 4) * 12 + +k.slice(5, 7);
 /** how many days each list draws @type {WeakMap<HTMLElement, number>} */
 const shown = new WeakMap();
 
@@ -116,7 +117,7 @@ function build(host, s) {
   const month = /** @type {HTMLButtonElement} */ (el('button', 'td-month'));
   month.type = 'button';
   const monthName = el('span', 'td-month-name');
-  const caret = icon(ICONS.chevronDown, { class: 'td-month-chevron' });
+  const caret = el('span', 'td-month-caret');
   month.append(monthName, caret);
   month.setAttribute('aria-expanded', 'false');
   top.append(month);
@@ -139,10 +140,11 @@ function build(host, s) {
   const handle = /** @type {HTMLButtonElement} */ (el('button', 'td-strip-handle'));
   handle.type = 'button';
   handle.setAttribute('aria-label', 'Show more weeks');
+  handle.dataset.noPress = '';
   handle.append(el('span', 'td-strip-grab'));
   host.replaceChildren(top, view, cal, handle);
   /** open: settled open (or going there); busy: the calendar is drawn (open, or moving between the two) */
-  let open = false, busy = false;
+  let open = false, busy = false, pulling = false, filled = false;
   /** the week the scroller starts at, the weeks drawn, the week row's month shown in the title, the closed height */
   let first = '', rows = 0, topKey = '', baseH = 64;
   /** the settle now @type {{ stop: () => number, running: () => boolean, done: Promise<boolean> } | undefined} */
@@ -150,7 +152,7 @@ function build(host, s) {
   const full = HEAD + ROWS * ROW;
   const span = () => full - baseH;
   const setH = (/** @type {number} */ h) => { cal.style.height = `${h}px`; };
-  const sync = () => { view.hidden = open || busy; cal.hidden = !(open || busy); month.toggleAttribute('data-out', open || busy); };
+  const sync = () => { view.hidden = open || busy; cal.hidden = !(open || busy); month.toggleAttribute('data-out', open && !pulling); };
 
   /** draws weeks until n are there */
   const ensure = (/** @type {number} */ n) => {
@@ -163,6 +165,7 @@ function build(host, s) {
         b.type = 'button'; b.dataset.day = key;
         if (key >= today) b.dataset.dropDay = key; else b.disabled = true;
         b.classList.toggle('is-today', key === today);
+        b.classList.toggle('is-alt', (mon(key) - mon(today)) % 2 !== 0);   // (every other month on a lighter cell)
         b.setAttribute('aria-pressed', String(key === s.pick));
         if (key.endsWith('-01')) b.append(el('span', 'td-wcell-mon', MONTHS[+key.slice(5, 7) - 1].slice(0, 3)));
         b.append(el('span', 'td-sr', `${weekdayName(key)} `), el('span', 'td-wday-num', String(+key.slice(8))), el('span', 'td-sr', ` ${MONTHS[+key.slice(5, 7) - 1]}`));
@@ -182,9 +185,12 @@ function build(host, s) {
   const place = () => {
     first = weekOf(s.day, s.start);
     const at = daysBetween(first, s.week) / 7;
-    ensure(at + 60);
+    ensure(at + ROWS + 1);   // (just the rows the first frame needs: 60 at once was a 32px hitch at drag start)
     grid.scrollTop = at * ROW;
     topKey = s.pick >= s.week && s.pick <= addDays(s.week, 6) ? s.pick : s.week;
+    // (the rest a year ahead, once the browser is idle)
+    const more = () => { if ((busy || open) && rows) { ensure(at + 60); filled = true; } };
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(more, { timeout: 400 }); else setTimeout(more, 120);
   };
   /** the calendar comes out at the week's height */
   const prep = () => {
@@ -198,7 +204,7 @@ function build(host, s) {
   const land = () => {
     run = undefined; busy = false;
     if (open) setH(full);
-    else { cal.style.height = ''; grid.replaceChildren(); rows = 0; topKey = ''; }
+    else { cal.style.height = ''; grid.replaceChildren(); rows = 0; topKey = ''; filled = false; }
     sync(); s.draw();
   };
   /** to open (or shut) from `from` px of growth, the finger's speed v (px/ms); less motion: a switch. Resolves once it lands @returns {Promise<void>} */
@@ -208,7 +214,8 @@ function build(host, s) {
     if (calm) { land(); return Promise.resolve(); }
     // (a live height, on purpose: the list below the calendar has to be pushed down or pulled up with it, which only
     // layout does, and one spring per settle is all that runs; the drag's own frames are the finger's)
-    run = spring(x => setH(baseH + x), from, want ? span() : 0, v, { response: .1 });
+    // (clamped: the reference stops dead at both ends, so the let-go speed never carries it past full or below the week)
+    run = spring(x => setH(baseH + Math.min(span(), Math.max(0, x))), from, want ? span() : 0, v, { response: .1 });
     const mine = run;
     return mine.done.then(landed => { if (landed && run === mine) land(); });
   };
@@ -312,17 +319,20 @@ function build(host, s) {
     const i = Math.max(0, Math.round(grid.scrollTop / ROW)), a = addDays(first, i * 7);
     topKey = s.pick >= a && s.pick <= addDays(a, 6) ? s.pick : addDays(a, 3);
     title();
-    if (grid.scrollTop + grid.clientHeight > grid.scrollHeight - 13 * ROW) ensure(rows + CHUNK);
+    if (filled && grid.scrollTop + grid.clientHeight > grid.scrollHeight - 13 * ROW) ensure(rows + CHUNK);
   }, { passive: true });
-  // the handle: dragged down, the calendar grows under the finger (from the one week to six rows); up, it shrinks;
+  // the handle: dragged down, the calendar grows under the finger (from the one week to five rows); up, it shrinks;
   // let go, it settles by distance and speed
   let moved = false;
   drag(handle, { axis: 'y', mouse: true, name: 'cards',
     start: () => { moved = false; if (busy && run?.running()) { moved = true; return run.stop(); } return open ? span() : 0; },
-    bounds: () => [0, span()],
-    move: d => { moved = true; if (!busy) prep(); setH(baseH + d); },
+    // (no bounds: the reference stops dead at the ends, the kit's rubber band is not wanted; d is clamped instead)
+    // (from open, the coral title clears at the first move, not at the touch: a press that never moves keeps it)
+    move: d => { moved = true; if (open && !pulling) { pulling = true; sync(); } if (!busy) prep(); setH(baseH + Math.min(span(), Math.max(0, d))); },
     end: (d, v) => {
-      if (!moved) return;
+      pulling = false;
+      if (!moved) { sync(); return; }
+      d = Math.min(span(), Math.max(0, d));
       const want = Math.abs(v) > 0.3 ? v > 0 : d > span() / 2;
       if (want !== open) haptic();
       void settle(want, d, v, still());

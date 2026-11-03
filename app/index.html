@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="glass" data-bar="slim" data-push-bar="hide" data-slide="off" data-sheet-bar="fade" data-keyboard-bar="fade" data-ripple="hold">
+<html lang="en" class="glass" data-bar="slim" data-push-bar="hide" data-slide="dip" data-sheet-bar="fade" data-keyboard-bar="fade" data-ripple="hold">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
@@ -14,9 +14,9 @@
     "@core/auth": "https://core.anawj.com/sync/1.5.5/auth.js",
     "@core/sync": "https://core.anawj.com/sync/1.5.5/sync.js",
     "@core/update": "https://core.anawj.com/sync/1.5.5/update.js",
-    "@core/ui": "https://core.anawj.com/ui/1.0.0-rc.86/ui/index.js",
-    "@core/theme": "https://core.anawj.com/ui/1.0.0-rc.86/theme/index.js",
-    "@core/settings": "https://core.anawj.com/ui/1.0.0-rc.86/settings/index.js",
+    "@core/ui": "https://core.anawj.com/ui/1.0.0-rc.87/ui/index.js",
+    "@core/theme": "https://core.anawj.com/ui/1.0.0-rc.87/theme/index.js",
+    "@core/settings": "https://core.anawj.com/ui/1.0.0-rc.87/settings/index.js",
     "app-update/register.js": "https://core.anawj.com/update/0.2.0/register.js",
     "firebase/app": "./vendor/firebase/12.19.0/firebase-app.js",
     "firebase/auth": "./vendor/firebase/12.19.0/firebase-auth.js",
@@ -26,14 +26,14 @@
   }
 }
   </script>
-  <script src="https://core.anawj.com/ui/1.0.0-rc.86/theme/early.js"></script>
+  <script src="https://core.anawj.com/ui/1.0.0-rc.87/theme/early.js"></script>
   <link rel="modulepreload" href="https://core.anawj.com/sync/1.5.5/app.js" data-module>
   <link rel="modulepreload" href="https://core.anawj.com/sync/1.5.5/auth.js" data-module>
   <link rel="modulepreload" href="https://core.anawj.com/sync/1.5.5/sync.js" data-module>
   <link rel="modulepreload" href="https://core.anawj.com/sync/1.5.5/update.js" data-module>
-  <link rel="modulepreload" href="https://core.anawj.com/ui/1.0.0-rc.86/ui/index.js" data-module>
-  <link rel="modulepreload" href="https://core.anawj.com/ui/1.0.0-rc.86/theme/index.js" data-module>
-  <link rel="modulepreload" href="https://core.anawj.com/ui/1.0.0-rc.86/settings/index.js" data-module>
+  <link rel="modulepreload" href="https://core.anawj.com/ui/1.0.0-rc.87/ui/index.js" data-module>
+  <link rel="modulepreload" href="https://core.anawj.com/ui/1.0.0-rc.87/theme/index.js" data-module>
+  <link rel="modulepreload" href="https://core.anawj.com/ui/1.0.0-rc.87/settings/index.js" data-module>
   <link rel="modulepreload" href="https://core.anawj.com/update/0.2.0/register.js" data-module>
   <link rel="modulepreload" href="./vendor/firebase/12.19.0/firebase-app.js" data-module>
   <link rel="modulepreload" href="./vendor/firebase/12.19.0/firebase-auth.js" data-module>
@@ -43,11 +43,11 @@
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="stylesheet" href="https://design.flamingbeing.com/v1/tokens.css">
-  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.86/theme/theme.css">
-  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.86/ui/ui.css">
-  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.86/theme/glass.css">
-  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.86/ui/gestures.css">
-  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.86/ui/shell/shell.css">
+  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.87/theme/theme.css">
+  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.87/ui/ui.css">
+  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.87/theme/glass.css">
+  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.87/ui/gestures.css">
+  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.87/ui/shell/shell.css">
   <link rel="stylesheet" href="app.css">
   <script type="module" src="src/app.js"></script>
 </head>
@@ -201,8 +201,8 @@
     </main>
 
     <nav class="ui-tabbar td-tabbar" aria-label="Sections">
-      <button type="button" class="ui-tab" data-tab-page="#inbox-page" data-tab-id="inbox"><span class="ui-tab-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></span>Inbox</button>
-      <button type="button" class="ui-tab" data-tab-page="#today-page" data-tab-id="today" aria-current="page"><span class="ui-tab-icon td-today-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg><span class="today-num" data-today-num>1</span></span>Today</button>
+      <button type="button" class="ui-tab" data-tab-page="#inbox-page" data-tab-id="inbox" data-tab-motion="cut"><span class="ui-tab-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></span>Inbox</button>
+      <button type="button" class="ui-tab" data-tab-page="#today-page" data-tab-id="today" aria-current="page" data-tab-motion="cut"><span class="ui-tab-icon td-today-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg><span class="today-num" data-today-num>1</span></span>Today</button>
       <button type="button" class="ui-tab" data-tab-page="#upcoming-page" data-tab-id="upcoming"><span class="ui-tab-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg></span>Upcoming</button>
       <button type="button" class="ui-tab" data-tab-page="#search-page" data-tab-id="search"><span class="ui-tab-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>Search</button>
       <button type="button" class="ui-tab" data-tab-page="#browse-page" data-tab-id="browse"><span class="ui-tab-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 8h10"/><path d="M7 12h10"/><path d="M7 16h10"/></svg></span>Browse</button>

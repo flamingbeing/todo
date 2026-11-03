@@ -1,21 +1,21 @@
-// Tab switch is a hard cut (reference: 1-3 frames, no slide/fade/stagger) and the calendar release is quick (<= 150 ms).
+// Tab switch: app-ui dip mode (reference: Inbox/Today hard cut + ~50 ms blank; Upcoming/Browse cut, ~100 ms blank, whole-page 80 ms fade; no slide/stagger) and the calendar release is quick (<= 150 ms).
 import { test, expect, signIn, synced } from './fixtures.mjs';
 
-test('a tab tap shows the target page at once with nothing animating on its blocks', async ({ phone }) => {
+test('tab taps: Inbox and Today cut (a 50 ms blank), Upcoming dips (100 ms blank, 80 ms fade); all settle by 300 ms', async ({ phone }) => {
   const page = await phone();
   await signIn(page, 'member');
   await synced(page);
-  for (const id of ['upcoming', 'today', 'inbox']) {
+  for (const [id, ms] of [['upcoming', 180], ['today', 50], ['inbox', 50]]) {
     const seen = await page.evaluate(id => new Promise(done => {
       const tab = document.querySelector(`.ui-tabbar [data-tab-id="${id}"]`);
       tab.click();
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        const pg = document.getElementById(`${id}-page`);
-        const anims = pg ? pg.getAnimations({ subtree: true }).filter(a => a.effect?.getTiming().duration > 0).length : -1;
-        done({ visible: !!pg && pg.getBoundingClientRect().width > 0 && getComputedStyle(pg).opacity === '1', anims, cur: tab.getAttribute('aria-current') });
-      }));
+      const pg = document.getElementById(`${id}-page`);
+      // (the fade starts once the page change settles, a microtask after the tap)
+      let own = [];
+      requestAnimationFrame(() => { own = pg.getAnimations().map(a => a.effect.getTiming().duration); });
+      setTimeout(() => done({ own, opacity: getComputedStyle(pg).opacity, cur: tab.getAttribute('aria-current') }), 300);
     }), id);
-    expect(seen, id).toEqual({ visible: true, anims: 0, cur: 'page' });
+    expect(seen, id).toEqual({ own: [ms], opacity: '1', cur: 'page' });
   }
 });
 
