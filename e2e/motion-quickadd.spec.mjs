@@ -59,3 +59,34 @@ test('the keyboard going (Back on a phone) takes quick add with it', async ({ ph
   await page.evaluate(() => document.documentElement.dispatchEvent(new CustomEvent('ui-keyboard', { detail: { open: false } })));
   await expect(page.locator('#add-sheet')).toHaveJSProperty('open', false);
 });
+
+test('quick add closes in ~150ms back toward the button; keyboard hide with the field blurred closes, a chip keeps it', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  await synced(page);
+  const sheet = page.locator('#add-sheet');
+  const hide = () => page.evaluate(() => document.documentElement.dispatchEvent(new CustomEvent('ui-keyboard', { detail: { open: false } })));
+  await page.locator('#fab').click();
+  await expect(sheet).toHaveJSProperty('open', true);
+  await page.locator('#add-sheet .td-add-title').fill('keep me');
+  const css = await page.evaluate(() => { const s = document.getElementById('add-sheet'); s.removeAttribute('open'); const c = getComputedStyle(s); const r = { d: c.transitionDuration, t: c.transform }; s.setAttribute('open', ''); return r; });
+  expect(css.d).toMatch(/0\.15s/);
+  expect(css.t).toMatch(/matrix/);
+  await page.evaluate(() => document.querySelector('#add-sheet .td-add-title').blur());
+  await hide();
+  await expect(sheet).toHaveJSProperty('open', false);
+  await page.locator('#fab').click();
+  await expect(page.locator('#add-sheet .td-add-title')).toHaveValue('keep me');
+  const chip = page.locator('#add-sheet .td-add button').first();
+  await chip.focus();
+  await hide();
+  await expect(sheet).toHaveJSProperty('open', true);
+});
+
+test('reduced motion: quick add has no close transition', async ({ phone }) => {
+  const page = await phone();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await signIn(page, 'member');
+  await synced(page);
+  expect(await page.evaluate(() => getComputedStyle(document.getElementById('add-sheet')).transitionDuration)).toBe('0s');
+});

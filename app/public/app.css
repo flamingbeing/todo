@@ -376,19 +376,23 @@ span.td-chip { height: 26px; padding: 0 8px; cursor: default; }
    small round send button */
 #add-sheet.td-sheet { height: auto; min-height: 0; box-sizing: border-box; width: 100%; max-width: 40rem; margin: auto auto 0; border-radius: 12px 12px 0 0; background: var(--td-card); }
 #add-sheet.td-sheet::backdrop { background: rgb(0 0 0 / .4); }
-/* motion: opens in 300ms decelerating (no overshoot) as a card growing out of the add button (--qa-* set by
-   ui/quick-add-morph.js; without them it rises from the add button's usual corner); closes in 280ms fading and dropping
-   35px; the scrim fades both ways. Transform and opacity only. */
+/* motion: opens in 300ms decelerating (no overshoot) as a red block the size of the add button growing into the card up-left
+   (--qa-* set by ui/quick-add-morph.js; the red fades over the first 60%, the words only show in the last 30%); closes in
+   150ms back toward the button after a 60ms hold, scrim in the same time. Transform and opacity only. */
 @media (prefers-reduced-motion: no-preference) {
-  #add-sheet.td-sheet { --qa-dx: 36vw; --qa-dy: 40px; --qa-s: .12; transform-origin: 50% 50%;
-    transition: opacity 280ms cubic-bezier(.4, 0, 1, 1), transform 280ms cubic-bezier(.4, 0, 1, 1), display 280ms allow-discrete, overlay 280ms allow-discrete; }
-  #add-sheet.td-sheet:not([open]) { opacity: 0; transform: translateY(35px); }
+  #add-sheet.td-sheet { --qa-dx: 36vw; --qa-dy: 40px; --qa-s: .12; transform-origin: 50% 50%; position: relative;
+    transition: opacity 150ms cubic-bezier(.2, 0, .2, 1) 60ms, transform 150ms cubic-bezier(.2, 0, .2, 1) 60ms, display 210ms allow-discrete, overlay 210ms allow-discrete; }
+  #add-sheet.td-sheet:not([open]) { opacity: 0; transform: translate(var(--qa-dx), var(--qa-dy)) scale(var(--qa-s)); }
   #add-sheet.td-sheet[open] { animation: td-qa-open 300ms cubic-bezier(0, 0, .2, 1); }
-  #add-sheet.td-sheet::backdrop { transition: background-color 280ms linear, display 280ms allow-discrete, overlay 280ms allow-discrete; }
+  #add-sheet.td-sheet[open]::before { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none; border-radius: inherit; background: var(--td-accent, #db4c3f); animation: td-qa-red 300ms linear forwards; }
+  #add-sheet.td-sheet[open] .td-sheet-body { animation: td-qa-words 300ms linear backwards; }
+  #add-sheet.td-sheet::backdrop { transition: background-color 150ms linear 60ms, display 210ms allow-discrete, overlay 210ms allow-discrete; }
   #add-sheet.td-sheet:not([open])::backdrop { background-color: rgb(0 0 0 / 0); }
   @starting-style { #add-sheet.td-sheet[open]::backdrop { background-color: rgb(0 0 0 / 0); } }
 }
 @keyframes td-qa-open { from { opacity: 0; transform: translate(var(--qa-dx), var(--qa-dy)) scale(var(--qa-s)); } 40% { opacity: 1; } }
+@keyframes td-qa-red { 0%, 8% { opacity: 1; } 60%, 100% { opacity: 0; } }
+@keyframes td-qa-words { 0%, 70% { opacity: 0; } 100% { opacity: 1; } }
 #add-sheet .td-sheet-body { padding: 0 0 calc(2px + env(safe-area-inset-bottom, 0px)); }
 .td-add { display: grid; gap: 4px; padding: 6px 12px 4px; }
 .td-add-title, .td-add-desc { box-sizing: border-box; width: 100%; padding: 0; border: 0; outline: 0; background: none; resize: none; }
