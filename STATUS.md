@@ -1,6 +1,7 @@
 # Status
 
 ## Now
+- 3 Nov: motion slice 3 (Upcoming): calendar release settles in ~167 ms, selected-day circle cross-fades in 60 ms, month caret flips at once, Overdue head scrolls away (day heads pin). Spec `e2e/motion-upcoming.spec.mjs`.
 - Motion slice 2 (3 Nov): every completion bursts 30 bits from the checkbox (60-80 px out, gravity fall, fade, 2000 ms; lazy `screens/confetti.js`; the goal party stays) and the row fades after; a dragged row makes its neighbours slide one row height in 150 ms (near-linear) out of the way, cleared at the drop. Both off under reduced motion. Spec `e2e/motion-rows.spec.mjs`.
 - Motion slice 1 (3 Nov): quick add grows from the add button in 300 ms (decelerate, no overshoot), closes in 280 ms (fade + 35 px drop), add button fades/pops back, scrim fades, "#" card fades out in 130 ms, Date sheet has a medium detent. Lazy `app/src/ui/quick-add-morph.js`; spec `e2e/motion-quickadd.spec.mjs`.
 

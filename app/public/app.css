@@ -781,13 +781,14 @@ html[data-board-swipe] .td-board .td-row { touch-action: pan-y; }
 .td-group.td-day.is-today > .td-group-head .td-group-title { color: var(--td-text); }
 /* an empty day gets room: its head and the space round it fill about 70px (a day with tasks, 48px) */
 .td-group.td-day.is-empty > .td-group-head { min-height: 62px; }
-#upcoming .td-group > .td-group-head { position: sticky; top: var(--td-strip-foot, 0px); z-index: 2; background: var(--td-ground); }
+/* (the Overdue head scrolls away with its list, as in the reference; only the day heads pin) */
+#upcoming .td-group.td-day > .td-group-head { position: sticky; top: var(--td-strip-foot, 0px); z-index: 2; background: var(--td-ground); }
 .td-week-view { overflow: hidden; touch-action: pan-y; }
 
 .td-strip-top { display: flex; align-items: center; padding: 8px 16px 0; }
 .td-month { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0; border: 0; background: none; color: var(--td-text); font-size: 16px; font-weight: 500; cursor: pointer; }
 .td-month[aria-expanded="true"], .td-month[data-out] { color: var(--td-accent-text); }
-.td-month-chevron { width: 16px !important; height: 16px !important; transition: transform .15s; }
+.td-month-chevron { width: 16px !important; height: 16px !important; }
 .td-month-chevron.is-up { transform: rotate(180deg); }
 .td-week { display: grid; grid-template-columns: repeat(7, 1fr); padding: 0 8px; }
 .td-wday { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 62px; padding: 0; border: 0; border-radius: 0; background: none; color: var(--td-text); cursor: pointer; }
@@ -797,6 +798,7 @@ html[data-board-swipe] .td-board .td-row { touch-action: pan-y; }
 .td-wday.is-today .td-wday-num { background: var(--td-fill); color: #fff; }
 .td-wday[aria-pressed="true"]:not(.is-today) .td-wday-num { background: var(--td-card-edge); }
 .td-wday-dot { display: none; }
+@media (prefers-reduced-motion: no-preference) { .td-wday-num, .td-cal-num { transition: background-color 60ms linear; } }
 .td-wday.is-drop .td-wday-num { background: color-mix(in srgb, var(--td-accent) 24%, transparent); }
 /* the month calendar: a clip whose height follows the handle's drag (JS sets it), the letters, then a scroller of week
    rows (48px each, six showing; keep in step with ROW/HEAD/ROWS in week-strip.js). The first row sits where the week
