@@ -67,14 +67,6 @@ function onShow(host, load) {
   return () => { watch.disconnect(); page?.then(p => p.destroy()); };
 }
 
-/** a list of rows in host @param {HTMLElement} host @param {HTMLElement[]} items */
-function listIn(host, items) {
-  const list = el('ul', 'ui-list');
-  list.append(...items.map(item => { const li = document.createElement('li'); li.append(item); return li; }));
-  host.append(list);
-  return list;
-}
-
 /** the subheading row a page's rows hold (the kit draws { heading } as li > h3) @param {HTMLElement} part @param {string} text */
 const headingRow = (part, text) => /** @type {HTMLElement | undefined} */ ([...(part.parentElement?.querySelectorAll('.ui-setting-subhead') ?? [])]
   .find(li => li.textContent?.trim().startsWith(text)));
@@ -158,24 +150,6 @@ function themePage(host) {
  */
 export function buildSettings(app, { arranged, repaints, rules, steps, synced, sync }) {
   const { settings } = app;
-
-  /** the tabs taken off the bar, one tap away at the top of the menu (none: nothing shows) @param {HTMLElement} host */
-  const offBar = host => {
-    const draw = () => {
-      const off = arranged().hidden;
-      host.replaceChildren();
-      if (!off.length) return;
-      host.append(Object.assign(el('h2', 'ui-settings-title'), { textContent: 'Off the tab bar' }));
-      listIn(host, off.map(id => {
-        const b = Object.assign(el('button', 'ui-row ui-settings-go'), { type: 'button', textContent: barTabs().find(t => t.id === id)?.label || id });
-        b.addEventListener('click', () => tabButton(id)?.click());
-        return b;
-      }));
-    };
-    repaints.add(draw);
-    draw();
-    return () => { repaints.delete(draw); };
-  };
 
   // About's own rows: Sync status ("Last synced 14:05"; none in a static app), Privacy policy and Terms (only when
   // APP.privacyUrl / APP.termsUrl are set in config.js; links), and the licences
@@ -365,7 +339,7 @@ export function buildSettings(app, { arranged, repaints, rules, steps, synced, s
 
   settingsScreen($('settings-host'), {
     settings,
-    menu: { steps, top: offBar, onPage, search: false },
+    menu: { steps, onPage, search: false },
     labels: { appGroup: 'More' },
     sections: byGroup([...SETTING_SECTIONS, ...own]).map(withParts),
     about: { name: APP.title || APP.name, update: app.update, rows: aboutRows },
