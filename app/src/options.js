@@ -10,6 +10,10 @@ export const LEAD_MINUTES = [0, 5, 10, 15, 30, 60, 120, 1440, 2880, 10080];
 export const APP_ICONS = ['default', 'night', 'paper', 'mint'];
 /** the rows of Browse's top card that Settings > Navigation menu can hide */
 export const BROWSE_ROWS = ['inbox', 'today', 'upcoming', 'search', 'filters', 'reporting', 'templates'];
+/** Browse's top card in order: a tab only while it is off the bar, minus the hidden ones; Templates for writers; Completed last
+ * @param {(id: string) => boolean} onBar @param {unknown} hidden @param {boolean} canWrite */
+export const browseRows = (onBar, hidden, canWrite) => [...BROWSE_ROWS.filter(id => !(Array.isArray(hidden) && hidden.includes(id))
+  && !(['inbox', 'today', 'upcoming', 'search'].includes(id) && onBar(id)) && (id !== 'templates' || canWrite)), 'completed'];
 /** @param {unknown} v @returns {number[]} weekdays 0-6, each once, in order */
 const cleanDays = v => (Array.isArray(v) ? [...new Set(v.filter(d => Number.isInteger(d) && d >= 0 && d <= 6))].sort() : []);
 /** @param {readonly unknown[]} ok @param {unknown} d */

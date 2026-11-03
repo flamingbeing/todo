@@ -1,6 +1,7 @@
 // Browse (#browse): the person's pill and the Settings gear in the top bar's row (#browse-top, shown while Browse is
-// the screen on top: views.js), then cards of rows: the Inbox, Today, Upcoming
-// Completed and Filters & Labels; the favourite projects, labels and filters; and "My Projects" with its sub-projects under each and a + for a new one.
+// the screen on top: views.js), then cards of rows: the Inbox, Today, Upcoming and Search (each while off the tab bar),
+// Filters & Labels, Reporting, Templates and Completed, each with a chevron; the favourite projects, labels and filters;
+// and "My Projects" with its sub-projects under each, a + for a new one and Manage projects last.
 // Counts show when the showCounts option is on. The fold of "My Projects" is kept on this device. "Manage projects"
 // (under them) opens a list to put them in order: a project's grip dragged (or moved with the arrow keys) moves it
 // among the projects beside it at its level, its sub-projects with it.
@@ -11,13 +12,14 @@ import { INBOX } from '../items.js';
 import { isTask, labelsOf } from '../tasks.js';
 import { projectTree, projectCounts, todayCount, upcomingCount } from '../arrange.js';
 import { MORE } from '../icons-more.js';
+import { browseRows } from '../options.js';
 import { countQuery } from '../query.js';
 import { queryContext } from './named-sheet.js';
 import { openFiltersLabels } from './filters.js';
 import { colorHex } from '../colors.js';
 import { dayKey } from '../dates.js';
 import { byOrder, placeAt } from '../order.js';
-import { screens, tabButton, openSettingsPage } from '../shell.js';
+import { screens, tabButton } from '../shell.js';
 import { el, sheetHead } from './pick.js';
 
 /** @typedef {import('./views.js').Ctx} Ctx */
@@ -48,9 +50,6 @@ const card = (label, rows) => {
   return ul;
 };
 
-/** the tab a row stands for, as a tap on the tab bar would @param {string} id */
-const tab = id => /** @type {HTMLElement | null} */ (document.querySelector(`.ui-tabbar > [data-tab-id="${id}"]`))?.click();
-
 let watching = false;
 
 /** @param {Ctx} ctx @param {HTMLElement} host */
@@ -76,34 +75,27 @@ export function drawBrowse(ctx, host) {
   gear.setAttribute('aria-label', 'Settings');
   gear.append(icon(MORE.settings));
   gear.addEventListener('click', () => screens()?.push('#settings-page'));
-  const bell = /** @type {HTMLButtonElement} */ (el('button', 'td-round'));
-  bell.type = 'button';
-  bell.id = 'browse-bell';
-  bell.setAttribute('aria-label', 'Notification settings');
-  bell.append(icon(MORE.bell));
-  bell.addEventListener('click', () => { void openSettingsPage('Notifications'); });
+  // (no bell: there is no notifications inbox)
   const end = el('span', 'td-bar-browse-end');
-  end.append(bell, gear);
+  end.append(gear);
   top.replaceChildren(me, end);
 
-  // Inbox, Today and Upcoming show here only while they are off the tab bar; Settings > Navigation menu hides any row
-  // (option browseHidden, this device; Completed always stays)
-  const hidden = /** @type {string[]} */ (ctx.app.settings.get('browseHidden') ?? []);
-  const shown = (/** @type {string} */ id) => !hidden.includes(id);
+  // Inbox, Today, Upcoming and Search show here only while they are off the tab bar; Settings > Navigation menu hides any
+  // row (option browseHidden, this device; Completed always stays)
   const offBar = (/** @type {string} */ id) => { const t = tabButton(id); return !t || t.hidden || t.hasAttribute('data-off-bar'); };
-  const tab = (/** @type {string} */ id, /** @type {string} */ label, /** @type {import('app-ui/icons/lucide.js').IconNodes} */ ic, /** @type {number} */ c) => (shown(id) && offBar(id)
-    ? [row({ label, ic, flat: true, count: n(c), run: () => tabButton(id)?.click() })] : []);
-  const places = card('Places', [
-    ...tab('inbox', 'Inbox', ICONS.inbox, counts.get(INBOX) ?? 0),
-    ...tab('today', 'Today', ICONS.calendar, todayCount(data.tasks, today)),
-    ...tab('upcoming', 'Upcoming', MORE.calendarDays, upcomingCount(data.tasks, today)),
-    ...(shown('search') ? [row({ label: 'Search', ic: MORE.search, flat: true, run: () => { const f = /** @type {HTMLInputElement | null} */ (document.getElementById('search-text')); if (f) f.value = ''; screens()?.push('#search-page'); } })] : []),
-    ...(shown('filters') ? [row({ label: 'Filters & Labels', ic: MORE.layoutGrid, flat: true, run: openFiltersLabels })] : []),
-    ...(shown('reporting') ? [row({ label: 'Reporting', ic: MORE.trendingUp, flat: true, run: () => screens()?.push('#productivity-page') })] : []),
-    row({ label: 'Completed', ic: ICONS.circleCheck, flat: true, run: () => screens()?.push('#completed-page') }),
-    ...(shown('templates') && ctx.canWrite() ? [row({ label: 'Templates', ic: MORE.layoutTemplate, flat: true, run: () => { void import('./templates.js').then(m => m.newFromTemplate(ctx)); } })] : []),
-  ]);
-  places.classList.add('is-flat');
+  const go = (/** @type {string} */ id) => () => tabButton(id)?.click();
+  /** @type {Record<string, () => HTMLElement>} */
+  const ROWS = {
+    inbox: () => row({ label: 'Inbox', ic: ICONS.inbox, count: n(counts.get(INBOX) ?? 0), run: go('inbox') }),
+    today: () => row({ label: 'Today', ic: ICONS.calendar, count: n(todayCount(data.tasks, today)), run: go('today') }),
+    upcoming: () => row({ label: 'Upcoming', ic: MORE.calendarDays, count: n(upcomingCount(data.tasks, today)), run: go('upcoming') }),
+    search: () => row({ label: 'Search', ic: MORE.search, run: () => { const f = /** @type {HTMLInputElement | null} */ (document.getElementById('search-text')); if (f) f.value = ''; screens()?.push('#search-page'); } }),
+    filters: () => row({ label: 'Filters & Labels', ic: MORE.layoutGrid, run: openFiltersLabels }),
+    reporting: () => row({ label: 'Reporting', ic: MORE.trendingUp, run: () => screens()?.push('#reporting-page') }),
+    templates: () => row({ label: 'Templates', ic: MORE.layoutTemplate, run: () => { void import('./templates.js').then(m => m.newFromTemplate(ctx)); } }),
+    completed: () => row({ label: 'Completed', ic: ICONS.circleCheck, run: () => screens()?.push('#completed-page') }),
+  };
+  const places = card('Places', browseRows(id => !offBar(id), ctx.app.settings.get('browseHidden'), ctx.canWrite()).map(id => ROWS[id]()));
 
   const projectRow = (/** @type {import('../items.js').Project} */ p, /** @type {number} */ depth) => row({
     label: p.name, ic: ICONS.hash, color: colorHex(p.color), depth, flat: true, count: n(counts.get(p.id) ?? 0), run: () => ctx.openProject(p.id) });
@@ -128,7 +120,7 @@ export function drawBrowse(ctx, host) {
   const fold = /** @type {HTMLButtonElement} */ (el('button', 'td-browse-fold'));
   fold.type = 'button';
   fold.setAttribute('aria-expanded', String(!folded));
-  fold.append(el('span', '', 'My Projects'), el('span', 'td-browse-chip', `${data.projects.filter(p => p.id !== INBOX && p.name).length}`));
+  fold.append(el('span', '', 'My Projects'));
   fold.addEventListener('click', () => { localStorage.setItem(FOLD_KEY, folded ? '0' : '1'); drawBrowse(ctx, host); });
   head.append(fold);
   const tail = el('span', 'td-browse-head-end');
@@ -156,7 +148,9 @@ export function drawBrowse(ctx, host) {
       if (ctx.canWrite()) { const m = row({ label: 'Manage projects', ic: MORE.pencil, flat: true, run: () => manageProjects(ctx) }); m.classList.add('is-manage'); rows.push(m); }
       parts.push(card('My Projects', rows));
     }
-    else parts.push(el('p', 'td-browse-none', ctx.canWrite() ? 'No projects yet. Tap + to add one.' : 'No projects yet.'));
+    // (none yet: a single row to add the first)
+    else if (ctx.canWrite()) parts.push(card('My Projects', [row({ label: 'Add a project', ic: ICONS.plus, flat: true, run: () => ctx.openProjectSheet({}) })]));
+    else parts.push(el('p', 'td-browse-none', 'No projects yet.'));
   }
   host.replaceChildren(...parts);
 }

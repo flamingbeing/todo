@@ -60,3 +60,12 @@ test('Settings pages: General has the Date & time and Swipe rows, Select among t
   assert.equal(page('Productivity').find(r => 'key' in r && r.key === 'dailyGoal')?.choices?.find(([v]) => v === 3)?.[1], '3 tasks');
   for (const r of SETTING_SECTIONS.flatMap(s => s.rows ?? [])) if ('key' in r) assert.ok(OPTIONS[r.key], `${r.key} is an option`);
 });
+
+test('browseRows: the reference order, tabs only while off the bar, hidden ones out, Templates for writers, Completed last', async () => {
+  const { browseRows } = await import('../src/options.js');
+  const none = () => false, four = (/** @type {string} */ id) => ['inbox', 'today', 'upcoming'].includes(id);
+  assert.deepEqual(browseRows(none, [], true), ['inbox', 'today', 'upcoming', 'search', 'filters', 'reporting', 'templates', 'completed']);
+  assert.deepEqual(browseRows(four, [], true), ['search', 'filters', 'reporting', 'templates', 'completed']);
+  assert.deepEqual(browseRows(four, ['reporting', 'search'], false), ['filters', 'completed']);
+  assert.deepEqual(browseRows(none, 'junk', true).length, 8);
+});
