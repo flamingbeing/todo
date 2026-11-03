@@ -1425,6 +1425,8 @@ html[data-fab="center"] .ui-fab.td-fab { inset-inline-end: auto; inset-inline-st
 @media (prefers-reduced-motion: reduce) { .td-confetti { display: none; } }
 /* a row held over the list: the neighbours slide one row's height out of its way, 150 ms, near-linear (ui/row-drag.js) */
 @media (prefers-reduced-motion: no-preference) { .td-row.is-sliding { transition: transform 150ms cubic-bezier(.3,0,.7,1); } }
+/* the red drop line glides between gaps in 100 ms; it cuts at the let-go (ui/row-drag.js removes it) */
+@media (prefers-reduced-motion: no-preference) { .td-drop-line { transition: transform 100ms ease-out, width 100ms ease-out; } }
 /* the goal celebration (screens/party.js) */
 .td-party { position: fixed; left: 50%; top: 40%; z-index: 40; width: 0; height: 0; pointer-events: none; }
 .td-party-bit { position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 3px; }

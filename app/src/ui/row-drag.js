@@ -243,7 +243,8 @@ export function dragRows(host, ctx, o) {
     if (g !== q.gap || depth !== q.depth) haptic('tick');
     q.gap = g; q.depth = depth;
     q.line?.show(g, depth);
-    if (!b) slide(q, g);
+    // Today/Upcoming (days): rows stay put, only the line overlays (the reference does not shift them)
+    if (!b && kind !== 'days') slide(q, g);
     if (kind === 'days') {
       const cell = /** @type {HTMLElement | undefined} */ (document.elementsFromPoint(q.fx, q.fy).find(n => n instanceof HTMLElement && n.dataset.dropDay)) ?? null;
       if (cell !== lit) { lit?.classList.remove('is-drop'); lit = cell; lit?.classList.add('is-drop'); if (cell) haptic('tick'); }
@@ -309,9 +310,20 @@ export function dragRows(host, ctx, o) {
     vert.stop(); side.stop();
     host.style.scrollSnapType = '';
     const r = was.row;
-    was.line?.remove();
     was.zone?.remove();
     unslide();
+    // days lists: the card glides the last stretch to the line (200 ms ease-out), then the line cuts and the edit applies
+    if (was.moved && was.gap && !was.over && e.type !== 'pointercancel' && kindOf(host, o) === 'days' && !host.hasAttribute('data-sorted')
+      && !document.elementsFromPoint(e.clientX, e.clientY).some(n => n instanceof HTMLElement && n.dataset.dropDay)
+      && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const m = /translate\((-?[\d.]+)px, (-?[\d.]+)px\)/.exec(r.style.transform);
+      if (m) {
+        const dy = Number(m[2]) + (was.gap.y - r.getBoundingClientRect().top);
+        const to = r.style.transform.replace(m[0], `translate(${m[1]}px, ${dy}px)`);
+        try { await r.animate([{ transform: r.style.transform }, { transform: to }], { duration: 200, easing: 'cubic-bezier(0,0,.2,1)', fill: 'forwards' }).finished; } catch { /* cancelled */ }
+      }
+    }
+    was.line?.remove();
     const task = ctx.data().tasks.find(t => t.id === r.dataset.id);
     if (!task || e.type === 'pointercancel') { settleRow(r, was.kids); return; }
     if (!was.moved) { settleRow(r, was.kids); o.menu(task, r); return; }
