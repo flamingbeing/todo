@@ -245,14 +245,23 @@ export async function add(page, text) {
 const tabLink = id => `.ui-tab[data-tab-page="#${id}"]:visible, .ui-side-link[data-tab-page="#${id}"]:visible`;
 // (the tab bar folds its other tabs away once the page scrolls down: back at the top they show)
 const toTop = page => page.evaluate(() => { scrollTo(0, 0); document.querySelector('.ui-tabbar')?.classList.remove('is-minimised'); });
+// Back out of pushed pages until the tab bar shows. A tab switch just made (a tab link from a pushed Settings page) hides
+// the bar's Back while it slides: the bar comes back by itself, so give it a moment first, and a Back that vanishes
+// under the click (the slide ended) is not an error.
+const backToTabs = async page => {
+  const bar = page.locator('.ui-tabbar');
+  for (let i = 0; i < 4; i++) {
+    if (await bar.isVisible()) return;
+    if (await bar.waitFor({ state: 'visible', timeout: 1200 }).then(() => true, () => false)) return;
+    await page.locator('.ui-bar-back:visible').first().click({ timeout: 2000 }).catch(() => {});
+    await page.waitForTimeout(450);
+  }
+};
 // (Settings opens on its menu; given a page's title, that page opens, from the menu or from another page via its Back)
 export const openSettings = async (page, title) => {
   await toTop(page);
   if (!(await page.locator('#settings-host').isVisible())) {
-    for (let i = 0; i < 4 && !(await page.locator('.ui-tabbar').isVisible()); i++) {   // (a pushed page hides the tab bar: Back first)
-      await page.locator('.ui-bar-back:visible').first().click();
-      await page.waitForTimeout(450);
-    }
+    await backToTabs(page);   // (a pushed page hides the tab bar: Back first)
     await page.locator(tabLink('browse-page')).first().click();
     await page.locator('#browse-settings').click();
   }
@@ -275,10 +284,7 @@ export const settingsBack = async page => {
 // (the tab bar is hidden on a pushed Settings page, so Back out of Settings first; the retry is for a tap during a slide)
 export const openTab = async (page, name) => {
   await toTop(page);
-  for (let i = 0; i < 4 && !(await page.locator('.ui-tabbar').isVisible()); i++) {
-    await page.locator('.ui-bar-back:visible').first().click();
-    await page.waitForTimeout(450);
-  }
+  await backToTabs(page);
   await expect(async () => {
     await page.locator(tabLink(`${name}-page`)).first().click();
     await expect(page.locator(`#${name}-page`)).toBeVisible({ timeout: 1500 });
