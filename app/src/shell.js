@@ -18,7 +18,7 @@ const TAB_RULES = { fixed: ['browse'], offByDefault: ['search'] };
 /** @type {any} */
 let kit = null;
 /** the kit's screens (push and pop), once the shell has started */
-export const screens = () => /** @type {{ push: (sel: string) => unknown, pop: () => unknown, depth: () => number } | undefined} */ (kit?.screens);
+export const screens = () => /** @type {{ push: (sel: string, opts?: { motion?: 'slide' | 'fade' }) => unknown, pop: () => unknown, depth: () => number } | undefined} */ (kit?.screens);
 
 // The shell starts first, as soon as the page's scripts have run, so the tabs and the menu work while the app is still
 // starting; the Settings page follows (settingsPage) once the app and its options are there.

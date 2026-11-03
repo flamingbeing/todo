@@ -89,7 +89,7 @@ export function drawBrowse(ctx, host) {
     inbox: () => row({ label: 'Inbox', ic: ICONS.inbox, count: n(counts.get(INBOX) ?? 0), run: go('inbox') }),
     today: () => row({ label: 'Today', ic: ICONS.calendar, count: n(todayCount(data.tasks, today)), run: go('today') }),
     upcoming: () => row({ label: 'Upcoming', ic: MORE.calendarDays, count: n(upcomingCount(data.tasks, today)), run: go('upcoming') }),
-    search: () => row({ label: 'Search', ic: MORE.search, run: () => { const f = /** @type {HTMLInputElement | null} */ (document.getElementById('search-text')); if (f) f.value = ''; screens()?.push('#search-page'); } }),
+    search: () => row({ label: 'Search', ic: MORE.search, run: () => { const f = /** @type {HTMLInputElement | null} */ (document.getElementById('search-text')); if (f) f.value = ''; screens()?.push('#search-page', { motion: 'fade' }); } }),
     filters: () => row({ label: 'Filters & Labels', ic: MORE.layoutGrid, run: openFiltersLabels }),
     reporting: () => row({ label: 'Reporting', ic: MORE.trendingUp, run: () => screens()?.push('#reporting-page') }),
     templates: () => row({ label: 'Templates', ic: MORE.layoutTemplate, run: () => { void import('./templates.js').then(m => m.newFromTemplate(ctx)); } }),
