@@ -103,7 +103,6 @@
         </div>
         <!-- }cloud -->
         <div id="list-view" hidden>
-          <p id="today-sum" class="td-day-sum"></p>
           <div id="conflict-sheet"></div>
           <div id="refused-list"></div>
           <div id="list-tools"></div>
@@ -148,7 +147,10 @@
         <button type="button" class="ui-back">Back</button>
         <h1 class="ui-large-title" id="section-title">Add section</h1>
         <form id="section-form" class="td-section-form" autocomplete="off">
-          <input id="section-name" class="td-section-name" type="text" maxlength="120" placeholder="Section name" aria-label="Section name">
+          <div class="td-section-fields">
+            <input id="section-name" class="td-section-name" type="text" maxlength="120" placeholder="Section name" aria-label="Section name">
+            <textarea id="section-desc" class="td-section-name td-section-desc" maxlength="2000" rows="1" placeholder="Description" aria-label="Description"></textarea>
+          </div>
         </form>
       </section>
 
@@ -172,9 +174,15 @@
         <div id="completed-empty"></div>
       </section>
 
-      <section class="ui-screen td-grouped" id="productivity-page" aria-labelledby="productivity-title" hidden>
+      <section class="ui-screen td-grouped" id="reporting-page" aria-labelledby="reporting-title" hidden>
         <button type="button" class="ui-back">Browse</button>
-        <h1 class="ui-large-title" id="productivity-title">Reporting</h1>
+        <h1 class="ui-large-title" id="reporting-title">Reporting</h1>
+        <div id="reporting" class="td-reporting"></div>
+      </section>
+
+      <section class="ui-screen td-grouped" id="productivity-page" aria-labelledby="productivity-title" hidden>
+        <button type="button" class="ui-back">Reporting</button>
+        <h1 class="ui-large-title" id="productivity-title">Productivity</h1>
         <div id="productivity" class="td-productivity"></div>
       </section>
 

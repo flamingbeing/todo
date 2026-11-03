@@ -22,12 +22,16 @@ test('a quick row sets the day and closes; the sheet passes axe', async ({ phone
   await put(t, { title: t, due: { date: day(0) } });
   await synced(page);
   await openScheduler(page, t);
-  // Today, Tomorrow, This weekend, Next week and (the task has a date) No date; no Later this week, no Postpone
-  await expect(page.locator(`${sheet} .td-sched-quick .td-choice-label`)).toHaveText(['Today', 'Tomorrow', 'This weekend', 'Next week', 'No date']);
+  // Today, Tomorrow, Later this week (Monday to Wednesday only), This weekend, Next week and (the task has a date) No date; no Postpone
+  const wd = new Date().getDay(), later = wd >= 1 && wd <= 3 ? ['Later this week'] : [];
+  await expect(page.locator(`${sheet} .td-sched-quick .td-choice-label`)).toHaveText(['Today', 'Tomorrow', ...later, 'This weekend', 'Next week', 'No date']);
   await expect(page.locator(`${sheet} .td-sheet-title`)).toHaveText('Date');
-  await expect(page.locator(`${sheet} .td-sched-more .td-sched-row`)).toHaveText([/Add time/, /Duration/, /Repeat/]);   // (the task sheet keeps Duration here: its only place)
+  await expect(page.locator(`${sheet} .td-sched-more .td-sched-row`)).toHaveText([/^Time/, /^Duration/, /^Repeat/]);   // (the task sheet keeps Duration here: its only place)
   await expect(page.locator(`${sheet} .td-cal-sum`)).toContainText(/task/);
   expect(await AxeBuilder(page)).toEqual([]);
+  await page.emulateMedia({ colorScheme: 'dark' });
+  expect(await AxeBuilder(page)).toEqual([]);
+  await page.emulateMedia({ colorScheme: 'light' });
   await page.locator(`${sheet} .td-sched-row`).filter({ hasText: 'Tomorrow' }).click();
   await expect(page.locator(sheet)).toBeHidden();
   await expect.poll(() => dueOf(t), { timeout: 15_000 }).toEqual({ date: day(1) });
@@ -135,11 +139,11 @@ test('Duration: a length from the menu or typed minutes waits for Save; the row 
   await expect.poll(async () => (await db.get(`spaces/_/tasks/${t}`))?.duration, { timeout: 15_000 }).toBe(50);
   await page.keyboard.press('Escape');
   await expect(page.locator('#today .td-row').filter({ hasText: t })).toContainText(/10:00\s?AM–10:50\s?AM/);
-  // Today's summary counts every open task due by today ("17 tasks"), other tests' tasks too (the data is shared): it
-  // matches the data
+  // Today's count (the bar's subtitle, shown once) counts every open task due by today ("17 tasks"), other tests' tasks
+  // too (the data is shared): it matches the data
   const sum = async () => (await db.list('spaces/_/tasks')).filter(x => x.title && !x.done && x.due?.date && x.due.date <= day(0)).length;
   const shown = async () => {
-    const m = (await page.locator('#today-sum').textContent() ?? '').match(/^\s*(\d+) tasks?\s*$/);
+    const m = (await page.locator('.ui-bar-title').getAttribute('data-sub') ?? '').match(/^\s*(\d+) tasks?\s*$/);
     return m ? Number(m[1]) : null;
   };
   await expect.poll(async () => { const [want, got] = [await sum(), await shown()]; return `${got}` === `${want}` || `page ${got}, data ${want}`; }, { timeout: 15_000 }).toBe(true);

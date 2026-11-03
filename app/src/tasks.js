@@ -44,20 +44,31 @@ export function projectView(tasks, sections, projectId, { cmp, keep } = /** @typ
   };
 }
 
-/** a day's order (by day first, undated last): the tasks placed on the day by hand (dayOrder, as dragged) first, in that order; then the others,
- * timed ones first by time, then by priority, then by their own order. (Placed or not decides first, so the order is
- * the same whichever pairs are compared: a sort needs that.) @param {Task} a @param {Task} b */
+/** the smart order (a day, a filter, a label): by day first (an undated task by its deadline's day; neither, last); on
+ * a day the tasks placed by hand (dayOrder, as dragged) first, in that order; then the others, timed ones first by
+ * time, then by priority, then by deadline (none last), then by their own order, then oldest first. (Placed or not
+ * decides first, so the order is the same whichever pairs are compared: a sort needs that.) @param {Task} a @param {Task} b */
 export function dayOrder(a, b) {
-  const da = dueOf(a.due), db = dueOf(b.due);
-  if (!da !== !db) return da ? -1 : 1;
-  if (da && db && da.date !== db.date) return da.date < db.date ? -1 : 1;
+  const da = dueOf(a.due), db = dueOf(b.due), la = deadlineOf(a), lb = deadlineOf(b);
+  const ka = da?.date ?? la, kb = db?.date ?? lb;
+  if (!ka !== !kb) return ka ? -1 : 1;
+  if (ka && kb && ka !== kb) return ka < kb ? -1 : 1;
   const pa = typeof a.dayOrder === 'number', pb = typeof b.dayOrder === 'number';
   if (pa !== pb) return pa ? -1 : 1;
   if (pa && pb && a.dayOrder !== b.dayOrder) return /** @type {number} */ (a.dayOrder) - /** @type {number} */ (b.dayOrder);
   const ta = isTime(da?.time) ? /** @type {string} */ (da?.time) : '~', tb = isTime(db?.time) ? /** @type {string} */ (db?.time) : '~';
   if (ta !== tb) return ta < tb ? -1 : 1;
-  return priorityOf(a) - priorityOf(b) || num(a.order) - num(b.order) || num(a.createdAt) - num(b.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  return priorityOf(a) - priorityOf(b) || (la !== lb ? (!la ? 1 : !lb ? -1 : la < lb ? -1 : 1) : 0)
+    || num(a.order) - num(b.order) || num(a.createdAt) - num(b.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 }
+/** whether a list keeps its smart order, never a hand-made one (a filter's or a label's page, as the reference's)
+ * @param {string} view  Display's view key */
+export const ownOrder = view => /^(labels|filters):/.test(String(view));
+export const OWN_ORDER = 'Filters and labels keep their smart order';
+/** a task's deadline day, or '' @param {Task} t */
+const deadlineOf = t => (typeof t.deadline === 'string' ? t.deadline : '');
+/** a title as the name sort reads it: leading symbols, emoji, punctuation and spaces left out @param {unknown} title */
+export const sortKey = title => String(title ?? '').replace(/^[^\p{L}\p{N}]+/u, '');
 /** rows for a list by day: each task alone (its subtasks show only on their own dates), with its counts */
 export const dayLines = (/** @type {Task[]} */ list, /** @type {Task[]} */ all, cmp = dayOrder) => flatten(list.sort(cmp), all, { open: () => false });
 

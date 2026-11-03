@@ -10,7 +10,7 @@
     { "to": "app/src/modules.js", "after": "// add: imports", "line": "import { shareInSettings } from './share/share-settings.js';" },
     { "to": "app/src/modules.js", "after": "// add: settings pages", "line": "    shareIn: shareInSettings," },
     { "to": "app/src/options.js", "after": "// add: options", "line": "  shareIn: { scope: 'device', default: false }," },
-    { "to": "app/src/options.js", "after": "// add: feature rows", "line": "  { key: 'shareIn', label: 'Receive shares from other apps', sub: 'This device. Android, installed app only' }," },
+    { "to": "app/src/settings-rows.js", "after": "// add: feature rows", "line": "  { key: 'shareIn', label: 'Receive shares from other apps', sub: 'This device. Android, installed app only' }," },
     { "to": "app/public/manifest.webmanifest", "after": "\"display\": \"standalone\",", "block": "recipes/share-in/manifest-share-target.txt" },
     { "to": "app/public/sw.js", "after": "// add: service worker handlers", "block": "recipes/share-in/sw-handler.txt" }
   ],

@@ -39,6 +39,9 @@ test('Display > Board: a column per section, a card dragged to the next one move
   await expect(board.locator('.td-col-title')).toHaveText(['No section', 'Doing', 'Done soon']);
   await expect(board.locator('.td-col').nth(1).locator('.td-col-count')).toHaveText('2');
   await expect(page.locator('#project-empty .td-dot')).toHaveCount(4);
+  // columns 272 wide (a phone shows the next one's edge); cards round 10
+  expect(await board.locator('.td-col').nth(1).evaluate(c => Math.round(c.getBoundingClientRect().width))).toBe(272);
+  await expect(board.locator(`.td-row[data-id="${a}"]`)).toHaveCSS('border-top-left-radius', '10px');
   expect(await AxeBuilder(page)).toEqual([]);
 
   // "Doing" in view, then a's card to "Done soon"

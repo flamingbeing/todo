@@ -21,7 +21,7 @@ const d = () => /** @type {HTMLDialogElement} */ (document.getElementById('edit-
 export const queryContext = ctx => {
   const data = ctx.data(), weekStart = Number(ctx.app.settings.get('weekStart') ?? 1);
   return { projects: data.projects, sections: data.sections, labels: data.labels, today: dayKey(), weekStart,
-    parseDate: text => parse(`x ${text}`, { weekStart }).due?.date ?? null };
+    parseDate: text => parse(`x ${text}`, { weekStart, nextWeekDay: Number(ctx.app.settings.get('nextWeekDay') ?? 1), weekendDay: Number(ctx.app.settings.get('weekendDay') ?? 6) }).due?.date ?? null };
 };
 
 /** @param {import('app-ui/icons/lucide.js').IconNodes} ic @param {string} label */

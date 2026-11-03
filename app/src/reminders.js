@@ -21,6 +21,19 @@ export function leadText(n) {
   return `${unit[0]} ${unit[1]}${unit[0] === 1 ? '' : 's'} before`;
 }
 
+/**
+ * Settings > Reminders "Send automatic reminders": the reminders a task gets when it is saved with a due time. A lead
+ * (minutes before, option autoReminder; -1 off) is added only when the due has a time and the task has none of its own.
+ * @param {{ time?: unknown } | null | undefined} due @param {number[] | null | undefined} reminders @param {unknown} lead
+ * @returns {number[]}
+ */
+export function autoReminders(due, reminders, lead) {
+  const own = reminders ?? [];
+  const n = Number(lead);
+  if (own.length || !due || !isTime(due.time) || !Number.isInteger(n) || n < 0) return own;
+  return cleanReminders([n]);
+}
+
 /** the short form for a row or a chip: "At time", "30m", "1h", "2d" @param {number} n */
 export function leadShort(n) {
   if (n <= 0) return 'At time';

@@ -7,7 +7,7 @@ import AxeBuilder from './axe.mjs';
 const open = (page, title = 'General') => openSettings(page, title);
 const openCounts = page => openSettings(page, 'Navigation menu');
 const big = page => page.getByRole('switch', { name: /Larger rows/ });
-const count = page => page.getByRole('switch', { name: /Show task counts/ });
+const count = page => page.getByRole('switch', { name: /Show task count/ });
 // a project row's count on Browse (drawn once Browse has opened; it follows the option from then on)
 const shown = page => page.locator('#browse .td-browse-row', { hasText: 'Counted' }).locator('.td-browse-count');
 // (a project "Counted" with a task in it; the other phone, signed into the same account, finds both)
@@ -33,7 +33,7 @@ test('device values stay on this device: Larger rows and the counts do not reach
   await synced(a);
   await browse(a);
   await openCounts(a);
-  await expect(a.locator('#settings-host')).toContainText('Show task counts in Browse');
+  await expect(a.locator('#settings-host')).toContainText('Visible in Browse');
   await count(a).check();
   await open(a);
   await big(a).check();

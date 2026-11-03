@@ -1,12 +1,15 @@
-// Arrange tabs (Settings, Tab bar; @core/ui tabArranger): a tab taken off the bar is listed at the top of the Settings
-// menu, one tap away, and stays off after a reload (the tabs option, this device).
-import { test, expect, APP, openSettings, settingsBack, signIn, synced, gesturesReady, fingers, finger, steps, boxOf } from './fixtures.mjs';
+// Arrange tabs (Settings, Tab bar; @core/ui tabArranger): a tab taken off the bar is listed in Browse's top card, one tap
+// away (the Settings menu has no list of its own, like the reference), and stays off after a reload (the tabs option, this device).
+import { test, expect, APP, openSettings, openTab, settingsBack, signIn, synced, gesturesReady, fingers, finger, steps, boxOf } from './fixtures.mjs';
 
-test('a tab taken off the bar is one tap away in Settings and stays off', async ({ phone }) => {
+test('a tab taken off the bar is one tap away in Browse and stays off', async ({ phone }) => {
   const page = await phone();
   await page.goto(APP, { waitUntil: 'domcontentloaded' });
   const search = page.locator('.ui-tabbar [data-tab-id="upcoming"]');
   await expect(search).toBeVisible();
+  // the current tab's icon sits in a 56 x 32 pill
+  const pill = page.locator('.ui-tabbar .ui-tab[aria-current="page"] .ui-tab-icon');
+  await expect.poll(() => pill.evaluate(e => [Math.round(e.getBoundingClientRect().width), Math.round(e.getBoundingClientRect().height)])).toEqual([56, 32]);
 
   await openSettings(page, 'Navigation bar');
   await expect(page.getByRole('switch', { name: 'On the tab bar: Browse' })).toBeDisabled();   // Browse (and Settings in it) stays
@@ -15,8 +18,9 @@ test('a tab taken off the bar is one tap away in Settings and stays off', async 
   await expect(search).toBeHidden();
 
   await settingsBack(page);
-  const off = page.locator('#settings-host .ui-settings-top').getByRole('button', { name: 'Upcoming' });
-  await off.click();
+  await expect(page.locator('#settings-host .ui-settings-top')).toHaveCount(0);
+  await openTab(page, 'browse');
+  await page.locator('#browse .td-browse-card').first().locator('.td-browse-label', { hasText: 'Upcoming' }).click();
   await expect(page.locator('#upcoming-page')).toBeVisible();
 
   await page.reload({ waitUntil: 'domcontentloaded' });

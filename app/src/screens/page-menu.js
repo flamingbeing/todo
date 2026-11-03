@@ -1,6 +1,6 @@
 // The lists' tap menus, loaded the first time one opens (views.js lazyModules "menus"): the page's "…" (Display, then
-// on a project Edit project, Add section and Delete project; on the Inbox Add section; on a label or filter Edit and
-// Delete; Select tasks on every list), a section's "…" (Rename, Add task, Delete), and deleting a project (asked first).
+// on a project Edit project, Add section and Delete project; on the Inbox Add section, Copy link, Comments, View activity; on a label or filter Edit and
+// Delete; Select tasks on every list), a section's "…" (Edit, Add task, Delete), and deleting a project (asked first).
 // Kept out of views.js so the first screen loads less.
 import { confirmModal, plural } from '@core/ui';
 import { INBOX, REFUSED } from '../items.js';
@@ -23,6 +23,8 @@ import { byOrder, orderBetween } from '../order.js';
 /** the page's "…" @param {Ctx} ctx @param {HTMLElement} more @param {PageMenu} o */
 export function pageMenu(ctx, more, o) {
   const data = ctx.data(), p = data.projects.find(x => x.id === o.pid), own = o.tree && o.pid !== INBOX && p ? p : null;
+  // (the Inbox's Comments and View activity: its record when there is one, else its id and name)
+  const tree = o.tree ? own ?? p ?? /** @type {Project} */ ({ id: INBOX, name: 'Inbox' }) : null;
   const place = o.place, named = place ? /** @type {any[]} */ (data[place.kind]).find(x => x.id === place.id) : null, word = place?.kind === 'labels' ? 'label' : 'filter';
   openMenu(more, [
     ...(own ? [{ label: 'Edit project', icon: MORE.pencil, run: () => ctx.openProjectSheet({ project: own }) }] : []),
@@ -31,21 +33,21 @@ export function pageMenu(ctx, more, o) {
     ...(o.tree ? [{ label: `Copy link to ${own?.name ?? 'Inbox'}`, icon: MORE.link, run: async () => {
       try { await navigator.clipboard.writeText(projectLink(o.pid)); ctx.toast('Project link copied.'); } catch { ctx.toast('Could not copy the link'); }
     } }] : []),
-    ...(own ? [{ label: 'Comments', icon: MORE.messageSquare, run: () => ctx.openProjectComments(own) }] : []),
-    ...(own ? [{ label: 'View activity', icon: MORE.activity, run: () => ctx.openActivity({ project: own }) }] : []),
+    ...(tree ? [{ label: 'Comments', icon: MORE.messageSquare, run: () => ctx.openProjectComments(tree) }] : []),
+    ...(tree ? [{ label: 'View activity', icon: MORE.activity, run: () => ctx.openActivity({ project: tree }) }] : []),
     { label: 'Select tasks', icon: MORE.squareCheck, run: () => o.select(o.host) },
     ...(own ? [null, { label: 'Delete project', icon: MORE.trash2, danger: true, run: () => { void ctx.removeProject(own); } }] : []),
     ...(named && place ? [null, { label: `Delete ${word}`, icon: MORE.trash2, danger: true, run: () => o.named(async m => { if (await m.removeNamed(ctx, place.kind, named)) o.pop(); }) }] : []),
   ], { label: 'List' });
 }
 
-/** a section's "…" @param {Ctx} ctx @param {Section} s @param {HTMLElement} b @param {(s: Section) => void} rename
+/** a section's "…" @param {Ctx} ctx @param {Section} s @param {HTMLElement} b @param {(s: Section) => void} rename  its Edit section page
  * @param {(pid: string, after: string, order: number) => void} addAfter  a new section's name field after this one, at that order */
 export function sectionMenu(ctx, s, b, rename, addAfter) {
   // (the order halfway to the next section's, or past the last)
   const mine = byOrder(ctx.data().sections.filter(x => x.projectId === s.projectId)), next = mine[mine.findIndex(x => x.id === s.id) + 1];
   openMenu(b, [
-    { label: 'Rename section', icon: MORE.pencil, run: () => rename(s) },
+    { label: 'Edit section', icon: MORE.pencil, run: () => rename(s) },
     { label: 'Add task', icon: ICONS.plus, run: () => ctx.openQuickAdd({ projectId: s.projectId, sectionId: s.id }) },
     { label: 'Add section after', icon: MORE.circlePlus, run: () => addAfter(s.projectId, s.id, orderBetween(s.order ?? 0, next?.order ?? null)) },
     null,

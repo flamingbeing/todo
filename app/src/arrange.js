@@ -3,7 +3,7 @@
 import { INBOX } from './items.js';
 import { dueOf, isTime, addDays, dayTitle, isDay } from './dates.js';
 import { byOrder } from './order.js';
-import { isTask, projectOf, priorityOf, labelsOf, dayOrder, dayLines } from './tasks.js';
+import { isTask, projectOf, priorityOf, labelsOf, dayOrder, dayLines, sortKey } from './tasks.js';
 
 /** @typedef {import('./items.js').Task} Task */
 /** @typedef {import('./items.js').Project} Project */
@@ -93,7 +93,7 @@ export function sorter(sort, dir, manual = (a, b) => num(a.order) - num(b.order)
   const by_ = (/** @type {Task} */ t) => (typeof t.deadline === 'string' ? t.deadline : '');
   /** @type {Record<string, (a: Task, b: Task) => number>} */
   const by = {
-    name: (a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }),
+    name: (a, b) => sortKey(a.title).localeCompare(sortKey(b.title), undefined, { sensitivity: 'base', numeric: true }),
     date: (a, b) => (when(a) < when(b) ? -1 : when(a) > when(b) ? 1 : 0),
     deadline: (a, b) => (by_(a) < by_(b) ? -1 : by_(a) > by_(b) ? 1 : 0),
     priority: (a, b) => priorityOf(a) - priorityOf(b),

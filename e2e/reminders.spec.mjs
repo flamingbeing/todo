@@ -13,8 +13,8 @@ test('tick reminders in the task sheet; they are saved on the task', async ({ ph
   await put(t, { title: t, due: { date: today(), time: '23:00' } });
   await synced(page);
   await clickOpens(page.locator('#today .td-row').filter({ hasText: t }).locator('.td-row-main'), page.locator(sheet));
-  const row = page.locator(`${sheet} button.td-attr[aria-label^="Reminders"]`);
-  await expect(row).toHaveAttribute('aria-label', 'Reminders');
+  const row = page.locator(`${sheet} button.td-attr[aria-label^="Reminder"]`);
+  await expect(row).toHaveAttribute('aria-label', 'Reminder');
   await row.click();
   await page.getByRole('menuitemradio', { name: '30 minutes before' }).click();
   await expect(row).toHaveAttribute('aria-label', 'Reminders: 30 minutes');
@@ -33,7 +33,7 @@ test('Settings has Reminders, off by default; a refused permission leaves it off
   await signIn(page, 'member');
   await synced(page);
   expect(await page.evaluate(() => window.__asked)).toBe(0);   // never asked on load
-  await openSettings(page, 'Reminders');
+  await openSettings(page, 'Notifications');
   const sw = page.locator('#settings-host').getByRole('switch', { name: /Notify me/ });
   await expect(sw).not.toBeChecked();
   expect(await page.evaluate(() => window.__asked)).toBe(0);

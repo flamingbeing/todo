@@ -15,7 +15,7 @@ import { descendants } from '../tree.js';
 import { dayKey } from '../dates.js';
 import { openMenu } from '../ui/menu.js';
 import { el, pickPlace } from './pick.js';
-import { pickDate } from './scheduler.js';
+import { pickDate, dayOptions } from './scheduler.js';
 import { labelTasks } from './labels.js';
 
 /** @typedef {import('./views.js').Ctx} Ctx */
@@ -55,7 +55,7 @@ export function scheduleTasks(ctx, tasks, after) {
   pickDate(one ? tasks[0].due : null, async (due, duration) => {
     for (const t of tasks) if (await ctx.app.editTask(t, { due: due ? { ...due } : null, ...(duration !== undefined ? { duration } : {}) })) { ctx.toast(REFUSED); break; }
     after?.();
-  }, { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1), clearable: tasks.some(t => t.due), ...(one ? { duration: tasks[0].duration ?? null } : {}) });
+  }, { data: ctx.data(), ...dayOptions(ctx.app.settings), clearable: tasks.some(t => t.due), ...(one ? { duration: tasks[0].duration ?? null } : {}) });
 }
 
 /** A deadline for tasks (the scheduler's date-only sheet, "No deadline" clears it); one save each, one Undo for them all
@@ -79,7 +79,7 @@ export function deadlineTasks(ctx, tasks, after) {
       }
     });
     after?.();
-  }, { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1), dateOnly: true, clearable: tasks.some(t => t.deadline) });
+  }, { data: ctx.data(), ...dayOptions(ctx.app.settings), dateOnly: true, clearable: tasks.some(t => t.deadline) });
 }
 
 /** Today's Reschedule: a new day for every overdue task at once (recur.js rescheduled: a timed one keeps its time unless
@@ -101,7 +101,7 @@ export function rescheduleTasks(ctx, tasks) {
         if (await ctx.app.editTask(now, { due: before })) { ctx.toast(REFUSED); return; }
       }
     });
-  }, { data: ctx.data(), weekStart: Number(ctx.app.settings.get('weekStart') ?? 1), clearable: true });
+  }, { data: ctx.data(), ...dayOptions(ctx.app.settings), clearable: true });
 }
 
 /** A priority for tasks, from a menu at anchor @param {Ctx} ctx @param {HTMLElement} anchor @param {Task[]} tasks @param {() => void} [after] */
@@ -140,7 +140,7 @@ async function completeTasks(ctx, tasks) {
   if (doable.length < tasks.length) ctx.toast('Could not work out the next date');
   if (!doable.length) return;
   for (const t of doable) {
-    const r = await ctx.app.complete(t, { next: nexts.get(t.id) ?? null });
+    const r = await ctx.app.complete(t, { next: nexts.get(t.id) ?? null, keepSubs: ctx.app.settings.get('resetSubs') === false });
     if (r.refused) { ctx.toast(REFUSED); break; }
     ticked.push(...r.ticked);
     if (r.moved) moved.push([t, r.moved, r.reopened]);

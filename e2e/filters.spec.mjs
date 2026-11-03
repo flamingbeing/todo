@@ -102,3 +102,53 @@ test('deadline words: "deadline before:", "!no deadline" and a project find the 
   await expect(page.locator(`#place .td-row[data-id="${later}"]`)).toBeVisible();
   await expect(page.locator('#place .td-row')).toHaveCount(1);
 });
+
+test('Filters & Labels: counts, a bad query marked, Manage rows, a group folds and stays folded, empty pages; axe light and dark', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const lab = word('lonely'), lid = uniq('l'), fname = word('Bad'), fid = uniq('f'), cname = word('Counted'), cid = uniq('f'), t = uniq('ct');
+  await db.put(`spaces/_/labels/${lid}`, { name: lab, color: 'green', order: Date.now(), favorite: false, ...now() });
+  await db.put(`spaces/_/filters/${fid}`, { name: fname, query: 'today &', color: 'red', order: Date.now(), favorite: false, ...now() });
+  await db.put(`spaces/_/filters/${cid}`, { name: cname, query: `search: ${t}`, color: 'blue', order: Date.now() + 1, favorite: false, ...now() });
+  await task(t, { title: t });
+  await synced(page);
+  await openTab(page, 'browse');
+  await page.locator('#browse').getByRole('button', { name: 'Filters & Labels' }).click();
+  const host = page.locator('#filters');
+  await expect(host.locator('.td-fl-name')).toHaveText(['My Filters', 'Labels']);
+  await expect(host.locator('.td-fl-row', { hasText: cname }).locator('.td-fl-count')).toHaveText('1');
+  await expect(host.locator('.td-fl-row', { hasText: fname }).locator('.td-fl-bad')).toHaveText('!');
+  await expect(host.locator('.td-fl-row', { hasText: lab }).locator('.td-fl-count')).toHaveCount(0);   // (no tasks: no count)
+  await expect(host.getByRole('button', { name: 'Manage filters' })).toBeVisible();
+  await expect(host.getByRole('button', { name: 'Manage labels' })).toBeVisible();
+  for (const colorScheme of /** @type {const} */ (['light', 'dark'])) {
+    await page.emulateMedia({ colorScheme });
+    expect(await AxeBuilder(page)).toEqual([]);
+  }
+  await page.emulateMedia({ colorScheme: 'light' });
+
+  // Manage: a tap on a row edits it, until Done
+  await host.getByRole('button', { name: 'Manage labels' }).click();
+  await expect(host.getByRole('button', { name: 'Done' })).toHaveAttribute('aria-pressed', 'true');
+  await host.getByRole('button', { name: 'Done' }).click();
+  await expect(host.getByRole('button', { name: 'Manage labels' })).toBeVisible();
+
+  // the Labels group folds, and stays folded after a reload
+  const fold = host.locator('.td-fl-fold', { hasText: 'Labels' });
+  await fold.click();
+  await expect(host.locator('.td-fl-row', { hasText: lab })).toHaveCount(0);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await openTab(page, 'browse');
+  await page.locator('#browse').getByRole('button', { name: 'Filters & Labels' }).click();
+  await expect(host.locator('.td-fl-fold', { hasText: 'Labels' })).toHaveAttribute('aria-expanded', 'false');
+  await host.locator('.td-fl-fold', { hasText: 'Labels' }).click();
+
+  // a label with no tasks: its page says so
+  await host.locator('.td-fl-row', { hasText: lab }).click();
+  await expect(page.locator('#place-page')).toBeVisible();
+  await expect(page.locator('#place-page').getByText('No tasks with this label')).toBeVisible();
+  for (const colorScheme of /** @type {const} */ (['light', 'dark'])) {
+    await page.emulateMedia({ colorScheme });
+    expect(await AxeBuilder(page)).toEqual([]);
+  }
+});

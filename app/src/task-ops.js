@@ -53,10 +53,10 @@ export function taskOps({ save, id, data, now = Date.now, drop = () => {} }) {
   /** a task and its open subtasks, done (doneAt now) -> '' or the reason, and the tasks it ticked (an undo unticks them).
    * A repeating task with a next date (next) stays open and moves to it instead: moved is the date it had, reopened its
    * done subtasks, open again for the next time (an undo, unmove, puts both back).
-   * @param {Task} task @param {{ next?: string | null }} [o] @returns {Promise<{ refused: string, ticked: Task[], moved?: import('./dates.js').Due, reopened?: Task[] }>} */
-  const complete = async (task, { next } = {}) => {
+   * @param {Task} task @param {{ next?: string | null, keepSubs?: boolean }} [o] @returns {Promise<{ refused: string, ticked: Task[], moved?: import('./dates.js').Due, reopened?: Task[] }>} */
+  const complete = async (task, { next, keepSubs } = {}) => {
     if (next && task.due?.rrule) {
-      const reopened = descendants(task.id, data().tasks).filter(t => t.done);
+      const reopened = keepSubs ? [] : descendants(task.id, data().tasks).filter(t => t.done);
       return { refused: await first([put(COLL, { ...task, due: cleanDue({ ...task.due, date: next }) }, task), ...reopened.map(t => put(COLL, { ...t, done: false, doneAt: null }, t))]),
         ticked: [], moved: task.due, reopened };
     }
@@ -72,6 +72,12 @@ export function taskOps({ save, id, data, now = Date.now, drop = () => {} }) {
       return put(COLL, { ...task, ...f }, task);
     },
     complete,
+    /** a repeating task done for good (the "…" menu's Complete forever): done now, its day kept but its repeat (and
+     * the words it was typed with) taken off, so it does not roll on; this task alone, one save @param {Task} task */
+    completeForever: task => {
+      const due = task.due ? cleanDue({ date: task.due.date, ...(task.due.time ? { time: task.due.time } : {}) }) : null;
+      return put(COLL, { ...task, due, done: true, doneAt: now() }, task);
+    },
     /** done or not done, this task alone @param {Task} task @param {boolean} done */
     tick: (task, done) => put(COLL, { ...task, done, doneAt: done ? now() : null }, task),
     /** not done again (an undo): each as it is now @param {Task[]} tasks */
@@ -158,11 +164,17 @@ export function taskOps({ save, id, data, now = Date.now, drop = () => {} }) {
       return first([remove(COLL, tasks), remove(SECTIONS, sections), remove(PROJECTS, projects)]);
     },
 
-    /** @param {string} projectId @param {string} name @param {number} [order] at the end unless given @returns {Promise<{ refused: string, id: string }>} */
-    addSection: async (projectId, name, order) => {
-      const n = String(name ?? '').trim().slice(0, 120), sid = id();
+    /** @param {string} projectId @param {string} name @param {number} [order] at the end unless given @param {string} [description]
+     * @returns {Promise<{ refused: string, id: string }>} */
+    addSection: async (projectId, name, order, description) => {
+      const n = String(name ?? '').trim().slice(0, 120), sid = id(), d = String(description ?? '').trim().slice(0, 2000);
       if (!n) return { refused: 'A section needs a name', id: '' };
-      return { refused: await put(SECTIONS, { id: sid, name: n, projectId, order: order ?? orderAtEnd(data().sections.filter(s => s.projectId === projectId)), createdAt: now() }, null), id: sid };
+      return { refused: await put(SECTIONS, { id: sid, name: n, projectId, order: order ?? orderAtEnd(data().sections.filter(s => s.projectId === projectId)), ...(d ? { description: d } : {}), createdAt: now() }, null), id: sid };
+    },
+    /** a section's name and description (an empty description clears it) @param {Section} s @param {string} name @param {string} description */
+    editSection: (s, name, description) => {
+      const n = String(name ?? '').trim().slice(0, 120), d = String(description ?? '').trim().slice(0, 2000);
+      return n ? put(SECTIONS, { ...s, name: n, description: d || null }, s) : Promise.resolve('A section needs a name');
     },
     /** @param {Section} s @param {string} name */
     renameSection: (s, name) => {

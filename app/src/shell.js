@@ -1,37 +1,15 @@
-// The page's shell (index.html: .ui-shell, the kit's bar, the tabs, side bar and drawer) and the Settings page: the
-// kit's settingsScreen with the options (options.js) and its About rows, and what the options do to the tabs.
-// Settings is a screen pushed from Browse (its gear). It opens on a menu: a search box, the tabs taken off the bar (one
-// tap away), then a row per page; Back closes a page. The Tab bar page arranges the tabs (the kit's tabArranger; the
-// tabs option, this device); Browse always stays on the bar, since Settings is reached from it.
-import { startGestures, adaptiveShell, settingsScreen, createTransients, tabArranger, arrangeTabs, applyTabs, tabPages, tabBack, toaster, CLOSE_MS } from '@core/ui';
-import { themeSwitch } from '@core/theme';
-import { APP } from './config.js';
-import { timeText } from './dates.js';
-import { $ } from './dom.js';
-import { ICONS } from './icons.js';
-import { SETTING_SECTIONS } from './options.js';
-import { modules } from './modules.js';
+// The page's shell (index.html: .ui-shell, the kit's bar, the tabs, side bar and drawer) and what the options do to the
+// page (the tab bar, Home, larger rows, the add button's place, the app icon). The Settings screen itself (the kit's
+// settingsScreen and its pages, screens/settings.js) is built the first time #settings-page shows (lazyModules
+// "settings"), so none of it loads at startup. Settings is a screen pushed from Browse (its gear); Browse always stays
+// on the bar, since Settings is reached from it.
+import { startGestures, adaptiveShell, createTransients, arrangeTabs, applyTabs, tabPages, tabBack, toaster, lazyModules, CLOSE_MS } from '@core/ui';
 
 /**
  * A recipe's own Settings page (modules.js `settingsPages`, one entry per recipe: backup, bin, feedback, shareIn; the recipes fill them): made once the app is there; null
  * when the page has nothing to show (the feedback page in a static app).
  * @typedef {(o: { app: import('./items.js').ItemsApp }) => import('app-ui/ui/settings-screen.js').SettingSection | null} SettingsSlot
  */
-
-// The Settings menu's headings, in this order; a page whose group is not listed goes under 'More' (last), so a new
-// page is never left out and a recipe never edits this list
-const pad2 = (/** @type {number} */ n) => String(n).padStart(2, '0');
-const SETTINGS_GROUPS = ['', 'Personalization', 'Productivity', 'More'];
-// (a page whose visible() is false now is left out: the kit keeps a group's heading even when all its pages are hidden,
-// so an Advanced with no features showed an empty heading; a key-gated page stays, as it can turn on live)
-// the order of the pages within a group (the rest keep theirs, after these)
-const PAGE_ORDER = ['Account', 'General', 'Theme', 'Navigation bar', 'Navigation menu', 'Quick Add', 'Productivity', 'Reminders'];
-const pageRank = (/** @type {string} */ t) => (PAGE_ORDER.includes(t) ? PAGE_ORDER.indexOf(t) : PAGE_ORDER.length);
-/** @param {import('app-ui/ui/settings-screen.js').SettingSection[]} sections */
-const byGroup = sections => sections
-  .filter(s => typeof s.visible !== 'function' || s.visible())
-  .map(s => (SETTINGS_GROUPS.includes(s.group ?? '') ? s : { ...s, group: 'More' }))
-  .sort((a, b) => SETTINGS_GROUPS.indexOf(a.group ?? '') - SETTINGS_GROUPS.indexOf(b.group ?? '') || pageRank(a.title) - pageRank(b.title));
 
 // Browse always stays on the bar: Settings opens from it (the tabs off the bar are listed at the top of its menu). Search
 // starts off the bar (it is a page pushed from Browse) and can be switched on in Settings > Navigation bar
@@ -115,52 +93,49 @@ export function setHome(id) {
 }
 
 /** the tab bar's tabs, in index.html's order (an app's own hidden ones left out) */
-function barTabs() {
+export function barTabs() {
   const tabs = /** @type {HTMLElement[]} */ ([...document.querySelectorAll('.ui-tabbar > [data-tab-id]')]);
   // (its name is the button's own text, not its icon's)
   const label = (/** @type {HTMLElement} */ t) => [...t.childNodes].filter(n => n.nodeType === Node.TEXT_NODE).map(n => n.textContent).join('').trim();
   return tabs.filter(t => !t.hidden).map(t => ({ id: /** @type {string} */ (t.dataset.tabId), label: label(t) }));
 }
-const tabButton = (/** @type {string} */ id) => /** @type {HTMLElement | null} */ (document.querySelector(`.ui-tabbar > [data-tab-id="${id}"]`));
+export const tabButton = (/** @type {string} */ id) => /** @type {HTMLElement | null} */ (document.querySelector(`.ui-tabbar > [data-tab-id="${id}"]`));
 
-/**
- * A Settings page whose code loads when the page is first shown (settingsScreen mounts every page when it is built, shown
- * or not, so a page that is heavy waits until it is on screen). load(host) -> its parts; leave runs whenever the page is
- * hidden again. @param {HTMLElement} host
- * @param {(host: HTMLElement) => Promise<{ leave: () => void, destroy: () => void }>} load
- */
-function onShow(host, load) {
-  /** @type {Promise<{ leave: () => void, destroy: () => void }> | null} */
-  let page = null;
-  const watch = new IntersectionObserver(entries => {
-    const seen = entries.some(e => e.isIntersecting);
-    if (seen) page ??= load(host);
-    else page?.then(p => p.leave());
-  });
-  watch.observe(host);
-  return () => { watch.disconnect(); page?.then(p => p.destroy()); };
-}
-
-/** a list of rows in host @param {HTMLElement} host @param {HTMLElement[]} items */
-function listIn(host, items) {
-  const list = document.createElement('ul');
-  list.className = 'ui-list';
-  list.append(...items.map(item => { const li = document.createElement('li'); li.append(item); return li; }));
-  host.append(list);
+/** the page's icon and home-screen icon: the default (index.html's) or one of icons/variants (option appIcon) */
+let iconShown = 'default';
+/** @param {unknown} id */
+function setIcon(id) {
+  const v = String(id || 'default');
+  if (v === iconShown) return;
+  iconShown = v;
+  const icon = document.querySelector('link[rel="icon"]');
+  const touch = document.querySelector('link[rel="apple-touch-icon"]');
+  icon?.setAttribute('href', v === 'default' ? 'icons/icon.svg' : `icons/variants/${v}.svg`);
+  touch?.setAttribute('href', v === 'default' ? 'icons/apple-touch-icon.png' : `icons/variants/${v}.png`);
 }
 
 /**
- * A Settings page shown as a screen of its own (the kit's menu.onPage, app-ui rc.80+): its title in the large title and
- * the bar, no account block over it; the bar's Back closes it (the page is a history step). null: the menu again.
- * @param {{ title: string } | null} page
+ * A Settings page from anywhere (Browse's bell, a hold on the tab bar): Browse, its Settings screen, then the page's row
+ * in the menu once the screen is built. @param {string} title the page's title, as its menu row starts
  */
-function onPage(page) {
-  const title = page ? page.title : 'Settings';
-  $('settings-title').textContent = title;
-  const small = document.querySelector('.ui-bar-title');
-  if (small && !$('settings-page').hidden) small.textContent = title;
-  $('settings-page').classList.toggle('is-sub', !!page);
+export async function openSettingsPage(title) {
+  const until = async (/** @type {() => unknown} */ ok) => { for (let i = 0; i < 60 && !ok(); i++) await new Promise(r => setTimeout(r, 50)); return !!ok(); };
+  const page = /** @type {HTMLElement} */ (document.getElementById('settings-page'));
+  if (page.hidden) {
+    tabButton('browse')?.click();
+    if (!await until(() => !document.getElementById('browse-page')?.hidden && !screens()?.depth())) return;
+    screens()?.push('#settings-page');
+    if (!await until(() => !page.hidden)) return;
+  }
+  if (page.classList.contains('is-sub')) {
+    /** @type {HTMLElement | null} */ (document.querySelector('.ui-bar .ui-bar-back'))?.click();
+    if (!await until(() => !page.classList.contains('is-sub'))) return;
+  }
+  const row = () => [...document.querySelectorAll('#settings-host .ui-settings-menu-groups .ui-settings-go')].find(b => b.textContent?.trim().startsWith(title));
+  if (await until(row)) /** @type {HTMLElement} */ (row())?.click();
 }
+
+const lazy = lazyModules({ settings: () => import('./screens/settings.js') });
 
 /** @param {import('./items.js').ItemsApp | null} app  null: not set up, so no Settings page (Browse is not drawn either) */
 export function settingsPage(app) {
@@ -176,71 +151,29 @@ export function settingsPage(app) {
   settings.watch('tabs', paintBar);
   paintBar();
 
-  /** the tabs taken off the bar, one tap away at the top of the menu (none: nothing shows) @param {HTMLElement} host */
-  const offBar = host => {
-    const draw = () => {
-      const off = arranged().hidden;
-      host.replaceChildren();
-      if (!off.length) return;
-      host.append(Object.assign(document.createElement('h2'), { className: 'ui-settings-title', textContent: 'Off the tab bar' }));
-      listIn(host, off.map(id => {
-        const b = Object.assign(document.createElement('button'), { type: 'button', className: 'ui-row ui-settings-go', textContent: barTabs().find(t => t.id === id)?.label || id });
-        b.addEventListener('click', () => tabButton(id)?.click());
-        return b;
-      }));
-    };
-    repaints.add(draw);
-    draw();
-    return () => { repaints.delete(draw); };
-  };
-
-  // About's own rows: Sync status ("Last synced 14:05", from the sync's own state; none in a static app) and Privacy policy and
-  // Terms (only when APP.privacyUrl / APP.termsUrl are set in config.js; links, not buttons)
+  // the last sync, kept from the start for About's Sync status (none in a static app)
   let lastSynced = 0;
-  const syncText = () => (lastSynced ? `Last synced ${timeText(`${pad2(new Date(lastSynced).getHours())}:${pad2(new Date(lastSynced).getMinutes())}`)}` : 'Not synced yet');
   const status$ = /** @type {any} */ (app).status$;
-  const paintSync = () => {
-    for (const r of document.querySelectorAll('#settings-host .ui-about-extra')) {
-      if (r.querySelector('.ui-row-main')?.textContent === 'Sync status') { const v = r.querySelector('.ui-setting-value'); if (v) v.textContent = syncText(); }
-    }
-  };
-  const links = /** @type {[string, unknown][]} */ ([['Privacy policy', /** @type {any} */ (APP).privacyUrl], ['Terms of service', /** @type {any} */ (APP).termsUrl]]);
-  const aboutRows = [
-    ...(typeof status$ === 'function' ? [{ label: 'Sync status', value: syncText() }] : []),
-    ...links.filter(([, u]) => typeof u === 'string' && /^https:\/\//.test(u)).map(([label, u]) => ({ label, href: /** @type {string} */ (u), value: 'Open' })),
-  ];
-  if (typeof status$ === 'function') status$.call(app, (/** @type {any} */ st) => { if (st.state === 'synced' && !st.unsent) { lastSynced = Date.now(); paintSync(); } });
+  if (typeof status$ === 'function') status$.call(app, (/** @type {any} */ st) => { if (st.state === 'synced' && !st.unsent) lastSynced = Date.now(); });
 
-  settingsScreen($('settings-host'), {
-    settings,
-    menu: { steps, top: offBar, onPage, search: false },
-    labels: { appGroup: 'More' },
-    sections: byGroup([
-      ...SETTING_SECTIONS,
-      // the account block (index.html #account, cloud app only) lives on its own page, as the first row of the menu
-      ...(document.getElementById('account') ? [{ title: 'Account', icon: ICONS.circleUser, group: '', find: 'sign out email profile',
-        mount: /** @param {HTMLElement} host */ host => { const acc = /** @type {HTMLElement} */ (document.getElementById('account')); host.append(acc); } }] : []),
-      { title: 'Theme', icon: ICONS.palette, group: 'Personalization', find: 'look colour dark light density glass',
-        mount: host => { themeSwitch(host, { name: APP.title || APP.name }); } },
-      { title: 'Navigation bar', icon: ICONS.smartphone, group: 'Personalization', find: 'arrange tabs order tab bar', mount: host => {
-        let stop = () => {};
-        const draw = () => { stop(); stop = tabArranger(host, { tabs: barTabs(), get: () => settings.get('tabs'), set: v => settings.set('tabs', v), rules: TAB_RULES }); };
-        repaints.add(draw);
-        draw();
-        return () => { repaints.delete(draw); stop(); };
-      } },
-      { title: 'Import from Todoist', icon: ICONS.folderInput, sub: 'Bring your projects and tasks over', group: 'More', find: 'migrate move api token tasks',
-        mount: host => onShow(host, async h => (await import('./screens/import.js')).importScreen(h, { app, openInbox: () => tabButton('inbox')?.click() })) },
-      // the recipes' own pages (an empty slot adds none)
-      ...Object.values(modules.settingsPages ?? {}).flatMap(slot => { const section = slot?.({ app }); return section ? [section] : []; }),
-    ]),
-    about: { name: APP.title || APP.name, update: app.update, rows: aboutRows },
-  });
-  paintSync();
+  // the Settings screen, built the first time its page shows
+  const page = /** @type {HTMLElement} */ (document.getElementById('settings-page'));
+  let built = false;
+  const build = () => {
+    if (built || page.hidden) return;
+    built = true;
+    seen.disconnect();
+    void lazy.withMod('settings', m => m.buildSettings(app, { arranged, repaints, rules: TAB_RULES, steps, synced: () => lastSynced, sync: typeof status$ === 'function' }));
+  };
+  const seen = new MutationObserver(build);
+  seen.observe(page, { attributes: true, attributeFilter: ['hidden'] });
+  build();
 
   // what the options do to the page, now and whenever one changes (here or on another device)
   const apply = () => {
     document.querySelector('.ui-screens')?.classList.toggle('big', settings.get('bigRows'));
+    document.documentElement.dataset.fab = String(settings.get('fabPos') ?? 'right');
+    setIcon(settings.get('appIcon'));
   };
   settings.watch(null, apply);
   apply();

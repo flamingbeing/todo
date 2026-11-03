@@ -24,6 +24,9 @@ test('a swipe to next week, a tap scrolls to the day (the + adds there), the mon
   await expect(strip.locator(`.td-wday[data-day="${now}"]`)).toHaveClass(/is-today/);
   await expect(strip.locator(`.td-wday[data-day="${now}"]`)).toHaveAttribute('aria-pressed', 'true');
   await expect(strip.locator('.td-month-name')).not.toBeEmpty();
+  // today's day head in the text colour, later days dimmed
+  const head = sel => page.locator(`#upcoming .td-group.td-day${sel} > .td-group-head .td-group-title`).first().evaluate(e => getComputedStyle(e).color);
+  expect(await head('.is-today')).not.toBe(await head(':not(.is-today)'));
   expect(await AxeBuilder(page)).toEqual([]);
 
   // a swipe to the left: next week, with the dot on the day of the far task

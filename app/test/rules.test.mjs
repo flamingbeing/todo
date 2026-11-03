@@ -243,8 +243,12 @@ test('templates: a name, a colour, a view, up to 50 sections and 300 tasks; no s
   ['an attachment field', { file: 'a.png' }, false],
 ]));
 
-test('sections: a name of 1 to 120 and a project', () => cases('sections', [
+test('sections: a name of 1 to 120, a project and an optional description of up to 2000', () => cases('sections', [
   ['collapsed', { collapsed: true }, true],
+  ['a description of 2000', { description: 'x'.repeat(2000) }, true],
+  ['a description of 2001', { description: 'x'.repeat(2001) }, false],
+  ['a description that is a number', { description: 7 }, false],
+  ['a null description', { description: null }, true],
   ['an empty name', { name: '' }, false],
   ['a name over 120', { name: 'x'.repeat(121) }, false],
   ['no project', drop('projectId'), false],

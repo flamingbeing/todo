@@ -51,6 +51,8 @@ if (lastSignedIn()) {
 }
 const app = await start({ canReload: withSW ? () => !typing() && !sheetOpen() : null });
 settingsPage(app);
+// the owed reload is tried again when a field loses focus (the update module retries on its own events only)
+if (app?.update) addEventListener('focusout', () => setTimeout(() => app.update?.retryUpdate?.(), 300));
 
 if (!app) { showToday(); notSetUpScreen().show({ phase: 'not-set-up' }); }
 else {

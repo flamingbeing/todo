@@ -1,6 +1,6 @@
 // Productivity numbers, pure: from the completed tasks (done with a doneAt time) work out the days' counts, today's and this
 // week's totals, the goals and the streak. No points: counts only. Loaded with the Productivity page (lazyModules), never at startup.
-import { dayKey, addDays, weekOf } from './dates.js';
+import { dayKey, addDays, weekOf, weekdayOf } from './dates.js';
 
 /** @typedef {import('./items.js').Task} Task */
 
@@ -20,29 +20,75 @@ export function doneByDay(tasks) {
 }
 
 /**
- * @param {Task[]} tasks @param {{ today?: string, daily?: number, weekly?: number, weekStart?: number }} [o]
+ * @param {Task[]} tasks @param {{ today?: string, daily?: number, weekly?: number, weekStart?: number, daysOff?: number[], vacation?: boolean }} [o]
+ *   daysOff: weekdays (0 Sunday) that never break a streak; vacation: the days since the last met one wait (the streak holds).
  *   daily / weekly: the goals (0: none). A day counts for the streak when it met the daily goal (with none: when anything was done);
  *   a day without a finish ends the streak, except that today may still be open (the streak then runs up to yesterday).
  * @returns {{ today: number, week: number, streak: number, best: number, days: { day: string, n: number }[], daily: number, weekly: number, max: number }}
  *   days: the last 7 days, oldest first
  */
-export function productivity(tasks, { today = dayKey(), daily = 0, weekly = 0, weekStart = 1 } = {}) {
+export function productivity(tasks, { today = dayKey(), daily = 0, weekly = 0, weekStart = 1, daysOff = [], vacation = false } = {}) {
   const by = doneByDay(tasks), n = (/** @type {string} */ k) => by.get(k) ?? 0;
   const need = Math.max(1, daily || 1);
   const met = (/** @type {string} */ k) => n(k) >= need;
+  // (Settings > Productivity: a day off that is not met neither counts nor breaks a streak)
+  const off = (/** @type {string} */ k) => daysOff.includes(weekdayOf(k));
   const first = weekOf(today, weekStart);
   let week = 0;
   for (let k = first; k <= today; k = addDays(k, 1)) week += n(k);
+  // the streak back from today (today not met yet does not break it); in vacation mode the days since the last met one wait
   let streak = 0, k = met(today) ? today : addDays(today, -1);
-  while (met(k) && streak < 5000) { streak++; k = addDays(k, -1); }
-  // the longest run anywhere in the history
+  const start = [...by.keys()].sort()[0] ?? today;
+  for (; k >= start; k = addDays(k, -1)) {
+    if (met(k)) streak++;
+    else if (!off(k) && !(vacation && !streak)) break;
+  }
+  // the longest run anywhere in the history (days off bridge it)
   let best = 0;
   const days = [...by.keys()].filter(d => met(d)).sort();
-  for (let i = 0, run = 0; i < days.length; i++) {
-    run = i && days[i] === addDays(days[i - 1], 1) ? run + 1 : 1;
-    if (run > best) best = run;
+  for (let d = days[0], run = 0; d && d <= today; d = addDays(d, 1)) {
+    if (met(d)) { run++; if (run > best) best = run; } else if (!off(d)) run = 0;
   }
   const last7 = Array.from({ length: 7 }, (_, i) => { const day = addDays(today, i - 6); return { day, n: n(day) }; });
   return { today: n(today), week, streak, best: Math.max(best, streak), days: last7, daily: cleanGoal(daily), weekly: cleanGoal(weekly),
     max: Math.max(1, ...last7.map(d => d.n), cleanGoal(daily)) };
+}
+
+/** completed tasks per local day and project: day -> project id -> count (the Inbox is 'inbox')
+ * @param {Task[]} tasks @returns {Map<string, Map<string, number>>} */
+export function doneByDayProject(tasks) {
+  /** @type {Map<string, Map<string, number>>} */
+  const out = new Map();
+  for (const t of tasks) {
+    if (!t || !t.done || typeof t.doneAt !== 'number' || !Number.isFinite(t.doneAt)) continue;
+    const k = dayKey(new Date(t.doneAt)), pid = t.projectId || 'inbox';
+    const m = out.get(k) ?? new Map();
+    m.set(pid, (m.get(pid) ?? 0) + 1);
+    out.set(k, m);
+  }
+  return out;
+}
+
+/** @typedef {{ key: string, n: number, parts: { pid: string, n: number }[], off: boolean, today: boolean }} Bar */
+
+/**
+ * The Productivity page's bars, oldest first (left to right, today or this week last): the last 7 days (daily) or the last 4 weeks (weekly, each from its first
+ * day), each split by project (largest first; ties by project id). off: a day off (Settings > Productivity), daily only.
+ * @param {Task[]} tasks @param {{ today?: string, weekly?: boolean, weekStart?: number, daysOff?: number[] }} [o] @returns {Bar[]}
+ */
+export function bars(tasks, { today = dayKey(), weekly = false, weekStart = 1, daysOff = [] } = {}) {
+  const by = doneByDayProject(tasks);
+  /** @param {string} from @param {number} len @param {string} key @param {boolean} off */
+  const bar = (from, len, key, off) => {
+    /** @type {Map<string, number>} */
+    const sum = new Map();
+    for (let i = 0; i < len; i++) for (const [pid, n] of by.get(addDays(from, i)) ?? []) sum.set(pid, (sum.get(pid) ?? 0) + n);
+    const parts = [...sum].map(([pid, n]) => ({ pid, n })).sort((a, b) => b.n - a.n || (a.pid < b.pid ? -1 : 1));
+    return { key, n: parts.reduce((s, p) => s + p.n, 0), parts, off, today: today >= from && today < addDays(from, len) };
+  };
+  if (weekly) {
+    const first = weekOf(today, weekStart);
+    return Array.from({ length: 4 }, (_, i) => { const w = addDays(first, -7 * (3 - i)); return bar(w, 7, w, false); });
+  }
+  return Array.from({ length: 7 }, (_, i) => { const d = addDays(today, i - 6); return bar(d, 1, d, daysOff.includes(weekdayOf(d))); });
 }

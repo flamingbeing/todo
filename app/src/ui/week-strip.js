@@ -59,6 +59,8 @@ export function drawDays(ctx, o) {
     const n = daysBetween(today, day.key);
     const title = `${weekdayName(day.key)}, ${shortDate(day.key, today)}${n === 0 ? ' \u2022 Today' : n === 1 ? ' \u2022 Tomorrow' : ''}`;
     g.classList.toggle('is-empty', !day.lines.length);
+    // (today's head in the text colour, the days after it dimmed: app.css)
+    g.classList.toggle('is-today', n === 0);
     g.append(groupHead(title));
     if (day.lines.length) g.append(rowList(day.lines, ctx.rows({ place: o.place, own: day.key }), title));
     parts.push(g);

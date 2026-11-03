@@ -119,6 +119,22 @@ test('someday and no date clear the date', () => {
   assert.equal(r.noDate, true);
   assert.equal(r.title, 'Learn piano');
   assert.equal(p('x no date').noDate, true);
+  const n = p('Pay rent no due date');
+  assert.equal(n.noDate, true);
+  assert.equal(n.due, null);
+  assert.equal(n.title, 'Pay rent');
+  assert.deepEqual(n.tokens.map(t => [t.kind, 'Pay rent no due date'.slice(t.start, t.end)]), [['date', 'no due date']]);
+});
+
+test('24-hour times need the colon: 13:00 is a time, 1300 stays words', () => {
+  assert.deepEqual(due('Call tomorrow at 13:00'), { date: '2026-11-02', time: '13:00' });
+  assert.deepEqual(due('Call tomorrow at 1300'), { date: '2026-11-02' });
+  assert.equal(p('Call tomorrow at 1300').title, 'Call at 1300');
+  assert.equal(due('Call at 1300'), null);
+  assert.equal(p('Buy 1300 bricks').title, 'Buy 1300 bricks');
+  // the highlight covers the day alone, not the refused time
+  const r = p('Call tomorrow 1300');
+  assert.deepEqual(r.tokens.map(t => 'Call tomorrow 1300'.slice(t.start, t.end)), ['tomorrow']);
 });
 
 test('chrono for the other dates', () => {

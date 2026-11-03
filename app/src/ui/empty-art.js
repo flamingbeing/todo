@@ -1,4 +1,7 @@
-// The empty states' drawings, loaded after the first paint so they stay out of the startup budget.
+// The empty states' drawings, loaded after the first paint so they stay out of the startup budget, and the Inbox's
+// small "?" (bottom left) that opens a few tips of our own.
+import { alertModal, icon } from '@core/ui';
+import { MORE } from '../icons-more.js';
 const SVG = 'http://www.w3.org/2000/svg';
 /** a small SVG from a list of [tag, attributes] @param {[string, Record<string, string>][]} nodes */
 function art(nodes) {
@@ -8,8 +11,11 @@ function art(nodes) {
   return svg;
 }
 const SPARK = 'M0-9 2.2-2.2 9 0 2.2 2.2 0 9-2.2 2.2-9 0-2.2-2.2z';
-/** the empty states' own drawings: a tray with a spark (the Inbox), a sun over a horizon (a day), else a ticked circle */
-/** @param {'inbox' | 'day'} kind */
+/** the empty states' own drawings: a tray with a spark (the Inbox), a sun over a horizon (a day), a ticked badge (a day
+ * all done), stacked cards with a plus (a project), a tag beside a drop (Filters & Labels), a funnel (a filter), a tag (a
+ * label), a page of lines (Reporting), rising bars (Productivity) */
+/** @typedef {'inbox' | 'day' | 'done' | 'project' | 'tags' | 'filter' | 'label' | 'activity' | 'chart'} ArtKind */
+/** @param {ArtKind} kind */
 export const emptyArt = kind => ART[kind]();
 const ART = {
   inbox: () => art([
@@ -31,4 +37,67 @@ const ART = {
     ['path', { d: SPARK, transform: 'translate(168 40) scale(1.2)', fill: '#ffc83d' }],
     ['path', { d: SPARK, transform: 'translate(50 52) scale(.8)', fill: '#ffc83d' }],
   ]),
+  done: () => art([
+    ['ellipse', { cx: '110', cy: '150', rx: '62', ry: '8', fill: 'currentColor', opacity: '.12' }],
+    ['circle', { cx: '110', cy: '84', r: '50', fill: '#8fd0a4' }],
+    ['circle', { cx: '110', cy: '84', r: '38', fill: '#3fa465' }],
+    ['path', { d: 'M90 85l14 14 28-30', fill: 'none', stroke: '#fff', 'stroke-width': '9', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }],
+    ['path', { d: SPARK, transform: 'translate(170 42) scale(1.3)', fill: '#ffc83d' }],
+    ['path', { d: SPARK, transform: 'translate(48 110) scale(.8)', fill: '#ffc83d' }],
+  ]),
+  project: () => art([
+    ['ellipse', { cx: '110', cy: '150', rx: '62', ry: '8', fill: 'currentColor', opacity: '.12' }],
+    ['rect', { x: '58', y: '54', width: '96', height: '80', rx: '10', fill: '#f2a31b', transform: 'rotate(-6 106 94)' }],
+    ['rect', { x: '66', y: '46', width: '96', height: '80', rx: '10', fill: '#ffcf55' }],
+    ['path', { d: 'M80 70h52M80 88h40', stroke: '#d98a0b', 'stroke-width': '5', 'stroke-linecap': 'round' }],
+    ['circle', { cx: '160', cy: '124', r: '18', fill: '#7ab8f5' }],
+    ['path', { d: 'M160 115v18M151 124h18', stroke: '#fff', 'stroke-width': '4', 'stroke-linecap': 'round' }],
+  ]),
+  tags: () => art([
+    ['ellipse', { cx: '110', cy: '150', rx: '62', ry: '8', fill: 'currentColor', opacity: '.12' }],
+    ['path', { d: 'M58 52h44l42 42-36 36-50-50z', fill: '#ffcf55', transform: 'rotate(-8 100 90)' }],
+    ['circle', { cx: '76', cy: '68', r: '6', fill: '#f2a31b' }],
+    ['path', { d: 'M156 72c0 0-20 22-20 36a20 20 0 0 0 40 0c0-14-20-36-20-36z', fill: '#7ab8f5' }],
+    ['path', { d: SPARK, transform: 'translate(176 46) scale(1.1)', fill: '#ffc83d' }],
+  ]),
+  filter: () => art([
+    ['ellipse', { cx: '110', cy: '150', rx: '62', ry: '8', fill: 'currentColor', opacity: '.12' }],
+    ['path', { d: 'M56 46h108l-40 50v38l-28 12V96z', fill: '#7ab8f5' }],
+    ['path', { d: 'M56 46h108l-10 12H66z', fill: '#4d97e0' }],
+    ['path', { d: SPARK, transform: 'translate(170 100) scale(1.2)', fill: '#ffc83d' }],
+    ['path', { d: SPARK, transform: 'translate(48 92) scale(.8)', fill: '#ffc83d' }],
+  ]),
+  label: () => art([
+    ['ellipse', { cx: '110', cy: '150', rx: '62', ry: '8', fill: 'currentColor', opacity: '.12' }],
+    ['path', { d: 'M70 60h46l44 44-38 38-52-52z', fill: '#ffcf55' }],
+    ['path', { d: 'M70 60h46l10 10H80z', fill: '#f2a31b', opacity: '.6' }],
+    ['circle', { cx: '90', cy: '80', r: '7', fill: '#f2a31b' }],
+    ['path', { d: SPARK, transform: 'translate(160 50) scale(1.3)', fill: '#ffc83d' }],
+  ]),
+  activity: () => art([
+    ['ellipse', { cx: '110', cy: '150', rx: '62', ry: '8', fill: 'currentColor', opacity: '.12' }],
+    ['rect', { x: '66', y: '30', width: '88', height: '112', rx: '10', fill: '#ffcf55' }],
+    ['rect', { x: '92', y: '24', width: '36', height: '14', rx: '5', fill: '#f2a31b' }],
+    ['path', { d: 'M82 64h56M82 84h56M82 104h36', stroke: '#d98a0b', 'stroke-width': '5', 'stroke-linecap': 'round' }],
+    ['path', { d: SPARK, transform: 'translate(172 56) scale(1.2)', fill: '#ffc83d' }],
+  ]),
+  chart: () => art([
+    ['ellipse', { cx: '110', cy: '150', rx: '62', ry: '8', fill: 'currentColor', opacity: '.12' }],
+    ['rect', { x: '56', y: '102', width: '24', height: '40', rx: '5', fill: '#ffcf55' }],
+    ['rect', { x: '98', y: '78', width: '24', height: '64', rx: '5', fill: '#f2a31b' }],
+    ['rect', { x: '140', y: '50', width: '24', height: '92', rx: '5', fill: '#7ab8f5' }],
+    ['path', { d: SPARK, transform: 'translate(176 34) scale(1.2)', fill: '#ffc83d' }],
+  ]),
 };
+
+/** the Inbox's "?": a small round button that opens our own short tips */
+export function inboxHelp() {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'td-empty-help';
+  b.setAttribute('aria-label', 'Inbox tips');
+  b.append(icon(MORE.circleHelp));
+  b.addEventListener('click', () => { void alertModal(TIPS, { title: 'Inbox tips' }); });
+  return b;
+}
+const TIPS = 'New tasks with no project wait here.\nType a date, #project or p1 in quick add and it is set for you.\nMove a task out with a swipe, a drag or its sheet.';

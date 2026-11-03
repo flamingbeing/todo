@@ -152,6 +152,8 @@ export function mapImport(sync, { today = dayKey(), id = () => Math.random().toS
       const sid = ext(s.id);
       sectionIds.set(sid, put('sections', sid, {
         name: text(s.name, 120) || 'Untitled', projectId: projectIds.get(ext(s.project_id)), order: ++n, collapsed: !!s.is_collapsed,
+        // a section's description, when the source has one (the rules allow 2000)
+        ...(text(s.description, 2000) ? { description: text(s.description, 2000) } : {}),
       }));
     }
   }

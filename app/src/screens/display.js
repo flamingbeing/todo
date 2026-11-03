@@ -147,13 +147,12 @@ export function openDisplay(ctx, view, project) {
       const colors = COLOR_WORDS.filter(([k]) => k !== 'project' || !(view === 'inbox' || view.startsWith('project:')));
       card.append(row(MORE.palette, 'Coloring', word(COLOR_WORDS, d.color), () => choose('Coloring', colors, d.color, v => save({ color: v }))));
     }
-    const toggles = el('div', 'td-display-toggles');
+    // (the switches sit in the Layout card, under the tiles, as the reference's)
     const done = toggle(MORE.circleCheckBig, 'Completed tasks', d.completed, v => save({ completed: v }));
     done.classList.add('td-display-done');
-    toggles.append(done);
-    if (cal || days) toggles.append(toggle(ICONS.repeat, 'Future occurrences', d.future, v => save({ future: v })));
+    card.append(done);
+    if (cal || days) card.append(toggle(ICONS.repeat, 'Future occurrences', d.future, v => save({ future: v })));
     parts.push(el('h3', 'td-display-h', 'Layout'), card);
-    if (toggles.children.length) parts.push(toggles);
     const sort = el('div', 'td-card td-attrs');
     if (!days && !cal) sort.append(row(MORE.layers, 'Grouping', word(GROUP_WORDS, d.group), () => choose('Grouping', GROUP_WORDS, d.group, v => save({ group: v }))));
     // (a calendar has no hand-made order: the tasks of a day go by the sort chosen, by time first)

@@ -4,7 +4,7 @@
   "spaces/_/projects/home": {"name": "Home", "color": "green", "order": 2, "view": "list"},
   "spaces/_/projects/garden": {"name": "Garden", "color": "lime_green", "order": 1, "parentId": "home", "view": "list"},
   "spaces/_/projects/trip": {"name": "Weekend trip", "color": "orange", "order": 3, "view": "board"},
-  "spaces/_/sections/w1": {"name": "This week", "projectId": "work", "order": 1},
+  "spaces/_/sections/w1": {"name": "This week", "projectId": "work", "order": 1, "description": "Things to finish before Friday, then the weekly review and the plan for the week after"},
   "spaces/_/sections/w2": {"name": "Later", "projectId": "work", "order": 2},
   "spaces/_/sections/t1": {"name": "To book", "projectId": "trip", "order": 1},
   "spaces/_/sections/t2": {"name": "To pack", "projectId": "trip", "order": 2},

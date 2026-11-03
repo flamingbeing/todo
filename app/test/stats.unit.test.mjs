@@ -46,3 +46,55 @@ test('goals come back cleaned, and no tasks give zeros', () => {
   assert.deepEqual([p.today, p.week, p.streak, p.best, p.daily, p.weekly], [0, 0, 0, 0, 3, 0]);
   assert.equal(p.days.length, 7);
 });
+
+test('days off never break the streak; vacation holds it over the days since the last one met', () => {
+  // 2026-11-02 Mon ... 2026-11-06 Fri; 2026-11-07 Sat and 2026-11-08 Sun off
+  const tasks = ['2026-11-04', '2026-11-05', '2026-11-06', '2026-11-09'].map(d => done(d));
+  assert.equal(productivity(tasks, { today: '2026-11-09' }).streak, 1, 'the weekend breaks it');
+  const off = productivity(tasks, { today: '2026-11-09', daysOff: [0, 6] });
+  assert.equal(off.streak, 4);
+  assert.equal(off.best, 4);
+  const away = ['2026-11-01', '2026-11-02'].map(d => done(d));
+  assert.equal(productivity(away, { today: '2026-11-06' }).streak, 0);
+  assert.equal(productivity(away, { today: '2026-11-06', vacation: true }).streak, 2);
+  assert.equal(productivity([], { today: '2026-11-06', vacation: true }).streak, 0);
+});
+
+test('doneByDayProject: per day, per project (the Inbox when none)', async () => {
+  const { doneByDayProject } = await import('../src/stats.js');
+  const m = doneByDayProject([{ ...done('2026-11-02'), projectId: 'p1' }, { ...done('2026-11-02'), projectId: 'p1' }, done('2026-11-02'), { ...done('2026-11-01'), projectId: 'p2' }, open()]);
+  assert.equal(m.get('2026-11-02').get('p1'), 2); assert.equal(m.get('2026-11-02').get('inbox'), 1);
+  assert.equal(m.get('2026-11-01').get('p2'), 1); assert.equal(m.size, 2);
+});
+
+test('bars: 7 days oldest first (today last), split by project (largest first), today and days off marked', async () => {
+  const { bars } = await import('../src/stats.js');
+  const tasks = [{ ...done('2026-11-02'), projectId: 'a' }, { ...done('2026-11-02'), projectId: 'b' }, { ...done('2026-11-02'), projectId: 'b' }, done('2026-11-01')];
+  const b = bars(tasks, { today: '2026-11-02', daysOff: [0] });   // 1 Nov 2026 is a Sunday
+  assert.equal(b.length, 7);
+  assert.deepEqual(b.map(x => x.key).slice(5), ['2026-11-01', '2026-11-02']);
+  assert.deepEqual(b[6].parts, [{ pid: 'b', n: 2 }, { pid: 'a', n: 1 }]);
+  assert.equal(b[6].n, 3); assert.equal(b[6].today, true); assert.equal(b[5].today, false);
+  assert.equal(b[5].off, true); assert.equal(b[6].off, false);
+  assert.equal(b[0].key, '2026-10-27'); assert.equal(b[0].n, 0); assert.deepEqual(b[0].parts, []);
+});
+
+test('bars weekly: 4 weeks from the week start, this week last; days off do not mark weeks', async () => {
+  const { bars } = await import('../src/stats.js');
+  const tasks = [done('2026-11-03'), done('2026-11-02'), done('2026-11-01'), done('2026-10-26'), done('2026-10-05')];
+  const mon = bars(tasks, { today: '2026-11-03', weekly: true, daysOff: [0, 1] });
+  assert.deepEqual(mon.map(x => x.key), ['2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02']);
+  assert.deepEqual(mon.map(x => x.n), [0, 0, 2, 2]);
+  assert.equal(mon[3].today, true); assert.ok(mon.every(x => !x.off));
+  const sun = bars(tasks, { today: '2026-11-03', weekly: true, weekStart: 0 });
+  assert.equal(sun[3].key, '2026-11-01'); assert.equal(sun[3].n, 3);
+});
+
+test('vacation and days off change the streak, not the bars', async () => {
+  const { bars } = await import('../src/stats.js');
+  const tasks = [done('2026-11-02'), done('2026-10-30')];
+  const plain = bars(tasks, { today: '2026-11-02' }).map(x => x.n);
+  assert.deepEqual(bars(tasks, { today: '2026-11-02', daysOff: [6, 0] }).map(x => x.n), plain);
+  const p = productivity(tasks, { today: '2026-11-02', daysOff: [6, 0] });
+  assert.equal(p.streak, 2);
+});

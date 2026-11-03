@@ -52,7 +52,7 @@ const nextWeekday = (today, wd, strict = false) => { const n = (wd - weekdayOf(t
  * @type {Array<{ re: string, day: (m: RegExpExecArray, c: { today: string, nextWeekDay: number, weekendDay: number }) => { date: string | null, time?: string } | null }>}
  */
 const SHORTCUTS = [
-  { re: '(?:no\\s+date|someday)', day: () => ({ date: null }) },
+  { re: '(?:no\\s+(?:due\\s+)?date|someday)', day: () => ({ date: null }) },
   { re: '(?:today|tod)', day: (_, c) => ({ date: c.today }) },
   { re: '(?:tomorrow|tmrw|tmr|tom)', day: (_, c) => ({ date: addDays(c.today, 1) }) },
   { re: 'next\\s+week', day: (_, c) => ({ date: nextWeekday(c.today, c.nextWeekDay, true) }) },
