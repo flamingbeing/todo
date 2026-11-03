@@ -217,6 +217,20 @@ export function views(app) {
     if (top === 'search-page' && searchPage.classList.contains('is-pushed')) requestAnimationFrame(() => askFocus(40));
   });
   for (const id of ['inbox-page', 'upcoming-page', 'search-page', 'browse-page', 'today-page']) $(id).addEventListener('draw-ahead', () => paint(id));
+  // "/" (a keyboard, not typing in a field, no sheet open) goes to Search with its field focused: its tab when on the
+  // bar, else Search pushed (as Browse's row opens it)
+  document.addEventListener('keydown', e => {
+    if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey || e.isComposing || e.defaultPrevented) return;
+    const a = document.activeElement;
+    if (a instanceof HTMLElement && (a.isContentEditable || a.closest('input, textarea, select'))) return;
+    if (document.querySelector('dialog[open], .ui-sheet[open], [role="menu"]:not([hidden])')) return;
+    e.preventDefault();
+    if (top === 'search-page') { askFocus(40); return; }
+    const tab = document.querySelector('nav.ui-tabbar .ui-tab[data-tab-id="search"]');
+    if (tab instanceof HTMLElement && tab.checkVisibility()) { tab.click(); return; }
+    /** @type {HTMLInputElement} */ ($('search-text')).value = '';
+    screens()?.push('#search-page');
+  });
 
   /** what a new task starts with on the page shown @returns {AddContext} */
   const addContext = () => top === 'project-page' ? { projectId }
@@ -279,8 +293,8 @@ export function views(app) {
     naming = { projectId: pid, sectionId: '', after, order }; fresh.clear(); paint(top); focusNaming();
   };
   // a new section at the end of a list: its own screen (a name and the tick), as the page menu's Add section opens it
-  /** @param {string} pid */
-  const openSectionPage = pid => { void lazy.withMod('section', m => m.openSectionPage(ctx, pid, () => fresh.clear(), () => screens())); };
+  /** (section: its Edit section) @param {string} pid @param {import('../items.js').Section | null} [section] */
+  const openSectionPage = (pid, section = null) => { void lazy.withMod('section', m => m.openSectionPage(ctx, pid, () => fresh.clear(), () => screens(), section)); };
   const focusNaming = () => requestAnimationFrame(() => /** @type {HTMLInputElement | null} */ (document.querySelector(`#${top} .td-name-field input`))?.focus());
   // (the page is drawn again on every change, synced ones too: the open field is the same element each time, so what
   // was typed stays; the browser blurs a focused element it takes out, so that blur is not the person leaving it)
@@ -324,7 +338,23 @@ export function views(app) {
     return form;
   };
   /** @param {import('../items.js').Section} s @param {HTMLElement} b */
-  const sectionMenu = (s, b) => { void lazy.withMod('menus', m => m.sectionMenu(ctx, s, b, x => { naming = { projectId: x.projectId, sectionId: x.id }; fresh.clear(); paint(top); focusNaming(); }, newSection)); };
+  const sectionMenu = (s, b) => { void lazy.withMod('menus', m => m.sectionMenu(ctx, s, b, x => openSectionPage(x.projectId, x), newSection)); };
+
+  // a section's description under its head: one grey line, a tap shows it all (kept open across redraws)
+  /** @type {Set<string>} */
+  const openNotes = new Set();
+  /** @param {import('../items.js').Section} s */
+  const sectionNote = s => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'td-sec-desc'; b.textContent = String(s.description);
+    b.setAttribute('aria-expanded', String(openNotes.has(s.id)));
+    b.addEventListener('click', () => {
+      const open = !openNotes.delete(s.id);
+      if (open) openNotes.add(s.id);
+      b.setAttribute('aria-expanded', String(open));
+    });
+    return b;
+  };
 
   /** whether a list is in its calendar layout (Display) @param {string} view */
   const inCal = view => disp(view).layout === 'calendar';
@@ -363,6 +393,7 @@ export function views(app) {
         : groupHead(s.name, { collapsed: !!s.collapsed, label: s.name, count: lines.filter(l => !l.depth && !l.task.done).length, onFold: canWrite ? () => { void app.foldSection(s, !s.collapsed); } : undefined,
           onMore: canWrite ? b => sectionMenu(s, b) : undefined });
       sec.append(head);
+      if (typeof s.description === 'string' && s.description && head.tagName !== 'FORM') sec.append(sectionNote(s));
       if (!s.collapsed) {
         if (lines.length) sec.append(rowList(lines, c, s.name));
         if (canWrite) sec.append(addRow('Add task', () => ctx.openQuickAdd({ projectId: pid, sectionId: s.id })));
@@ -544,7 +575,7 @@ export function views(app) {
         warmed = true;
         lazy.need('add').then(() => lazy.need('sheet')).then(() => { if (window.starter) window.starter.warm = true; }).catch(() => {});   // (warm: for the tests)
         // the rows' swipes, holds and drags, and the + button's drag (each list host is wired once)
-        lazy.need('gestures').then(m => m.wire(ctx, { hosts: { today: 'days', upcoming: 'days', inbox: 'tree', project: 'tree', search: null, place: null },
+        lazy.need('gestures').then(m => m.wire(ctx, { hosts: { today: 'days', upcoming: 'days', inbox: 'tree', project: 'tree', search: null, place: 'own' },
           top: () => (lists.includes(top) ? top.slice(0, -5) : ''), projectId: () => projectId, add: ctx.openQuickAdd, newSection, view: viewOf })).catch(() => {});
         lazy.warmUp();
       }

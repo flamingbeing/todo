@@ -393,6 +393,8 @@ div.td-chip { gap: 0; padding: 0; cursor: default; }
 .td-add .td-chip-more { width: 40px; justify-content: center; padding: 0; }
 .td-add .td-chip[data-tone] { border-color: var(--td-hair); }
 .td-add .td-chip.is-set:not([data-tone]) { color: var(--td-text); }
+/* (P1 reads red like its flag; the other flags' tones are too light for text, so their words stay plain) */
+.td-add .td-chip.is-set[data-p="1"] { color: var(--td-d-overdue); }
 .td-chip-main { display: inline-flex; align-items: center; gap: 5px; height: 100%; padding: 0 10px; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
 .td-chip.is-set .td-chip-main { padding-inline-end: 4px; }
 .td-chip.is-set:has(> .td-chip-x[hidden]) .td-chip-main { padding-inline-end: 10px; }
@@ -714,9 +716,8 @@ html[data-board-swipe] .td-board .td-row { touch-action: pan-y; }
 .td-attr.is-two .td-attr-label { font-size: 16px; }
 .td-attr.is-two .td-attr-value { font-size: 14px; }
 .td-display-h { margin: 18px 20px 8px; font-size: 16px; font-weight: 400; color: var(--td-text); }
-.td-display-toggles { display: grid; gap: 6px; margin: 6px 0 0; }
-.td-display-toggles > .td-attr { margin: 0 16px; width: auto; border-radius: 12px; background: light-dark(#fff, #272727); }
-.td-display-toggles > .td-attr::after { display: none; }
+/* the Layout card's switches under the tiles: a hairline above the first */
+.td-layout-card > .td-attr:first-of-type::before { content: ""; position: absolute; left: 56px; right: 0; top: 0; border-top: .5px solid var(--td-hair); }
 .td-layouts { display: grid; grid-template-columns: repeat(var(--n, 2), 1fr); gap: 8px; padding: 12px 10px; }
 .td-layout { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 4px 6px; border: 0; border-radius: 12px; background: none; color: var(--td-text-2); cursor: pointer; }
 .td-layout-pic { box-sizing: border-box; width: 48px; height: 74px; padding: 0; fill: currentColor; }
@@ -1109,10 +1110,23 @@ body:has(.ui-screen.td-grouped:not([hidden])) .ui-bar { background: var(--td-bar
 .td-bar-btn .ui-icon { width: 24px; height: 24px; }
 #section-done:not(:disabled), .ui-bar #section-done:not(:disabled) { color: var(--td-accent-text); }
 /* Add section's screen */
+/* (the Material look: two underlined fields on the page; the iOS look: one grouped card, a hairline between) */
 .td-section-form { padding: 8px 16px; }
-.td-section-name { box-sizing: border-box; width: 100%; min-height: 52px; padding: 0 16px; border: 0; border-radius: 12px; background: var(--td-card); color: var(--td-text); font-size: 16px; }
+.td-section-fields { display: flex; flex-direction: column; gap: 8px; }
+.td-section-name { box-sizing: border-box; display: block; width: 100%; min-height: 52px; padding: 14px 4px 10px; border: 0;
+  border-bottom: 1px solid var(--td-hair); border-radius: 0; background: none; color: var(--td-text); font: inherit; font-size: 16px; line-height: 22px; }
+.td-section-desc { min-height: 48px; resize: none; field-sizing: content; max-height: 40vh; font-size: 15px; }
 .td-section-name::placeholder { color: var(--td-text-3, var(--td-text-2)); }
-.td-section-name:focus { outline: none; }
+.td-section-name:focus { outline: none; border-bottom: 2px solid var(--td-accent); padding-bottom: 9px; }
+html[data-look="ios"] .td-section-fields { gap: 0; border-radius: 12px; background: var(--td-card); overflow: hidden; }
+html[data-look="ios"] .td-section-name { padding: 14px 16px; border-bottom: 0; }
+html[data-look="ios"] .td-section-name:focus { border-bottom: 0; padding-bottom: 14px; }
+html[data-look="ios"] .td-section-desc { border-top: 1px solid var(--td-hair); margin-left: 16px; width: calc(100% - 16px); padding-left: 0; }
+/* a section's description under its head: one grey line, a tap shows it all */
+.td-sec-desc { display: block; box-sizing: border-box; width: 100%; margin: 0 0 6px; padding: 8px 16px 0 30px; border: 0; background: none;
+  color: var(--td-text-2); font: inherit; font-size: 13px; line-height: 18px; text-align: start; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; cursor: pointer; }
+.td-sec-desc[aria-expanded="true"] { white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* the tab bar: solid, four tabs, a pill behind the icon of the lit one */
 :root { --td-tabbar-h: 80px; }

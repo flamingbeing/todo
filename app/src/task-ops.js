@@ -164,11 +164,17 @@ export function taskOps({ save, id, data, now = Date.now, drop = () => {} }) {
       return first([remove(COLL, tasks), remove(SECTIONS, sections), remove(PROJECTS, projects)]);
     },
 
-    /** @param {string} projectId @param {string} name @param {number} [order] at the end unless given @returns {Promise<{ refused: string, id: string }>} */
-    addSection: async (projectId, name, order) => {
-      const n = String(name ?? '').trim().slice(0, 120), sid = id();
+    /** @param {string} projectId @param {string} name @param {number} [order] at the end unless given @param {string} [description]
+     * @returns {Promise<{ refused: string, id: string }>} */
+    addSection: async (projectId, name, order, description) => {
+      const n = String(name ?? '').trim().slice(0, 120), sid = id(), d = String(description ?? '').trim().slice(0, 2000);
       if (!n) return { refused: 'A section needs a name', id: '' };
-      return { refused: await put(SECTIONS, { id: sid, name: n, projectId, order: order ?? orderAtEnd(data().sections.filter(s => s.projectId === projectId)), createdAt: now() }, null), id: sid };
+      return { refused: await put(SECTIONS, { id: sid, name: n, projectId, order: order ?? orderAtEnd(data().sections.filter(s => s.projectId === projectId)), ...(d ? { description: d } : {}), createdAt: now() }, null), id: sid };
+    },
+    /** a section's name and description (an empty description clears it) @param {Section} s @param {string} name @param {string} description */
+    editSection: (s, name, description) => {
+      const n = String(name ?? '').trim().slice(0, 120), d = String(description ?? '').trim().slice(0, 2000);
+      return n ? put(SECTIONS, { ...s, name: n, description: d || null }, s) : Promise.resolve('A section needs a name');
     },
     /** @param {Section} s @param {string} name */
     renameSection: (s, name) => {

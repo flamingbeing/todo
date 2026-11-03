@@ -1,7 +1,7 @@
 // Sign-in, roles from the role doc, and the tasks: add, rename, delete to the bin. A "* " title is a note: no box, no
 // swipe to complete.
 import AxeBuilder from './axe.mjs';
-import { test, expect, clickOpens, signIn, add, synced, serverHas, db, uniq, today, APP, finger, gesturesReady, steps } from './fixtures.mjs';
+import { test, expect, clickOpens, signIn, add, synced, serverHas, db, uniq, today, APP, finger, gesturesReady, steps, openTab } from './fixtures.mjs';
 
 test('signed out: the sign-in screen, accessible', { tag: '@smoke' }, async ({ phone }) => {
   const page = await phone();
@@ -147,4 +147,19 @@ test('a title starting "* " shows no box and a swipe right does not complete it'
   await page.waitForTimeout(600);
   expect((await db.get(`spaces/_/tasks/${t}`))?.done).toBe(false);
   await expect(page.locator(row)).toBeVisible();
+});
+
+test('the Inbox ••• menu: Add section, Copy link to Inbox, Comments, View activity, in that order', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  await synced(page);
+  await openTab(page, 'inbox');
+  await expect(page.locator('#inbox-page')).toBeVisible();
+  await page.locator('#more-btn').click();
+  const items = page.getByRole('menuitem');
+  await expect(items.first()).toBeVisible();
+  const names = (await items.allInnerTexts()).map(t => t.trim().split('\n')[0]);
+  expect(names.slice(0, 4)).toEqual(['Add section', 'Copy link to Inbox', 'Comments', 'View activity']);
+  expect(await AxeBuilder(page)).toEqual([]);
+  await page.keyboard.press('Escape');
 });

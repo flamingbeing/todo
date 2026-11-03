@@ -84,6 +84,18 @@ test('order: within a section and a parent, written 1..n; sections by section_or
   assert.ok(titles.indexOf('Sort the drawers') < titles.indexOf('Empty the top one'));
 });
 
+test('sections: a description is kept (up to 2000), none is left out', () => {
+  const sync = { projects: [{ id: 'q', name: 'Q' }], sections: [
+    { id: 's1', project_id: 'q', name: 'With', description: '  Notes for the section  ', section_order: 1 },
+    { id: 's2', project_id: 'q', name: 'Long', description: 'x'.repeat(2100), section_order: 2 },
+    { id: 's3', project_id: 'q', name: 'Without', section_order: 3 }] };
+  const m = mapImport(sync, { id: counter() });
+  const s = name => m.writes.sections.map(w => w.rec).find(r => r.name === name);
+  assert.equal(s('With').description, 'Notes for the section');
+  assert.equal(s('Long').description.length, 2000);
+  assert.equal('description' in s('Without'), false);
+});
+
 test('labels: names become ids, in item_order, and a missing label is made', () => {
   const m = run();
   const calls = named(m, 'labels', 'name', 'calls'), errand = named(m, 'labels', 'name', 'errand');
