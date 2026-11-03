@@ -204,7 +204,7 @@ export function groupHead(title, { id, collapsed, plain, onFold, onMore, onAdd, 
 }
 
 /** the list's own empty state: a drawing (or a soft circle with a check), a title and a hint (a new line in the hint starts a second paragraph)
- * @param {string} title @param {string} hint @param {'inbox' | 'day'} [kind] */
+ * @param {string} title @param {string} hint @param {import('./empty-art.js').ArtKind} [kind] */
 export function emptyNote(title, hint, kind) {
   const box = el('div', 'td-empty');
   if (kind) {

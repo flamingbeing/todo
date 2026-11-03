@@ -20,7 +20,7 @@ test('a label made in Filters & Labels, picked in the task sheet, its page, a fa
   await put(t, { title: t });
   await synced(page);
   await openFL(page);
-  await expect(page.locator('#filters .td-fl-name')).toHaveText(['Filters', 'Labels']);
+  await expect(page.locator('#filters .td-fl-name')).toHaveText(['My Filters', 'Labels']);
   expect(await AxeBuilder(page)).toEqual([]);
   await page.getByRole('button', { name: 'Add label' }).click();
   const sheet = page.locator('#edit-sheet');

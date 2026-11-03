@@ -8,8 +8,10 @@ function art(nodes) {
   return svg;
 }
 const SPARK = 'M0-9 2.2-2.2 9 0 2.2 2.2 0 9-2.2 2.2-9 0-2.2-2.2z';
-/** the empty states' own drawings: a tray with a spark (the Inbox), a sun over a horizon (a day), else a ticked circle */
-/** @param {'inbox' | 'day'} kind */
+/** the empty states' own drawings: a tray with a spark (the Inbox), a sun over a horizon (a day), a tag beside a drop
+ * (Filters & Labels), a funnel (a filter), a tag (a label), a page of lines (Reporting), rising bars (Productivity) */
+/** @typedef {'inbox' | 'day' | 'tags' | 'filter' | 'label' | 'activity' | 'chart'} ArtKind */
+/** @param {ArtKind} kind */
 export const emptyArt = kind => ART[kind]();
 const ART = {
   inbox: () => art([
@@ -30,5 +32,40 @@ const ART = {
     ['path', { d: 'M54 134h112', stroke: 'currentColor', 'stroke-width': '4', 'stroke-linecap': 'round', opacity: '.2' }],
     ['path', { d: SPARK, transform: 'translate(168 40) scale(1.2)', fill: '#ffc83d' }],
     ['path', { d: SPARK, transform: 'translate(50 52) scale(.8)', fill: '#ffc83d' }],
+  ]),
+  tags: () => art([
+    ['ellipse', { cx: '110', cy: '150', rx: '62', ry: '8', fill: 'currentColor', opacity: '.12' }],
+    ['path', { d: 'M58 52h44l42 42-36 36-50-50z', fill: '#ffcf55', transform: 'rotate(-8 100 90)' }],
+    ['circle', { cx: '76', cy: '68', r: '6', fill: '#f2a31b' }],
+    ['path', { d: 'M156 72c0 0-20 22-20 36a20 20 0 0 0 40 0c0-14-20-36-20-36z', fill: '#7ab8f5' }],
+    ['path', { d: SPARK, transform: 'translate(176 46) scale(1.1)', fill: '#ffc83d' }],
+  ]),
+  filter: () => art([
+    ['ellipse', { cx: '110', cy: '150', rx: '62', ry: '8', fill: 'currentColor', opacity: '.12' }],
+    ['path', { d: 'M56 46h108l-40 50v38l-28 12V96z', fill: '#7ab8f5' }],
+    ['path', { d: 'M56 46h108l-10 12H66z', fill: '#4d97e0' }],
+    ['path', { d: SPARK, transform: 'translate(170 100) scale(1.2)', fill: '#ffc83d' }],
+    ['path', { d: SPARK, transform: 'translate(48 92) scale(.8)', fill: '#ffc83d' }],
+  ]),
+  label: () => art([
+    ['ellipse', { cx: '110', cy: '150', rx: '62', ry: '8', fill: 'currentColor', opacity: '.12' }],
+    ['path', { d: 'M70 60h46l44 44-38 38-52-52z', fill: '#ffcf55' }],
+    ['path', { d: 'M70 60h46l10 10H80z', fill: '#f2a31b', opacity: '.6' }],
+    ['circle', { cx: '90', cy: '80', r: '7', fill: '#f2a31b' }],
+    ['path', { d: SPARK, transform: 'translate(160 50) scale(1.3)', fill: '#ffc83d' }],
+  ]),
+  activity: () => art([
+    ['ellipse', { cx: '110', cy: '150', rx: '62', ry: '8', fill: 'currentColor', opacity: '.12' }],
+    ['rect', { x: '66', y: '30', width: '88', height: '112', rx: '10', fill: '#ffcf55' }],
+    ['rect', { x: '92', y: '24', width: '36', height: '14', rx: '5', fill: '#f2a31b' }],
+    ['path', { d: 'M82 64h56M82 84h56M82 104h36', stroke: '#d98a0b', 'stroke-width': '5', 'stroke-linecap': 'round' }],
+    ['path', { d: SPARK, transform: 'translate(172 56) scale(1.2)', fill: '#ffc83d' }],
+  ]),
+  chart: () => art([
+    ['ellipse', { cx: '110', cy: '150', rx: '62', ry: '8', fill: 'currentColor', opacity: '.12' }],
+    ['rect', { x: '56', y: '102', width: '24', height: '40', rx: '5', fill: '#ffcf55' }],
+    ['rect', { x: '98', y: '78', width: '24', height: '64', rx: '5', fill: '#f2a31b' }],
+    ['rect', { x: '140', y: '50', width: '24', height: '92', rx: '5', fill: '#7ab8f5' }],
+    ['path', { d: SPARK, transform: 'translate(176 34) scale(1.2)', fill: '#ffc83d' }],
   ]),
 };

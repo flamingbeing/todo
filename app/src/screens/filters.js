@@ -39,17 +39,24 @@ export function drawFiltersLabels(ctx, host) {
   const data = ctx.data(), qc = queryContext(ctx);
   const open = data.tasks.filter(t => isTask(t) && !t.done);
   const group = (/** @type {'filters' | 'labels'} */ kind) => {
-    const word = kind === 'filters' ? 'Filters' : 'Labels';
+    const word = kind === 'filters' ? 'My Filters' : 'Labels';
     const folded = localStorage.getItem(FOLD(kind)) === '1';
+    // the head: the name (a tap folds), a + and the fold's chevron at the right
     const head = el('div', 'td-fl-head');
     const h = el('h2', 'td-fl-h');
     const fold = /** @type {HTMLButtonElement} */ (el('button', 'td-fl-fold'));
     fold.type = 'button';
     fold.setAttribute('aria-expanded', String(!folded));
-    fold.append(el('span', 'td-fl-name', word), icon(folded ? ICONS.chevronRight : ICONS.chevronDown, { class: 'td-fl-chevron' }));
+    fold.append(el('span', 'td-fl-name', word));
     fold.addEventListener('click', () => { localStorage.setItem(FOLD(kind), folded ? '0' : '1'); drawFiltersLabels(ctx, host); });
     h.append(fold);
     head.append(h);
+    const chev = /** @type {HTMLButtonElement} */ (el('button', 'td-icon-btn td-fl-chev'));
+    chev.type = 'button';
+    chev.tabIndex = -1;
+    chev.setAttribute('aria-hidden', 'true');
+    chev.append(icon(folded ? ICONS.chevronDown : ICONS.chevronUp, { class: 'td-fl-chevron' }));
+    chev.addEventListener('click', () => fold.click());
     if (ctx.canWrite()) {
       const add = /** @type {HTMLButtonElement} */ (el('button', 'td-icon-btn td-fl-add'));
       add.type = 'button';
@@ -58,10 +65,11 @@ export function drawFiltersLabels(ctx, host) {
       add.addEventListener('click', () => openNamedSheet(ctx, kind, null, id => ctx.openPlace(kind, id)));
       head.append(add);
     }
+    head.append(chev);
     const out = [head];
     if (folded) return out;
     const items = /** @type {(Label | Filter)[]} */ (byOrder(/** @type {(Label | Filter)[]} */ (data[kind]).filter(x => x && x.name)));
-    if (!items.length) { out.push(el('p', 'td-fl-none', kind === 'filters' ? 'No filters yet. Tap + to save one.' : 'No labels yet. Tap + to add one.')); return out; }
+    if (!items.length && !ctx.canWrite()) return out;
     const list = el('ul', 'td-fl-list');
     list.setAttribute('aria-label', word);
     list.dataset.noGesture = '';
@@ -80,7 +88,8 @@ export function drawFiltersLabels(ctx, host) {
       ic.style.color = colorHex(x.color);
       const n = kind === 'filters' ? countQuery(/** @type {Filter} */ (x).query, data.tasks, qc) : { count: open.filter(t => labelsOf(t, data.labels).includes(/** @type {Label} */ (x))).length, error: null };
       b.append(ic, el('span', 'td-fl-label', x.name));
-      if (!n.error && n.count) b.append(el('span', 'td-fl-count', String(n.count)));
+      if (n.error) { const bad = el('span', 'td-fl-count td-fl-bad', '!'); bad.title = "This filter can't be read"; bad.setAttribute('aria-hidden', 'true'); b.setAttribute('aria-description', "can't be read"); b.append(bad); }
+      else if (n.count) b.append(el('span', 'td-fl-count', String(n.count)));
       b.addEventListener('click', e => {
         if (b.dataset.dragged) { delete b.dataset.dragged; e.preventDefault(); return; }
         if (managing === kind) openNamedSheet(ctx, kind, x); else ctx.openPlace(kind, x.id);
@@ -113,7 +122,10 @@ export function drawFiltersLabels(ctx, host) {
     out.push(list);
     return out;
   };
-  host.replaceChildren(...group('filters'), ...group('labels'));
+  const none = !data.filters.some(x => x && x.name) && !data.labels.some(x => x && x.name);
+  const note = none ? [emptyNote('No filters or labels yet', 'Save a search as a filter, or tag tasks with a label, to find them here.', 'tags')] : [];
+  note.forEach(e => e.classList.add('td-empty-page', 'td-empty-inline'));
+  host.replaceChildren(...group('filters'), ...group('labels'), ...note);
 }
 
 /** a hold on a row lifts it for a drag among the list's rows (a move first is a scroll) @param {HTMLElement} b
@@ -169,7 +181,12 @@ export function drawPlace(ctx, place, host, empty, d, cal) {
     lists = r.groups.map(g => ({ title: r.groups.length > 1 ? g.title : '', tasks: g.tasks.map(t => all.find(y => y.id === t.id) ?? t) }));
   }
   if (cal) { cal([...new Set(lists.flatMap(l => l.tasks))]); return; }
-  const none = () => emptyNote('Nothing here', place.kind === 'labels' ? 'Tasks with this label show here' : 'Tasks this filter finds show here');
+  const none = () => {
+    const e = place.kind === 'labels' ? emptyNote('No tasks with this label', 'Add this label to a task and it shows here.', 'label')
+      : emptyNote('Nothing matches', 'Tasks this filter finds show here.', 'filter');
+    e.classList.add('td-empty-page');
+    return e;
+  };
   // what a task added from here starts with (a label's page: that label)
   const base = place.kind === 'labels' ? { projectId: INBOX, labels: [x.name] } : { projectId: INBOX };
   if (d.layout === 'board') {
