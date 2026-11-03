@@ -473,7 +473,7 @@ div.td-chip { gap: 0; padding: 0; cursor: default; }
 .td-menu-layer[popover] { inset: 0; width: auto; height: auto; margin: 0; padding: 0; border: 0; background: none; overflow: visible; color: inherit; }
 .td-menu { min-width: 180px; border-radius: 14px; }
 .td-menu .td-menu-icon { order: -1; }
-.td-menu .ui-menu-item { display: flex; align-items: center; gap: 12px; min-height: 44px; font-size: 16px; }
+.td-menu .ui-menu-item { display: flex; align-items: center; gap: 12px; min-height: 44px; justify-content: flex-start; text-align: left; font-size: 16px; }
 .td-menu-icon { width: 20px !important; height: 20px !important; flex: none; color: var(--td-text-2); }
 /* a floating card stacked upward from its chip (ui/menu.js `pop`): a title row, the icon on the left of each label */
 .td-menu-pop { min-width: 200px; max-height: min(60vh, 420px); overflow-y: auto; padding-bottom: 6px; border-radius: 14px; background: light-dark(#fff, #2c2c2c); transform-origin: 0 100%; }
@@ -1130,6 +1130,7 @@ textarea.has-md { color: transparent; }
 /* ---------- navigation chrome, as the reference's phone layout (owner 2 Nov 2026): solid bars, a slim top bar with the
    name at the start, a count under it and the page's buttons at the end; four tabs with a pill behind the lit one;
    a rounded-square add button ---------- */
+:root { --ui-sheet-rise: 16px; }
 :root { --td-bar-ground: light-dark(#ffffff, #202020); }
 /* solid, whatever the Look choice says: no blur, no see-through */
 html.glass .ui-bar, html.glass .ui-bar.is-collapsed, .ui-bar, .ui-bar.is-collapsed { background: var(--td-bar-ground); border-bottom-color: transparent; box-shadow: none;
