@@ -112,3 +112,18 @@ export const weekendOf = (today, day = 6) => {
   const wd = weekdayOf(today);
   return addDays(today, (wd === 6 || wd === 0) ? ((day - wd + 7) % 7 || 7) + (day === 0 && wd === 6 ? 7 : 0) : (day - wd + 7) % 7);
 };
+
+/** the Date sheet's shortcut days: Today, Tomorrow, Later this week (two days on, Monday to Wednesday only, so it
+ * stays a weekday of this week), This weekend and Next week (General's "Weekend" and "Next week" days); tone: the colour of its icon
+ * @param {string} today @param {{ nextWeekDay?: number, weekendDay?: number }} [o]
+ * @returns {{ label: string, date: string, tone: string }[]} */
+export function quickDays(today, { nextWeekDay = 1, weekendDay = 6 } = {}) {
+  const wd = weekdayOf(today);
+  return [
+    { label: 'Today', date: today, tone: 'today' },
+    { label: 'Tomorrow', date: addDays(today, 1), tone: 'tomorrow' },
+    ...(wd >= 1 && wd <= 3 ? [{ label: 'Later this week', date: addDays(today, 2), tone: 'week' }] : []),
+    { label: 'This weekend', date: weekendOf(today, weekendDay), tone: 'weekend' },
+    { label: 'Next week', date: nextWeekOf(today, nextWeekDay), tone: 'week' },
+  ];
+}

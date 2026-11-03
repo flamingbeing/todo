@@ -176,6 +176,18 @@ test('Reset sub-tasks off (keepSubs): a repeating task moves on and its done sub
   assert.equal(s.data.tasks[0].due.date, '2026-11-08');
 });
 
+test('Complete forever: done now, the repeat gone so it does not roll, the day and time kept, one save', async () => {
+  const due = { date: '2026-11-01', time: '07:30', rrule: 'FREQ=DAILY', string: 'every day at 7:30' };
+  const s = store({ tasks: [t('r', { due }), t('a', { parentId: 'r' })] });
+  assert.equal(await s.ops.completeForever(s.data.tasks[0]), '');
+  assert.equal(s.saves.length, 1);
+  const r = s.data.tasks[0];
+  assert.equal(r.done, true);
+  assert.equal(r.doneAt, 1000);
+  assert.deepEqual(r.due, { date: '2026-11-01', time: '07:30' });
+  assert.equal(s.data.tasks[1].done ?? false, false);
+});
+
 test('delete takes the subtasks; move takes them to the new project and section', async () => {
   const s = store({ tasks: [t('p'), t('c', { parentId: 'p' }), t('x')] });
   await s.ops.moveTask(s.data.tasks[0], { projectId: 'w', sectionId: 's' });

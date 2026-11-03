@@ -72,6 +72,12 @@ export function taskOps({ save, id, data, now = Date.now, drop = () => {} }) {
       return put(COLL, { ...task, ...f }, task);
     },
     complete,
+    /** a repeating task done for good (the "…" menu's Complete forever): done now, its day kept but its repeat (and
+     * the words it was typed with) taken off, so it does not roll on; this task alone, one save @param {Task} task */
+    completeForever: task => {
+      const due = task.due ? cleanDue({ date: task.due.date, ...(task.due.time ? { time: task.due.time } : {}) }) : null;
+      return put(COLL, { ...task, due, done: true, doneAt: now() }, task);
+    },
     /** done or not done, this task alone @param {Task} task @param {boolean} done */
     tick: (task, done) => put(COLL, { ...task, done, doneAt: done ? now() : null }, task),
     /** not done again (an undo): each as it is now @param {Task[]} tasks */

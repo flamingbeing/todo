@@ -1,7 +1,7 @@
 // dates.js: day maths, the tone and words of a due date, group headers. node --test app/test/dates.unit.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dayKey, timeKey, addDays, daysBetween, isDay, isTime, weekdayName, shortDate, dateTone, dayWords, deadlineLine, dueLine, dayTitle, dayHeading, timeText, minutesClock, minutesText, weekOf, nextWeekOf, weekendOf } from '../src/dates.js';
+import { dayKey, timeKey, addDays, daysBetween, isDay, isTime, weekdayName, shortDate, dateTone, dayWords, deadlineLine, dueLine, dayTitle, dayHeading, timeText, minutesClock, minutesText, weekOf, nextWeekOf, weekendOf, quickDays } from '../src/dates.js';
 import { minutesSpan, monthGrid, monthTitle } from '../src/dates-cal.js';
 
 const T = '2026-11-01';   // a Sunday
@@ -118,4 +118,18 @@ test('nextWeekOf / weekendOf: the day General sets for "Next week" and "This wee
   assert.equal(weekendOf('2026-11-04', 0), '2026-11-08');
   assert.equal(weekendOf('2026-11-07'), '2026-11-14', 'on a Saturday: the next weekend');
   assert.equal(weekendOf('2026-11-08', 0), '2026-11-15');
+});
+
+test('quickDays: the Date sheet shortcuts, with the Next week and Weekend days General sets', () => {
+  const at = (/** @type {string} */ today, o = {}) => quickDays(today, o).map(q => [q.label, q.date, q.tone]);
+  // Tuesday 3 Nov: Later this week is Thursday
+  assert.deepEqual(at('2026-11-03'), [['Today', '2026-11-03', 'today'], ['Tomorrow', '2026-11-04', 'tomorrow'],
+    ['Later this week', '2026-11-05', 'week'], ['This weekend', '2026-11-07', 'weekend'], ['Next week', '2026-11-09', 'week']]);
+  assert.deepEqual(at('2026-11-03', { nextWeekDay: 5, weekendDay: 0 }).slice(3), [['This weekend', '2026-11-08', 'weekend'], ['Next week', '2026-11-06', 'week']]);
+  // Thursday: no Later this week (it would be the weekend)
+  assert.deepEqual(at('2026-11-05').map(q => q[0]), ['Today', 'Tomorrow', 'This weekend', 'Next week']);
+  // Saturday and Sunday: the coming weekend, not today; Next week the coming Monday
+  assert.deepEqual(at('2026-11-07').slice(2), [['This weekend', '2026-11-14', 'weekend'], ['Next week', '2026-11-09', 'week']]);
+  assert.deepEqual(at('2026-11-08').slice(2), [['This weekend', '2026-11-14', 'weekend'], ['Next week', '2026-11-09', 'week']]);
+  assert.deepEqual(at('2026-11-08', { weekendDay: 0 }).slice(2), [['This weekend', '2026-11-15', 'weekend'], ['Next week', '2026-11-09', 'week']]);
 });
