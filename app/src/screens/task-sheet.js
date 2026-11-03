@@ -27,13 +27,13 @@ import { flatten, descendants, canNest } from '../tree.js';
 import { byOrder } from '../order.js';
 import { rowList } from '../ui/row.js';
 import { openMenu } from '../ui/menu.js';
-import { el, pickPlace } from './pick.js';
+import { el, pickPlace, pickPriority, pickReminders } from './pick.js';
 import { pickDate, dayOptions } from './scheduler.js';
 import { pickLabels, ticksOf, onIds } from './labels.js';
 import { hasMarks, showMarks } from '../markdown.js';
 import { commentsSection } from './comments.js';
 import { openEditTask } from './edit-task.js';
-import { LEADS, cleanReminders, leadText, dueMs, autoReminders } from '../reminders.js';
+import { cleanReminders, leadText, dueMs, autoReminders } from '../reminders.js';
 
 /** @typedef {import('../items.js').Task} Task */
 /** @typedef {import('./views.js').Ctx} Ctx */
@@ -222,16 +222,13 @@ function draw(ctx) {
   deadline.addEventListener('click', () => { const now = current(ctx); if (now) pickDate(now.deadline ? { date: now.deadline } : null, d => save({ deadline: d?.date ?? null }),
     { data: ctx.data(), ...dayOptions(ctx.app.settings), dateOnly: true }); });
   labels.addEventListener('click', () => { const now = current(ctx); if (now) pickLabels(ctx, ticksOf(now, ctx.data().labels), ticks => save({ labels: onIds(ticks) })); });
-  prio.addEventListener('click', () => openMenu(prio, [1, 2, 3, 4].map(p => ({ label: `Priority ${p}`, icon: MORE.flag, color: PRIORITY_COLOR[p],
-    checked: priorityOf(/** @type {Task} */ (current(ctx))) === p, run: () => save({ priority: p }) })), { label: 'Priority' }));
-  // reminders: tick the leads wanted (before the due time; a date with no time counts as 09:00)
+  prio.addEventListener('click', () => pickPriority(priorityOf(/** @type {Task} */ (current(ctx))), p => save({ priority: p })));
+  // reminders: the Reminders sheet (suggestions, the set ones, + Add reminder) (before the due time; a date with no time counts as 09:00)
   remind.addEventListener('click', () => {
     const now = current(ctx);
     if (!now) return;
     if (dueMs(now) === null) { ctx.toast('Set a date first'); return; }
-    const has = cleanReminders(now.reminders);
-    openMenu(remind, LEADS.map(([lead, label]) => ({ label, icon: MORE.bell, checked: has.includes(lead),
-      run: () => save({ reminders: has.includes(lead) ? has.filter(x => x !== lead) : [...has, lead] }) })), { label: 'Reminders' });
+    pickReminders(/** @type {number} */ (dueMs(now)), cleanReminders(now.reminders), list => save({ reminders: list }));
   });
   const chipRow = el('div', 'td-attr-chips ui-scroll-x');
   const moveTo = attrRow(MORE.folderInput, 'Move to…', [el('span', 'td-attr-text', 'Move to…')]);

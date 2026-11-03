@@ -1,6 +1,7 @@
 # Status
 
 ## Now
+- 3 Nov: pickers as in the reference (slice 2): pick sheets have a left-aligned title, no X and a red radio dot; short ones size to content; Priority is four tiles (P1-P4, a tap saves); Reminders is a sheet (Suggestions with clock times, Date & time with remove, + Add reminder); Move to is a 90% sheet with Search. Quick add keeps its menus. Specs `tasks`, `reminders`; unit `suggestLeads`, `whenText`.
 - 3 Nov: task sheet and action sheet as in the reference (slice 1): sheet 55% high at the medium detent, no Close button, one sideways pill row (Description, Priority, Reminders, Labels, Deadline, Move to…) replacing the Priority/Labels/Deadline/Reminders rows, accent "Add sub-task"; the ••• menu skinned as its own action sheet (20 px top radius, whole-row press shade). Its rise/fade needs app-ui rc.85. Specs: tasks, deadline, reminders.
 - 3 Nov: motion slice 3 (Upcoming): calendar release settles in ~167 ms, selected-day circle cross-fades in 60 ms, month caret flips at once, Overdue head scrolls away (day heads pin). Spec `e2e/motion-upcoming.spec.mjs`.
 - Motion slice 2 (3 Nov): every completion bursts 30 bits from the checkbox (60-80 px out, gravity fall, fade, 2000 ms; lazy `screens/confetti.js`; the goal party stays) and the row fades after; a dragged row makes its neighbours slide one row height in 150 ms (near-linear) out of the way, cleared at the drop. Both off under reduced motion. Spec `e2e/motion-rows.spec.mjs`.

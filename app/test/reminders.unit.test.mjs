@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cleanReminders, leadText, leadShort, dueMs, firesOf, dueNow, nextAt, autoReminders } from '../src/reminders.js';
+import { cleanReminders, leadText, leadShort, dueMs, firesOf, dueNow, nextAt, autoReminders, suggestLeads, whenText } from '../src/reminders.js';
 import { cleanFields } from '../src/tasks.js';
 
 const at = (d, t) => new Date(`${d}T${t}:00`).getTime();
@@ -72,4 +72,18 @@ test('autoReminders: a due time and no reminder of its own gets the automatic le
   assert.deepEqual(autoReminders({ date: '2026-11-05' }, [], 30), [], 'no time: none');
   assert.deepEqual(autoReminders({ date: '2026-11-05', time: '14:00' }, [], -1), [], 'off');
   assert.deepEqual(autoReminders(null, [], 30), []);
+});
+
+test('suggestLeads offers up to two usual leads not set yet', () => {
+  assert.deepEqual(suggestLeads([]), [0, 30]);
+  assert.deepEqual(suggestLeads([0]), [30, 60]);
+  assert.deepEqual(suggestLeads([0, 30, 60, 1440]), []);
+  assert.deepEqual(suggestLeads([30], 1), [0]);
+});
+
+test('whenText names the day and the clock time', () => {
+  const now = at('2026-11-05', '10:00');
+  assert.equal(whenText(at('2026-11-05', '19:00'), now), 'Today 19:00');
+  assert.equal(whenText(at('2026-11-06', '09:05'), now), 'Tomorrow 09:05');
+  assert.match(whenText(at('2026-11-09', '09:00'), now), /^Mon 9 Nov 09:00$/);
 });

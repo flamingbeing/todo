@@ -1434,3 +1434,35 @@ html[data-fab="center"] .ui-fab.td-fab { inset-inline-end: auto; inset-inline-st
 .td-menu.ui-menu-panel .ui-menu-item { position: relative; width: 100%; padding: 0 20px; border-radius: 0; }
 .td-menu.ui-menu-panel .ui-menu-item:is(:active, [data-pressed]) { background: var(--td-selected); }
 .td-menu-layer:has(> .td-menu.ui-menu-panel) > .td-menu-veil { background: rgb(0 0 0 / .4); }
+
+/* the pick sheets (screens/pick.js), as the reference's: the title left-aligned under the grab handle, no X; a red radio
+   dot for the chosen row; a short list sizes the sheet to itself (data-fit; the kit measures it on open); Move to is tall
+   with a Search field; Priority is four tiles; Reminders is Suggestions / Date & time / + Add reminder */
+.td-sheet-head-plain { padding: 4px 20px 8px; }
+.td-sheet-head-plain .td-sheet-title { text-align: start; font-size: 20px; font-weight: 600; }
+.td-choice-radio { flex: none; box-sizing: border-box; width: 22px; height: 22px; margin-inline-start: 12px; border: 1.5px solid var(--td-text-3); border-radius: 50%; }
+.td-choice[aria-selected="true"] .td-choice-radio { border: 6px solid var(--td-accent); }
+#pick-sheet[data-fit]:not([data-detent="large"]) { height: auto; max-height: calc(100dvh - 12px); }
+#pick-sheet.td-tall:not([data-detent="large"]) { height: 90dvh; }
+.td-pick-search { position: relative; margin: 0 16px 8px; }
+.td-pick-find { box-sizing: border-box; width: 100%; height: 40px; padding: 0 12px 0 38px; border: 0; border-radius: 10px; background: var(--td-fill-soft, light-dark(#f1f0ee, #2c2c2c)); color: var(--td-text); font-size: 16px; }
+.td-pick-find-icon { position: absolute; left: 11px; top: 11px; width: 18px !important; height: 18px !important; color: var(--td-text-3); pointer-events: none; }
+.td-prio-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 8px 16px 12px; }
+.td-prio-tile { display: flex; flex-direction: column; align-items: center; gap: 6px; box-sizing: border-box; min-height: 72px; padding: 12px 0 10px; border: 1.5px solid var(--td-hair); border-radius: 12px;
+  background: none; color: var(--td-text); font-size: 14px; cursor: pointer; }
+.td-prio-tile[aria-checked="true"] { border-color: var(--td-text); }
+.td-prio-tile:is(:active, [data-pressed]) { background: var(--td-selected); }
+.td-prio-flag { width: 24px !important; height: 24px !important; }
+.td-remind-sec { padding: 0 16px 8px; }
+.td-remind-h { margin: 8px 4px 6px; font-size: 14px; font-weight: 600; color: var(--td-text-2); }
+.td-remind-card { overflow: hidden; border-radius: 12px; }
+.td-remind-line, .td-remind-add, .td-remind-set { position: relative; display: flex; align-items: center; box-sizing: border-box; width: 100%; min-height: 54px; padding: 4px 16px; border: 0; background: none; text-align: start; font-size: 16px; color: var(--td-text); }
+.td-remind-line, .td-remind-add { cursor: pointer; }
+.td-remind-line:is(:active, [data-pressed]), .td-remind-add:is(:active, [data-pressed]) { background: var(--td-selected); }
+.td-remind-card > * + * { border-top: .5px solid var(--td-hair); }
+.td-remind-words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.td-remind-when { font-size: 13px; color: var(--td-text-3); }
+.td-remind-x { flex: none; display: grid; place-items: center; width: 40px; height: 40px; margin-inline-end: -8px; border: 0; border-radius: 50%; background: none; color: var(--td-text-2); cursor: pointer; }
+.td-remind-x .ui-icon { width: 18px; height: 18px; }
+.td-remind-add { color: var(--td-accent-text, var(--td-accent)); font-weight: 500; }
+.td-remind-add .td-choice-icon { color: var(--td-accent-text, var(--td-accent)); }

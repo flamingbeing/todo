@@ -118,7 +118,19 @@ test('the + on Upcoming dates the new task for the day in sight; the sheet sets 
 
   await clickOpens(row(page, '#upcoming', t).locator('.td-row-main'), page.locator('#task-sheet'));
   await page.locator('#task-sheet .td-attr-chips [aria-label^="Priority"]').click();
-  await page.getByRole('menuitemradio', { name: 'Priority 1' }).click();
+  // the Priority sheet: a short sheet, four tiles in a row (P1..P4), a tap saves and closes
+  const pick = page.locator('#pick-sheet');
+  await expect(pick).toBeVisible();
+  await expect(pick.getByRole('heading', { name: 'Priority' })).toBeVisible();
+  await expect(pick.locator('[aria-label="Close"]')).toHaveCount(0);
+  await expect(pick.getByRole('radio')).toHaveText(['P1', 'P2', 'P3', 'P4']);
+  await expect(pick.getByRole('radio', { name: 'P4' })).toHaveAttribute('aria-checked', 'true');
+  const tops = await pick.getByRole('radio').evaluateAll(bs => bs.map(b => Math.round(b.getBoundingClientRect().top)));
+  expect(new Set(tops).size).toBe(1);
+  expect((await pick.boundingBox())?.height ?? 999).toBeLessThan(300);   // sized to its content
+  expect(await AxeBuilder(page)).toEqual([]);
+  await pick.getByRole('radio', { name: 'P1' }).click();
+  await expect(pick).toBeHidden();
   await expect(row(page, '#upcoming', t)).toHaveAttribute('data-priority', '1');
   // "Add sub-task" opens quick add over the sheet (one add, then it closes and the sheet shows the new sub-task)
   await page.locator('#task-sheet .td-add-sub').click();
@@ -220,6 +232,29 @@ test('the sheet\'s Copy link gives #task=<id>, which opens that task\'s sheet wh
   await expect(page.locator('#task-sheet')).toBeVisible();
   await expect(page.locator('#task-sheet .td-task-title')).toHaveValue(t);
   expect(await page.evaluate(() => location.hash)).not.toContain('task=');
+});
+
+test('Move to is a tall sheet with a Search field that filters the projects', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const t = uniq('move');
+  await put(t, { title: t, due: { date: day(0) } });
+  await synced(page);
+  await clickOpens(row(page, '#today', t).locator('.td-row-main'), page.locator('#task-sheet'));
+  await page.locator('#task-sheet .ui-scroll-x').getByRole('button', { name: 'Move to…' }).click();
+  const pick = page.locator('#pick-sheet');
+  await expect(pick).toBeVisible();
+  await expect(pick.getByRole('heading', { name: 'Move to' })).toBeVisible();
+  const vh = page.viewportSize()?.height ?? 844;
+  await expect.poll(async () => ((await pick.boundingBox())?.height ?? 0) / vh).toBeGreaterThan(0.8);
+  const rows = pick.getByRole('option');
+  expect(await rows.count()).toBeGreaterThan(0);
+  await pick.getByRole('searchbox', { name: 'Search' }).fill('inb');
+  await expect(rows.locator('visible=true')).toHaveCount(1);
+  await expect(rows.locator('visible=true')).toHaveText('Inbox');
+  await pick.getByRole('searchbox', { name: 'Search' }).fill('zzzz-none');
+  await expect(rows.locator('visible=true')).toHaveCount(0);
+  await expect(pick.getByText('Nothing found')).toBeVisible();
 });
 
 test('the sheet\'s ••• menu: the added-on line, its rows in order, Move to… as a pill; Complete forever ends a repeating task', async ({ phone }) => {

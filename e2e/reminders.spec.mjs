@@ -1,4 +1,4 @@
-// Reminders: the task sheet's Reminders row ticks leads (needs a date), the option is off by default and asks for
+// Reminders: the task sheet's Reminders pill opens the Reminders sheet (needs a date), the option is off by default and asks for
 // permission only when turned on in Settings, and a due reminder shows a notification.
 import AxeBuilder from './axe.mjs';
 import { test, expect, signIn, synced, uniq, today, db, clickOpens, openSettings } from './fixtures.mjs';
@@ -16,7 +16,23 @@ test('tick reminders in the task sheet; they are saved on the task', async ({ ph
   const row = page.locator(`${sheet} .td-attr-chips [aria-label^="Reminder"]`);
   await expect(row).toHaveAttribute('aria-label', 'Reminder');
   await row.click();
-  await page.getByRole('menuitemradio', { name: '30 minutes before' }).click();
+  // the Reminders sheet: Suggestions (not set yet, each with its clock time), Date & time (the set ones), + Add reminder
+  const pick = page.locator('#pick-sheet');
+  await expect(pick.getByRole('heading', { name: 'Reminders' })).toBeVisible();
+  await expect(pick.getByRole('heading', { name: 'Suggestions' })).toBeVisible();
+  await expect(pick.getByRole('heading', { name: 'Date & time' })).toBeVisible();
+  await expect(pick.locator('[data-suggestion="0"] .td-remind-when')).toContainText('23:00');
+  await pick.locator('[data-suggestion="30"]').click();
+  await expect(row).toHaveAttribute('aria-label', 'Reminders: 30 minutes');
+  await expect(pick.locator('.td-remind-set')).toHaveCount(1);
+  await expect(pick.locator('.td-remind-set')).toContainText('22:30');
+  // + Add reminder opens every lead; a pick adds it and returns to the sheet
+  await pick.getByRole('button', { name: 'Add reminder' }).click();
+  await pick.getByRole('option', { name: '1 hour before' }).click();
+  await expect(pick.locator('.td-remind-set')).toHaveCount(2);
+  await expect(row).toHaveAttribute('aria-label', 'Reminders: 30 minutes, 1 hour');
+  await pick.getByRole('button', { name: 'Remove 1 hour before' }).click();
+  await expect(pick.locator('.td-remind-set')).toHaveCount(1);
   await expect(row).toHaveAttribute('aria-label', 'Reminders: 30 minutes');
   expect(await AxeBuilder(page)).toEqual([]);
   await synced(page);

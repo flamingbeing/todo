@@ -14,6 +14,25 @@ export const LATE_MS = 15 * 60 * 1000;
 export const LEADS = [[0, 'At time of task'], [5, '5 minutes before'], [10, '10 minutes before'], [15, '15 minutes before'], [30, '30 minutes before'],
   [60, '1 hour before'], [120, '2 hours before'], [1440, '1 day before'], [2880, '2 days before'], [10080, '1 week before']];
 
+/** the leads the Reminders sheet suggests first, in this order */
+export const SUGGESTED = [0, 30, 60, 1440];
+
+/** up to `max` suggested leads that are not set yet @param {number[]} has @param {number} [max] */
+export function suggestLeads(has, max = 2) {
+  return SUGGESTED.filter(n => !has.includes(n)).slice(0, max);
+}
+
+/** when a reminder rings, for the sheet's grey line: "Today 19:00", "Tomorrow 09:00", "Mon 9 Nov 09:00" @param {number} at @param {number} now */
+export function whenText(at, now) {
+  const d = new Date(at), n = new Date(now);
+  const day0 = (/** @type {Date} */ x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const gap = Math.round((day0(d) - day0(n)) / 86400000);
+  const clock = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const day = gap === 0 ? 'Today' : gap === 1 ? 'Tomorrow' : gap === -1 ? 'Yesterday'
+    : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '');
+  return `${day} ${clock}`;
+}
+
 /** "At time", "30 minutes before", "1 hour before", "2 days before" @param {number} n */
 export function leadText(n) {
   if (n <= 0) return 'At time of task';
