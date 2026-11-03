@@ -53,7 +53,13 @@ test('a swipe to next week, a tap scrolls to the day (the + adds there), the mon
   // a task held and dragged onto a day of the strip moves to it
   // (the list is drawn anew as the added task and other tests' tasks arrive: let it settle, and again if it was redrawn)
   await still(page, '#upcoming');
-  await expect(() => page.locator(`#upcoming .td-row[data-id="${far}"]`).scrollIntoViewIfNeeded({ timeout: 2_000 })).toPass({ timeout: 10_000 });
+  // scrolled to the top, not just into view: the strip follows the top day, and with many rows today a row parked at the
+  // bottom leaves the strip on this week, without the drop day (seen in CI 3 Nov)
+  await expect(async () => {
+    await page.locator(`#upcoming .td-row[data-id="${far}"]`).evaluate(e => e.scrollIntoView({ block: 'start' }), undefined, { timeout: 2_000 });
+    await expect(page.locator(`#upcoming-strip .td-wday[data-day="${drop}"]`)).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 10_000 });
+  await still(page, '#upcoming');
   const row = await boxOf(page, `#upcoming .td-row[data-id="${far}"]`);
   const cell = await boxOf(page, `#upcoming-strip .td-wday[data-day="${drop}"]`);
   const dx = Math.round(cell.x + cell.width / 2 - (row.x + row.width / 2)), dy = Math.round(cell.y + cell.height / 2 - (row.y + row.height / 2));
