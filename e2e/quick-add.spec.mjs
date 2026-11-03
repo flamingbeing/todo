@@ -147,9 +147,9 @@ test('a day picked in the Date sheet is written into the name; the + menu; Inbox
   // editing the words changes the date: taking them away leaves the page's own date
   await page.fill(name, t);
   await expect(add.locator('.td-hl')).toHaveCount(0);
-  // the + menu: Priority, Reminders, Labels, Deadline, Duration (no Description, no ticks)
+  // the … menu: Deadline, Priority, Reminders, Labels, Duration, then Customize Quick Add (no Description, no ticks)
   await add.locator('.td-chip-more').click();
-  await expect(page.getByRole('menuitem')).toHaveText(['Priority', 'Reminders', 'Labels', 'Deadline', 'Duration']);
+  await expect(page.getByRole('menuitem')).toHaveText(['Deadline', 'Priority', 'Reminders', 'Labels', 'Duration', 'Customize Quick Add']);
   await page.keyboard.press('Escape');
   // # opens the card above the sheet, Inbox first
   await page.locator(name).pressSequentially(' #');
@@ -173,4 +173,35 @@ test('a reminder set from the + menu is saved with the task', async ({ phone }) 
   await expect(page.locator('#add-sheet .td-chip-main[aria-label^="Reminders"]')).toHaveAttribute('aria-label', 'Reminders: 30m');
   await page.press(name, 'Enter');
   await expect.poll(async () => (await task(t))?.reminders, { timeout: 15_000 }).toEqual([30]);
+});
+
+test('the layout: outlined chips in a row, a hairline, then the project and a small round send; Customize opens Settings', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  await synced(page);
+  await openAdd(page);
+  const add = page.locator('#add-sheet');
+  // the date (the page's own: Today), Priority, Reminders, Labels are there before anything is set, the … chip last
+  await expect(add.locator('.td-chips .td-chip-main:visible')).toHaveText([/^(Today|Date)$/, 'Priority', 'Reminders', 'Labels']);
+  await expect(add.locator('.td-chips > :last-child')).toHaveClass(/td-chip-more/);
+  const chip = await add.locator('.td-chip').first().boundingBox();
+  expect(Math.round(chip.height)).toBe(32);
+  // the foot: the project, then send (28px, faint until the name has text)
+  await expect(add.locator('.td-add-foot .td-add-place')).toContainText('Inbox');
+  const send = add.locator('.td-add-foot .td-send');
+  await expect(send).toBeDisabled();
+  expect(await send.evaluate(b => [getComputedStyle(b).width, getComputedStyle(b).opacity])).toEqual(['28px', '0.4']);
+  await page.fill(name, 'Call mum tomorrow 5pm p1');
+  await expect(send).toBeEnabled();
+  await expect(add.locator('.td-chip-main[aria-label^="Priority"]')).toHaveAttribute('aria-label', 'Priority: P1');
+  expect(await AxeBuilder(page)).toEqual([]);
+  await page.emulateMedia({ colorScheme: 'dark' });
+  expect(await AxeBuilder(page)).toEqual([]);
+  await page.emulateMedia({ colorScheme: 'light' });
+  // Customize Quick Add: the sheet closes (the name kept as a draft) and Settings > Quick Add opens
+  await add.locator('.td-chip-more').click();
+  await page.getByRole('menuitem', { name: 'Customize Quick Add' }).click();
+  await expect(add).toBeHidden();
+  await expect(page.locator('#settings-page')).toBeVisible();
+  await expect(page.getByText('Quick Add actions')).toBeVisible();
 });
