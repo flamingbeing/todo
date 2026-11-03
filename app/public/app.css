@@ -558,6 +558,8 @@ body:has(dialog[open]) .ui-fab.td-fab { display: none; }
 /* swipes, holds and drags (ui/row-swipe.js, ui/row-drag.js): the band under a swiped row, a lifted row, the drop line
    with its dot, the + button's grey x and the "Add section" line */
 .td-row { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+/* Android Chrome paints a grey rounded box over a held button (the pill seen on a long-press): the row has its own lift */
+.td-row, .td-row * { -webkit-tap-highlight-color: transparent; }
 .td-row.is-swiping { overflow: hidden; }
 .td-row.is-swiping > :not(.td-swipe-band, .td-fold) { position: relative; z-index: 1; }
 .td-row.is-swiping > .td-fold { z-index: 1; }
