@@ -495,7 +495,7 @@ button:is(.td-group-title, .td-add-row, .td-suggest-item, .td-sched-row, .td-bro
 /* (with motion: it fades and shrinks as the card grows from it, then pops back 1.1 to 1 when the sheet has gone) */
 @media (prefers-reduced-motion: no-preference) {
   body:has(dialog[open]) .ui-fab.td-fab { opacity: 0; scale: .8; pointer-events: none; transition: opacity 120ms linear, scale 120ms linear; }
-  body:not(:has(dialog[open])) .ui-fab.td-fab:not(.is-dragging) { animation: td-fab-pop 200ms cubic-bezier(0, 0, .2, 1) 80ms backwards; }
+  body[data-fab-pop] .ui-fab.td-fab:not(.is-dragging) { animation: td-fab-pop 200ms cubic-bezier(0, 0, .2, 1) 80ms backwards; }
 }
 @keyframes td-fab-pop { from { opacity: 0; scale: 1.1; } }
 

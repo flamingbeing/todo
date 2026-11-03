@@ -100,6 +100,7 @@ const SHELL = [
   'src/tree.js',
   'src/ui/edge-scroll.js',
   'src/ui/empty-art.js',
+  'src/ui/gap.js',
   'src/ui/menu.js',
   'src/ui/quick-add-morph.js',
   'src/ui/row-drag.js',

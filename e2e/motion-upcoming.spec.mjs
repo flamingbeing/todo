@@ -23,7 +23,7 @@ test('day circle fades in 60 ms, caret has no transform transition, Overdue head
   await page.locator('#upcoming-strip .td-month').click();
   const t0 = Date.now();
   await expect.poll(async () => page.locator('#upcoming-strip .td-wcal').evaluate(e => e.getBoundingClientRect().height), { intervals: [10] }).toBeGreaterThan(150);
-  expect(Date.now() - t0).toBeLessThan(400);
+  expect(Date.now() - t0).toBeLessThan(300);
 });
 
 test('with reduced motion the day circle does not transition', async ({ phone }) => {
