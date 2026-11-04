@@ -4,7 +4,7 @@
 // plain words with the rest still sent, and the token never lands in storage and leaves the field. The page passes axe.
 import fs from 'node:fs';
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, db, openSettings } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, db, openSettings, space } from './fixtures.mjs';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -14,7 +14,7 @@ const REAL_INBOX = 'real-inbox-id';
 const now = () => ({ createdAt: Date.now(), updatedAt: Date.now() });
 
 /** the one place that writes the app's records (the data path changes with the space layout) @param {string} coll @param {string} id @param {object} rec */
-const put = (coll, id, rec) => db.put(`spaces/_/${coll}/${id}`, { ...rec, ...now() });
+const put = (coll, id, rec) => db.put(`${space()}/${coll}/${id}`, { ...rec, ...now() });
 
 /** a small made-up account: a project with a child project, a section, a label, a repeating task, a sub task, an Inbox task */
 async function seed(u) {
