@@ -121,6 +121,23 @@ function build(host, s) {
   month.append(monthName, caret);
   month.setAttribute('aria-expanded', 'false');
   top.append(month);
+  // (840 px and up: a week back, a week on and Today at the strip's right, as the mouse has no swipe; hidden under it)
+  const nav = el('div', 'td-strip-nav');
+  const navBtn = (/** @type {string} */ cls, /** @type {string} */ label, /** @type {import('app-ui/icons/lucide.js').IconNodes | null} */ ic, /** @type {() => string} */ to) => {
+    const b = /** @type {HTMLButtonElement} */ (el('button', `td-strip-go ${cls}`, ic ? '' : label));
+    b.type = 'button';
+    if (ic) { b.setAttribute('aria-label', label); b.append(icon(ic)); }
+    b.addEventListener('click', () => go(to(), true));
+    nav.append(b);
+    return b;
+  };
+  const back = navBtn('td-strip-prev', 'Previous week', MORE.chevronLeft, () => addDays(s.pick, -7));
+  navBtn('td-strip-next', 'Next week', ICONS.chevronRight, () => addDays(s.pick, 7));
+  navBtn('td-strip-today', 'Today', null, () => s.day);
+  const wideNav = matchMedia('(min-width: 840px)'), showNav = () => { nav.hidden = !wideNav.matches; };
+  wideNav.addEventListener('change', showNav);
+  showNav();
+  top.append(nav);
   const view = el('div', 'td-week-view');
   view.dataset.swipeOwn = '';
   const week = el('div', 'td-week');
@@ -251,6 +268,7 @@ function build(host, s) {
       grid.querySelector('[aria-pressed="true"]')?.setAttribute('aria-pressed', 'false');
       grid.querySelector(`[data-day="${s.pick}"]`)?.setAttribute('aria-pressed', 'true');
     }
+    back.disabled = s.week <= weekOf(s.day, s.start);
     week.setAttribute('aria-label', `Week of ${+s.week.slice(8)} ${MONTHS[+s.week.slice(5, 7) - 1]}`);
     week.replaceChildren(...Array.from({ length: 7 }, (_, i) => {
       const key = addDays(s.week, i), n = by.get(key) ?? 0;

@@ -38,3 +38,53 @@ export function openSectionPage(ctx, pid, forget, screens, section = null) {
   screens()?.push('#section-page');
   setTimeout(() => name.focus(), 120);
 }
+
+/**
+ * The inline name field of a new section between two others (views.js asks for it once, the first time). The page is
+ * drawn again on every change, synced ones too: the open field is the same element each time, so what was typed stays;
+ * the browser blurs a focused element it takes out, so that blur is not the person leaving it.
+ * @param {import('./views.js').Ctx} ctx
+ * @param {{ naming: () => { projectId: string, sectionId: string, after?: string, order?: number } | null, stop: () => void, redraw: () => void }} o
+ * @returns {(value: string, section: import('../items.js').Section | null, pid: string) => HTMLFormElement}
+ */
+export function nameFields(ctx, o) {
+  /** @type {{ for: object | null, form: HTMLFormElement, moving: boolean } | null} */
+  let shown = null;
+  return (value, section, pid) => {
+    const naming = o.naming();
+    if (shown && naming && shown.for === naming) {
+      const was = shown, input = /** @type {HTMLInputElement} */ (was.form.elements[0]);
+      was.moving = document.activeElement === input;
+      queueMicrotask(() => { was.moving = false; });
+      return was.form;
+    }
+    const form = document.createElement('form'), input = document.createElement('input');
+    const me = shown = { for: naming, form, moving: false };
+    form.className = 'td-name-field';
+    input.value = value; input.maxLength = 120; input.placeholder = 'Name this section';
+    input.setAttribute('aria-label', section ? `New name for ${section.name}` : 'Name of the new section');
+    let done = false;
+    const at = naming?.order;
+    const finish = async (/** @type {boolean} */ save) => {
+      if (done) return;
+      done = true; o.stop();
+      if (shown === me) shown = null;
+      const name = input.value.trim();
+      if (save && name) {
+        const r = section ? await ctx.app.renameSection(section, name) : (await ctx.app.addSection(pid, name, at)).refused;
+        if (r) ctx.toast(REFUSED);
+      }
+      o.redraw();
+    };
+    form.addEventListener('submit', e => { e.preventDefault(); void finish(true); });
+    input.addEventListener('blur', () => {
+      if (!me.moving) { void finish(true); return; }
+      // (moved by a redraw: focus it again where the caret was)
+      const [a, b] = [input.selectionStart, input.selectionEnd];
+      queueMicrotask(() => { if (input.isConnected && !done) { input.focus({ preventScroll: true }); input.setSelectionRange(a, b); } });
+    });
+    input.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); void finish(false); } });
+    form.append(input);
+    return form;
+  };
+}

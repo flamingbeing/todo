@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { projectView, todayView, placeText, projectCascade, sectionCascade, cleanFields, cleanDue, isTask, dayOrder, labelsOf, cleanDisplay,
   plainDisplay, sortKey, ownOrder } from '../src/tasks.js';
 import { upcomingView, completedView, projectTree, projectCounts, todayCount, upcomingCount, narrowTasks, sorter, groupTasks } from '../src/arrange.js';
+import { sideCounts } from '../src/wide/side-rows.js';
 import { rescheduled } from '../src/recur.js';
 import { taskOps, refusal, tasksGone } from '../src/task-ops.js';
 
@@ -465,4 +466,20 @@ test('smart order: date and time (an undated task by its deadline), then priorit
   const i = t('i');                               // neither: last
   const all = [i, h, g, f, e, d, c, b, a];
   assert.deepEqual(all.sort(dayOrder).map(x => x.title), ['a', 'b', 'd', 'c', 'g', 'f', 'e', 'h', 'i']);
+});
+
+test('the wide side bar counts: open tasks only, sub-tasks too; Today holds the overdue ones; the Inbox and each project', () => {
+  const today = '2026-11-04';
+  const tasks = /** @type {any[]} */ ([
+    { id: 'a', title: 'In the inbox', projectId: 'inbox' },
+    { id: 'b', title: 'Overdue', projectId: 'p1', due: { date: '2026-11-02' } },
+    { id: 'c', title: 'Today', projectId: 'p1', due: { date: today } },
+    { id: 'd', title: 'A sub-task, later', projectId: 'p1', parentId: 'c', due: { date: '2026-11-09' } },
+    { id: 'e', title: 'Done today', projectId: 'p1', due: { date: today }, done: true },
+    { id: 'f', title: 'No project', due: { date: today } },
+    { id: 'g', title: '' },
+    { id: 'h', title: 'Done in the inbox', projectId: 'inbox', done: true },
+  ]);
+  assert.deepEqual(sideCounts(tasks, today), { inbox: 2, today: 3, upcoming: 1, projects: { inbox: 2, p1: 3 } });
+  assert.deepEqual(sideCounts([], today), { inbox: 0, today: 0, upcoming: 0, projects: {} });
 });

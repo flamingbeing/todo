@@ -48,6 +48,13 @@ let refresh = null;
 let hideDone = false;
 /** the Sub-tasks list is folded away */
 let folded = false;
+/** 840 px and up: the same sheet as a dialog in the middle with two sides (wide/task-modal.js, loaded only then) */
+const wideQ = () => matchMedia('(min-width: 840px)').matches;
+/** @type {typeof import('../wide/task-modal.js') | null} */
+let wideMod = null;
+/** lays the open sheet out again (the width crossed 840 px: the same parts, so nothing typed is lost) */
+let relayout = /** @type {(() => void) | null} */ (null);
+let watching = false;
 
 /** the task as last heard @param {Ctx} ctx */
 const current = ctx => ctx.data().tasks.find(t => t.id === showing) ?? null;
@@ -66,14 +73,24 @@ function growOnFocus() {
 
 /** @param {Ctx} ctx @param {Task} task */
 export function openTask(ctx, task) {
+  if (wideQ() && !wideMod) { void import('../wide/task-modal.js').then(m => { wideMod = m; openTask(ctx, task); }); return; }
   growOnFocus();
+  if (!watching) {
+    watching = true;
+    matchMedia('(min-width: 840px)').addEventListener('change', () => {
+      if (!d().open || !relayout) return;
+      if (wideQ() && !wideMod) void import('../wide/task-modal.js').then(m => { wideMod = m; relayout?.(); });
+      else relayout();
+    });
+  }
+  if (!d().open && wideQ()) wideMod?.remember(d(), task.id);
   if (!d().open) { hideDone = false; folded = false; }
   showing = task.id;
   draw(ctx);
   const sheet = d();
   if (!sheet.open) {
     sheet.showModal();
-    sheet.addEventListener('close', () => { showing = ''; refresh = null; }, { once: true });
+    sheet.addEventListener('close', () => { showing = ''; refresh = null; relayout = null; }, { once: true });
   }
 }
 
@@ -132,8 +149,10 @@ function draw(ctx) {
       d().close();
       if (await ctx.app.completeForever(at)) ctx.toast(REFUSED);
     } }] : [];
+    const wide = !!wideMod && d().hasAttribute('data-td-modal');
+    const note = made ? `Added on ${made}` : '';
     openMenu(more, writable ? [
-      { label: 'Edit task', icon: MORE.pencil, run: () => openEditTask(ctx, now) },
+      ...(wide ? [] : [{ label: 'Edit task', icon: MORE.pencil, run: () => openEditTask(ctx, now) }]),
       { label: 'Duplicate task', icon: MORE.copy, run: async () => { const at = current(ctx); if (at && await ctx.app.duplicateTask(at)) ctx.toast(REFUSED); else ctx.toast('Duplicated'); } },
       ...forever,
       copyLink,
@@ -142,9 +161,10 @@ function draw(ctx) {
       email,
       null,
       { label: 'Delete task', icon: MORE.trash2, danger: true, run: () => remove() },
-    ] : [copyLink, activity, email], { label: 'Task', sheet: true, note: made ? `Added on ${made}` : '' });
+    ] : [copyLink, activity, email], { label: 'Task', sheet: !wide, note });
+    // (at 840 px and up: a card under the button, the day it was added on top, the keys at the ends)
+    if (wide) wideMod?.dressMenu(note);
   });
-  head.append(up, more);   // (no Close button: swipe down, the backdrop, Esc and Back close it)
 
   // the card: box, title, description
   const card = el('div', 'td-card td-task-card');
@@ -171,7 +191,7 @@ function draw(ctx) {
     if (!v) { title.value = current(ctx)?.title ?? ''; return; }
     if (v !== current(ctx)?.title) void save({ title: v });
   });
-  desc.addEventListener('blur', () => { descRow.hidden = !desc.value; });
+  desc.addEventListener('blur', () => { descRow.hidden = !desc.value && !d().hasAttribute('data-td-modal'); });
   desc.addEventListener('change', () => { if (desc.value !== (current(ctx)?.description ?? '')) void save({ description: desc.value }); });
   // the words with their marks (bold, links: markdown.js) laid over each field while it is not being edited; a tap
   // between links reaches the field below (the layer lets taps through, but not on its links)
@@ -251,6 +271,26 @@ function draw(ctx) {
   };
 
   const talk = commentsSection();
+  /** the wide dialog's rail (null on a phone) @type {((values: Record<string, Node[] | null>) => void) | null} */
+  let railFill = null;
+  // the parts laid out: on a phone the head (no Close button: swipe down, the backdrop, Esc and Back close it), the
+  // scrolling card and the docked comment field; at 840 px and up the dialog's two sides (wide/task-modal.js)
+  const layout = () => {
+    const wide = !!wideMod && wideQ();
+    d().toggleAttribute('data-td-modal', wide);
+    if (wide && wideMod) {
+      railFill = wideMod.layout(d(), { body, head, up, more, left: [card, descRow, subs, talk.root, talk.bar], id: t.id,
+        go: id => { showing = id; draw(ctx); }, writable, remove: () => void remove(), copy: () => void copyLink.run(),
+        picks: { project: move, date: () => date.click(), deadline: () => deadline.click(), priority: () => prio.click(),
+          labels: () => labels.click(), reminders: () => remind.click() } });
+      return;
+    }
+    railFill = null;
+    more.classList.remove('td-modal-btn');
+    head.replaceChildren(up, more);
+    scroll.replaceChildren(card, rows, chipRow, subs, talk.root);
+    body.replaceChildren(head, scroll, talk.bar);
+  };
   const fill = (/** @type {Ctx} */ c) => {
     const now = current(c);
     // gone (deleted on another device: a delete here closes the sheet first)
@@ -294,8 +334,13 @@ function draw(ctx) {
     const mine = labelsOf(now, data.labels);
     labels.replaceChildren(icon(ICONS.tag, { class: 'td-attr-icon' }), el('span', 'td-attr-text', mine.length ? mine.map(l => l.name).join(', ') : 'Labels'));
     labels.setAttribute('aria-label', mine.length ? `Labels: ${mine.map(l => l.name).join(', ')}` : 'Labels');
-    descRow.hidden = !desc.value && document.activeElement !== desc;
-    rows.replaceChildren(descRow, date);
+    descRow.hidden = !railFill && !desc.value && document.activeElement !== desc;
+    rows.replaceChildren(...(railFill ? [] : [descRow]), date);
+    // the rail (840 px and up): copies of the same values, a "+" where nothing is set
+    const copy = (/** @type {Element} */ b) => [...b.childNodes].map(n => n.cloneNode(true));
+    railFill?.({ project: [hash.cloneNode(true), el('span', '', where)], date: due ? copy(date) : null,
+      deadline: dl ? copy(deadline) : null, priority: p < 4 ? copy(prio) : [flag.cloneNode(true), el('span', 'td-attr-text', 'P4')], labels: mine.length ? copy(labels) : null,
+      reminders: remText ? [el('span', 'td-attr-text', remText)] : null });
     chipRow.replaceChildren(...(writable ? [descChip, prio, remind, labels, deadline, moveTo] : [prio, remind, labels, deadline]));
 
     // its subtasks, open and done (a done one shows ticked); the header counts them, "+" adds one, the chevron folds the list
@@ -351,7 +396,7 @@ function draw(ctx) {
     talk.fill(c, now.id);
   };
   refresh = fill;
+  relayout = () => { layout(); fill(ctx); };
+  layout();
   fill(ctx);
-  scroll.append(card, rows, chipRow, subs, talk.root);
-  body.replaceChildren(head, scroll, talk.bar);
 }

@@ -153,7 +153,7 @@ export function dragRows(host, ctx, o) {
   let timer;
   /** @type {{ id: number, x0: number, y0: number, fx: number, fy: number, row: HTMLElement, lifted: boolean, moved: boolean, kids: HTMLElement[],
    *   line?: ReturnType<typeof dropLine>, gaps?: Gap[], gap?: Gap | null, depth: number, base: number, sx: number, sy: number,
-   *   from: string, i0: number, zone?: HTMLElement, over?: boolean } | null} */
+   *   from: string, i0: number, zone?: HTMLElement, over?: boolean, grip?: boolean } | null} */
   let p = null;
   const cancelHold = () => { clearTimeout(timer); timer = undefined; };
   const board = () => host.classList.contains('td-board');
@@ -165,13 +165,15 @@ export function dragRows(host, ctx, o) {
     if (p || busy || !e.isPrimary || e.button > 0 || !o.can() || !kindOf(host, o)) return;
     const t = /** @type {Element} */ (e.target);
     const row = /** @type {HTMLElement | null} */ (t.closest('.td-row'));
-    if (!row || !host.contains(row) || t.closest('.td-check, .td-fold') || row.classList.contains('is-done') || row.classList.contains('is-complete')) return;
+    if (!row || !host.contains(row) || t.closest('.td-check, .td-fold, .td-hover-actions') || row.classList.contains('is-done') || row.classList.contains('is-complete')) return;
     const own = /** @type {HTMLElement | null} */ (row.closest('[data-gkey]'));
     p = { id: e.pointerId, x0: e.clientX, y0: e.clientY, fx: e.clientX, fy: e.clientY, row, lifted: false, moved: false, kids: [], depth: depthOf(row),
       base: depthOf(row), sx: 0, sy: 0, from: own?.dataset.gkey ?? '', i0: own ? [...own.querySelectorAll('.td-row')].indexOf(row) : -1 };
     // (the list is not drawn again while a finger may be lifting a row: views.js waits for this to go)
     host.dataset.holding = '';
-    timer = setTimeout(lift, HOLD_MS);
+    // (the wide hover grip, wide/hover.js: lifts at once, and a let-go without moving is no menu)
+    p.grip = !!t.closest('.td-grip');
+    timer = setTimeout(lift, p.grip ? 0 : HOLD_MS);
   };
   const lift = () => {
     timer = undefined;
@@ -339,7 +341,7 @@ export function dragRows(host, ctx, o) {
     was.line?.remove();
     const task = ctx.data().tasks.find(t => t.id === r.dataset.id);
     if (!task || e.type === 'pointercancel') { settleRow(r, was.kids); return; }
-    if (!was.moved) { settleRow(r, was.kids); o.menu(task, r); return; }
+    if (!was.moved) { settleRow(r, was.kids); if (!was.grip) o.menu(task, r); return; }
     const g = was.gap;
     // (where it was: nothing to save)
     r.style.transform = ''; r.classList.remove('is-lifted', 'is-compact');
