@@ -149,3 +149,18 @@ export function groupTasks(tasks, d, c) {
   for (const g of groups) g.tasks.sort((a, b) => Number(!!a.done) - Number(!!b.done) || cmp(a, b));
   return groups;
 }
+
+/** The wide side bar's counts (pure): the open tasks (sub-tasks too) in the Inbox, due today or before (Today), due later
+ * (Upcoming) and per project @param {Task[]} tasks @param {string} today
+ * @returns {{ inbox: number, today: number, upcoming: number, projects: Record<string, number> }} */
+export function sideCounts(tasks, today) {
+  const c = { inbox: 0, today: 0, upcoming: 0, projects: /** @type {Record<string, number>} */ ({}) };
+  for (const t of tasks) {
+    if (!isTask(t) || t.done) continue;
+    const p = projectOf(t), d = dueOf(t.due)?.date;
+    c.projects[p] = (c.projects[p] ?? 0) + 1;
+    if (p === INBOX) c.inbox++;
+    if (d) { if (d <= today) c.today++; else c.upcoming++; }
+  }
+  return c;
+}

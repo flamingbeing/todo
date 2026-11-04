@@ -82,5 +82,8 @@ export const OPTIONS = {
   // the weekdays the streak skips (0 Sunday ... 6 Saturday), and a pause that holds it
   daysOff: { scope: 'device', default: [], clean: cleanDays },
   vacation: { scope: 'device', default: false },
+  // the wide side bar hidden; its My Projects folded
+  sideHidden: { scope: 'device', default: false },
+  sideProjectsFolded: { scope: 'device', default: false },
   // add: options
 };
