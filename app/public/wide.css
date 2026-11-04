@@ -152,5 +152,134 @@
   .td-row:is(:hover, :focus-within):not(.is-lifted, .is-swiping, .is-selected) > :is(.td-hover-actions, .td-grip) { display: flex; }
   .td-row > .td-grip[hidden] { display: none; }
   .td-row:has(> .td-hover-actions) .td-row-main { padding-inline-end: 0; }
-}
 
+  /* ---------- the task view (wide/task-modal.js): a dialog in the middle, two sides ---------- */
+  #task-sheet.td-sheet[data-td-modal], #task-sheet.td-sheet[data-td-modal][data-detent] { inset: 0; margin: auto; width: 860px; max-width: calc(100vw - 32px);
+    height: min(817px, calc(100dvh - 64px)); max-height: none; border: 0; border-radius: 12px; background: var(--td-page-bg); overflow: hidden;
+    box-shadow: 0 16px 48px rgb(0 0 0 / .3); }
+  #task-sheet.td-sheet[data-td-modal][open] { animation: td-modal-in 120ms ease-out; }
+  #task-sheet[data-td-modal]::backdrop { background: rgb(0 0 0 / .4); }
+  #task-sheet[data-td-modal] .ui-sheet-grabber { display: none; }
+  #task-sheet[data-td-modal] .td-sheet-body { height: 100%; }
+  /* the head: where the task is at the left, the buttons at the right, a hairline under */
+  #task-sheet[data-td-modal] .td-sheet-head { box-sizing: border-box; height: 48px; gap: 4px; padding: 0 12px 0 16px; border-bottom: 1px solid var(--td-hair); }
+  #task-sheet[data-td-modal] .td-sheet-parent { flex: 0 1 auto; gap: 6px; min-height: 28px; padding: 0 6px; border-radius: 4px; color: var(--td-text);
+    font-size: 13px; font-weight: 600; }
+  #task-sheet[data-td-modal] .td-sheet-parent:hover { background: var(--td-hover); }
+  #task-sheet[data-td-modal] .td-sheet-parent .td-crumb-icon { width: 14px !important; height: 14px !important; margin: 0; }
+  #task-sheet[data-td-modal] .td-sheet-parent .td-crumb-go { display: none; }
+  .td-modal-gap { flex: 1; }
+  #task-sheet[data-td-modal] .td-modal-btn { display: grid; place-items: center; width: 32px; height: 32px; min-width: 0; min-height: 0; padding: 0; border: 0;
+    border-radius: 6px; background: none; color: var(--td-text-2); cursor: pointer; }
+  #task-sheet[data-td-modal] .td-modal-btn:hover:not(:disabled) { background: var(--td-hover); color: var(--td-text); }
+  #task-sheet[data-td-modal] .td-modal-btn:disabled { opacity: .4; cursor: default; }
+  #task-sheet[data-td-modal] .td-modal-btn .ui-icon { width: 20px; height: 20px; }
+  /* the two sides: the task (600) and the rail (260) */
+  .td-modal-panes { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 260px; }
+  .td-modal-left { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 16px 24px 24px 8px; background: var(--td-page-bg); }
+  #task-sheet[data-td-modal] .td-task-card > .td-check { width: 18px; height: 18px; margin: 12px 12px 0 16px; border-width: 1px; }
+  #task-sheet[data-td-modal] .td-task-title, #task-sheet[data-td-modal] .td-md-title { padding-block: 8px 4px; font-size: 20px; line-height: 27px; font-weight: 700; }
+  #task-sheet[data-td-modal] .td-attr-desc { min-height: 0; padding: 0 0 0 46px; }
+  #task-sheet[data-td-modal] .td-attr-desc::after { display: none; }
+  #task-sheet[data-td-modal] .td-attr-desc .td-attr-icon { left: 16px; top: 8px; width: 16px !important; height: 16px !important; color: var(--td-muted); }
+  #task-sheet[data-td-modal] :is(.td-task-desc, .td-md-desc) { padding: 6px 0; font-size: 13px; line-height: 20px; }
+  #task-sheet[data-td-modal] .td-task-desc::placeholder { color: var(--td-muted); }
+  #task-sheet[data-td-modal] :is(.td-subtasks, .td-comments) { border-top: 0; margin-top: 12px; }
+  #task-sheet[data-td-modal] .td-subtasks-head { min-height: 36px; padding: 0 0 0 16px; border-bottom: 1px solid var(--td-hair); }
+  #task-sheet[data-td-modal] .td-subtasks-title { font-size: 14px; }
+  #task-sheet[data-td-modal] .td-subtasks-btn { width: 28px; height: 28px; }
+  #task-sheet[data-td-modal] .td-subtasks-btn .ui-icon { width: 16px; height: 16px; }
+  #task-sheet[data-td-modal] .td-subtasks .td-check { width: 18px; height: 18px; margin-inline: 16px 12px; border-width: 1px; }
+  #task-sheet[data-td-modal] .td-subtasks .td-row::after { left: calc(46px + var(--depth, 0) * 24px); }
+  #task-sheet[data-td-modal] .td-subtasks .td-title { font-size: 14px; }
+  #task-sheet[data-td-modal] .td-add-sub { min-height: 32px; margin-top: 4px; padding-left: 46px; color: var(--td-text-2); font-size: 13px; font-weight: 600; }
+  #task-sheet[data-td-modal] .td-add-sub:hover { color: var(--td-side-sel-text); }
+  #task-sheet[data-td-modal] .td-add-sub .td-add-icon { left: 16px; width: 16px; height: 16px; }
+  #task-sheet[data-td-modal] .td-comment { padding-left: 46px; }
+  #task-sheet[data-td-modal] .td-comment-face { left: 12px; }
+  #task-sheet[data-td-modal] .td-comment-text { font-size: 14px; line-height: 20px; }
+  #task-sheet[data-td-modal] .td-comments-all { margin-left: 46px; font-size: 13px; }
+  #task-sheet[data-td-modal] .td-comment-bar { padding: 8px 0 0 16px; background: none; }
+  #task-sheet[data-td-modal] .td-add-comment { border: 1px solid var(--td-hair); border-radius: 8px; background: none; }
+  #task-sheet[data-td-modal] .td-add-comment textarea { font-size: 14px; line-height: 20px; }
+  /* the rail: label above, value under, a "+" at the right when nothing is set, a hairline between blocks */
+  .td-modal-rail { min-height: 0; overflow: auto; box-sizing: border-box; padding: 16px 24px 24px; background: var(--td-side-bg); }
+  .td-rail-block { position: relative; display: grid; grid-template-columns: 1fr auto; align-items: center; row-gap: 4px; width: 100%; min-height: 44px;
+    padding: 8px 6px; border: 0; border-bottom: 1px solid var(--td-hair); border-radius: 0; background: none; color: var(--td-text); text-align: start; cursor: pointer; }
+  .td-rail-block:last-child { border-bottom: 0; }
+  .td-rail-block:hover:not(:disabled) { background: var(--td-hover); }
+  .td-rail-block:disabled { cursor: default; }
+  .td-rail-label { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--td-text-2); }
+  .td-rail-plus { width: 16px; height: 16px; color: var(--td-text-2); }
+  .td-rail-value { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 13px; line-height: 18px; color: var(--td-text); }
+  .td-rail-value > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #task-sheet .td-rail-value .ui-icon { position: static; flex: none; translate: none; width: 14px !important; height: 14px !important; margin: 0; }
+  .td-rail-value [data-tone="overdue"] { --td-d-tone: var(--td-d-overdue); }
+  .td-rail-value [data-tone="today"] { --td-d-tone: var(--td-d-today); }
+  .td-rail-value [data-tone="tomorrow"] { --td-d-tone: var(--td-d-tomorrow); }
+  .td-rail-value :is([data-tone="week"], [data-tone="deadline"]) { --td-d-tone: var(--td-d-week); }
+  .td-rail-value [data-tone="weekend"] { --td-d-tone: var(--td-d-weekend); }
+  .td-rail-value [data-tone] { color: var(--td-d-tone, var(--td-text)); }
+  /* its "•••" menu: a card under the button */
+  .td-menu.td-modal-menu { width: 224px; min-width: 0; padding: 4px 0; border: 1px solid var(--td-hair); border-radius: 8px; background: var(--td-menu-bg); }
+  .td-modal-menu .ui-menu-note { padding: 6px 12px 8px; border-bottom: 1px solid var(--td-hair); margin-bottom: 4px; font-size: 12px; color: var(--td-text-2); }
+  .td-modal-menu .ui-menu-item { min-height: 32px; padding: 0 12px; gap: 10px; font-size: 13px; }
+  .td-modal-menu .td-menu-icon { width: 16px !important; height: 16px !important; }
+  .td-modal-hint { margin-inline-start: auto; padding-inline-start: 12px; color: var(--td-muted); font-size: 12px; }
+  @keyframes td-modal-in { from { opacity: 0; } }
+
+  /* ---------- Settings (wide/settings-modal.js): a dialog in the middle, the nav at the left, the page at the right ---------- */
+  #settings-modal.td-sheet, #settings-modal.td-sheet[data-detent] { inset: 0; display: none; margin: auto; padding: 0; width: 767px; max-width: calc(100vw - 32px);
+    height: min(820px, calc(100dvh - 64px)); max-height: none; border: 0; border-radius: 12px; background: var(--td-page-bg); color: var(--td-text); overflow: hidden;
+    box-shadow: 0 16px 48px rgb(0 0 0 / .3); }
+  #settings-modal.td-sheet[open] { display: grid; grid-template-columns: 220px minmax(0, 1fr); animation: td-modal-in 120ms ease-out; }
+  #settings-modal::backdrop { background: rgb(0 0 0 / .4); }
+  .td-set-nav { display: flex; flex-direction: column; min-height: 0; padding: 0 8px 12px; background: var(--td-side-bg); overflow: auto; }
+  .td-set-nav-head { display: flex; align-items: center; height: 48px; margin: 0; padding: 0 8px; font-size: 16px; line-height: 20px; font-weight: 700; flex: none; }
+  .td-set-search { display: flex; align-items: center; gap: 6px; box-sizing: border-box; height: 32px; margin: 0 0 8px; padding: 0 8px; flex: none;
+    border: 1px solid var(--td-hair); border-radius: 6px; background: var(--td-page-bg); color: var(--td-text-2); }
+  .td-set-search:focus-within { border-color: var(--td-text-3); }
+  .td-set-search .td-set-search-icon { width: 16px; height: 16px; flex: none; }
+  .td-set-search input { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; outline: 0; background: none; color: var(--td-text); font: inherit; font-size: 13px; }
+  .td-set-rows { margin: 0; padding: 0; list-style: none; }
+  .td-set-rows > li[hidden] { display: none; }
+  .td-set-row { display: flex; align-items: center; justify-content: flex-start; gap: 10px; box-sizing: border-box; width: 100%; min-height: 32px; padding: 0 8px; border: 0; border-radius: 6px;
+    background: none; color: var(--td-text); font-size: 14px; text-align: start; cursor: pointer; }
+  .td-set-row:hover { background: var(--td-hover); }
+  .td-set-row[aria-current="page"] { background: var(--td-side-sel); color: var(--td-side-sel-text); }
+  .td-set-row .ui-icon { width: 18px; height: 18px; flex: none; color: inherit; }
+  .td-set-row > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .td-set-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .td-set-head { display: flex; align-items: center; gap: 8px; box-sizing: border-box; height: 48px; padding: 0 12px 0 16px; border-bottom: 1px solid var(--td-hair); flex: none; }
+  .td-set-title { flex: 1; min-width: 0; margin: 0; font-size: 16px; line-height: 20px; font-weight: 700; }
+  #settings-modal .td-modal-btn { display: grid; place-items: center; width: 32px; height: 32px; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 6px;
+    background: none; color: var(--td-text-2); cursor: pointer; }
+  #settings-modal .td-modal-btn:hover { background: var(--td-hover); color: var(--td-text); }
+  #settings-modal .td-modal-btn .ui-icon { width: 20px; height: 20px; }
+  .td-set-body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 16px; }
+  /* the page: its own title is the head's; labels 13 bold, helper words 12, a select 400 x 32 */
+  #settings-modal #settings-host .ui-settings-group > .ui-settings-title { display: none; }
+  #settings-modal #settings-host .ui-settings-group { margin: 0; padding: 0; }
+  #settings-modal #settings-host .ui-settings-group .ui-setting { min-height: 0; padding: 8px 0; gap: 16px; }
+  #settings-modal #settings-host .ui-settings-group .ui-setting .ui-row-main { font-size: 13px; font-weight: 700; }
+  #settings-modal #settings-host .ui-settings-group .ui-setting .ui-row-sub { font-size: 12px; font-weight: 400; color: var(--td-text-2); }
+  #settings-modal #settings-host .ui-settings-group .ui-setting:has(select) { flex-direction: column; align-items: stretch; gap: 6px; }
+  #settings-modal #settings-host .ui-settings-group select { box-sizing: border-box; width: 400px; max-width: 100%; height: 32px; padding: 0 8px; border: 1px solid var(--td-hair);
+    border-radius: 6px; background: var(--td-page-bg); color: var(--td-text); font-size: 13px; }
+  #settings-modal #settings-host .ui-settings-group select { min-height: 32px; text-align: start; text-align-last: start; direction: ltr; }
+  #settings-modal #settings-host .ui-setting-subhead { min-height: 0; margin: 12px 0 0; padding: 8px 0 4px; border-top: 1px solid var(--td-hair); }
+  #settings-modal #settings-host .ui-setting-subhead-title { margin: 0; padding: 0; font-size: 14px; font-weight: 700; color: var(--td-text); }
+  #settings-modal #settings-host .ui-settings-part { margin-inline: 0; }
+  #settings-modal #settings-host .td-settings-sub { padding-inline: 0; font-size: 13px; font-weight: 700; color: var(--td-text); }
+  #settings-modal #settings-host .td-seg { width: fit-content; margin-inline: 0; }
+  #settings-modal #settings-host .td-seg-btn { min-height: 32px; font-size: 13px; }
+  #settings-modal #settings-host .td-theme-cards { padding-inline: 0; }
+  #settings-modal #settings-host :is(.td-settings-caption, .ui-small) { padding-inline: 0; font-size: 12px; color: var(--td-text-2); }
+  #settings-modal #settings-host .theme-switch { display: flex; flex-direction: column; gap: 12px; padding: 0 0 8px; }
+  #settings-modal #settings-host .theme-switch > * { padding-inline: 0; }
+  #settings-modal #settings-host .theme-switch > label { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 0; border: 0;
+    font-size: 13px; font-weight: 700; }
+  #settings-modal #settings-host .theme-switch > label::after, #settings-modal #settings-host .theme-switch > label::before { display: none; }
+  #settings-modal #settings-host .theme-switch select { box-sizing: border-box; width: 400px; max-width: 100%; height: 32px; min-height: 32px; margin: 0; padding: 0 8px;
+    border: 1px solid var(--td-hair); border-radius: 6px; background: var(--td-page-bg); color: var(--td-text); font-size: 13px; font-weight: 400; text-align: start; text-align-last: start; }
+}
