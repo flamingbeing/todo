@@ -80,11 +80,11 @@
 
   /* ---------- the list pages (wide/list.js): Today, the Inbox, a project, a label or filter ---------- */
   /* the page: its column (800 at most, the kit's) 40 px in from each side; the title big at its left */
-  :is(#today-page, #inbox-page, #project-page, #place-page) { box-sizing: border-box; padding-inline: 40px; }
-  :is(#today-page, #inbox-page, #project-page, #place-page) > :not(.ui-large-title, .ui-back) { max-width: none; }
-  :root .ui-shell.td :is(#today-page, #inbox-page, #project-page, #place-page) > .ui-large-title { position: static; width: auto; height: auto;
+  :is(#today-page, #inbox-page, #upcoming-page, #project-page, #place-page) { box-sizing: border-box; padding-inline: 40px; }
+  :is(#today-page, #inbox-page, #upcoming-page, #project-page, #place-page) > :not(.ui-large-title, .ui-back) { max-width: none; }
+  :root .ui-shell.td :is(#today-page, #inbox-page, #upcoming-page, #project-page, #place-page) > .ui-large-title { position: static; width: auto; height: auto;
     margin: 8px 0 24px; padding: 0; overflow: visible; clip-path: none; white-space: normal; font-size: 26px; line-height: 35px; font-weight: 700; }
-  :is(#today-page, #inbox-page, #project-page, #place-page) > .ui-large-title + * { margin-top: 0; }
+  :is(#today-page, #inbox-page, #upcoming-page, #project-page, #place-page) > .ui-large-title + * { margin-top: 0; }
   .ui-shell.td #today-page > .ui-large-title:has(+ .td-wide-count:not([hidden])) { margin-bottom: 0; }
   .td-wide-count { display: flex; align-items: center; gap: 4px; margin: 4px 0 24px; color: var(--td-text-2); font-size: 13px; line-height: 18px; }
   .td-wide-count[hidden], .td-wide-crumb[hidden] { display: none; }
@@ -98,47 +98,47 @@
   :root[data-td-list-top] .ui-shell.td > .ui-bar > [data-bar-lead] { visibility: hidden; }
 
   /* flat rows: no card, a ring 18 at the column's left, the words 30 px right of it, a hairline from the ring to the end */
-  :is(#today, #inbox, #project, #place):not(.td-board) { --td-inset: 0px; --td-card-r: 0px; --td-row-bg: transparent; }
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-row { min-height: 0; }
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-row::after { left: calc(var(--depth, 0) * 24px); border-bottom: 1px solid var(--td-hair); }
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-rows > .td-row:last-child::after { border-color: var(--td-hair); }
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-row > .td-check { width: 18px; height: 18px; margin: 9.5px 12px 0 0; border-width: 1px; }
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-row[data-priority="4"] > .td-check:not([aria-checked="true"]) { --ring: light-dark(#999, #aaa); }
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-row-main { gap: 0; padding: 8px 0; }
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-title { font-size: 14px; line-height: 21px; }
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-title + .td-meta,
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-desc + .td-meta { margin-top: 4px; }
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-meta { font-size: 12px; line-height: 18px; }
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-desc { font-size: 13px; line-height: 18px; }
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-fold { right: auto; left: calc(var(--depth, 0) * 24px - 24px); width: 20px; height: 36px; }
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-row:has(> .td-fold) .td-title { padding-inline-end: 0; }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) { --td-inset: 0px; --td-card-r: 0px; --td-row-bg: transparent; }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-row { min-height: 0; }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-row::after { left: calc(var(--depth, 0) * 24px); border-bottom: 1px solid var(--td-hair); }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-rows > .td-row:last-child::after { border-color: var(--td-hair); }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-row > .td-check { width: 18px; height: 18px; margin: 9.5px 12px 0 0; border-width: 1px; }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-row[data-priority="4"] > .td-check:not([aria-checked="true"]) { --ring: light-dark(#999, #aaa); }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-row-main { gap: 0; padding: 8px 0; }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-title { font-size: 14px; line-height: 21px; }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-title + .td-meta,
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-desc + .td-meta { margin-top: 4px; }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-meta { font-size: 12px; line-height: 18px; }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-desc { font-size: 13px; line-height: 18px; }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-fold { right: auto; left: calc(var(--depth, 0) * 24px - 24px); width: 20px; height: 36px; }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-row:has(> .td-fold) .td-title { padding-inline-end: 0; }
 
   /* group heads: the chevron hanging 24 px left of the column, the name bold, its count beside it, a hairline under */
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-group-head { position: relative; min-height: 0; margin: 24px 0 0; padding: 0 0 4px;
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-group-head { position: relative; min-height: 0; margin: 24px 0 0; padding: 0 0 4px;
     border-bottom: 1px solid var(--td-hair); }
-  :is(#today, #inbox, #project, #place):not(.td-board) :is(.td-group-title, .td-group-h) { font-size: 14px; line-height: 21px; font-weight: 700; }
-  :is(#today, #inbox, #project, #place):not(.td-board) button.td-group-title { padding: 6px 0; gap: 0; }
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-group-head .td-group-chevron { position: absolute; left: -24px; top: 8px;
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) :is(.td-group-title, .td-group-h) { font-size: 14px; line-height: 21px; font-weight: 700; }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) button.td-group-title { padding: 6px 0; gap: 0; }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-group-head .td-group-chevron { position: absolute; left: -24px; top: 8px;
     width: 16px !important; height: 16px !important; margin: 0; }
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-group-count { font-size: 14px; color: var(--td-text-2); }
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-group-head.is-plain .td-group-title { font-weight: 700; color: var(--td-text); }
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-resched { height: 28px; padding: 0 4px; font-size: 14px; font-weight: 700; color: var(--td-accent); }
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-group-head :is(.td-group-add, .td-group-more) { width: 28px; height: 28px; min-width: 0; min-height: 0; }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-group-count { font-size: 14px; color: var(--td-text-2); }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-group-head.is-plain .td-group-title { font-weight: 700; color: var(--td-text); }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-resched { height: 28px; padding: 0 4px; font-size: 14px; font-weight: 700; color: var(--td-accent); }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-group-head :is(.td-group-add, .td-group-more) { width: 28px; height: 28px; min-width: 0; min-height: 0; }
 
   /* "+ Add task": the plus in the accent, the words muted; on hover the words take the accent and the plus a filled circle */
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-add-row { width: 100%; min-height: 36px; margin: 0; gap: 12px; padding: 0; border-radius: 0; background: none;
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-add-row { width: 100%; min-height: 36px; margin: 0; gap: 12px; padding: 0; border-radius: 0; background: none;
     font-size: 14px; color: var(--td-muted); }
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-add-row .td-add-icon { box-sizing: border-box; width: 18px; height: 18px; padding: 1px;
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-add-row .td-add-icon { box-sizing: border-box; width: 18px; height: 18px; padding: 1px;
     border-radius: 50%; }
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-add-row:hover { color: var(--td-side-sel-text); }
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-add-row:hover .td-add-icon { background: var(--td-accent); color: #fff; }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-add-row:hover { color: var(--td-side-sel-text); }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-add-row:hover .td-add-icon { background: var(--td-accent); color: #fff; }
 
   /* no + button: the side bar's Add task does it */
   :root[data-wide-side] .ui-fab.td-fab, :root:has(#side[data-td-side] > .td-side-add:not([hidden])) .ui-fab.td-fab { display: none; }
 
   /* a mouse over a row (wide/hover.js puts its parts in the row a mouse is over: a finger never gets them): the row
      shaded, three buttons at its right, a grip left of the ring */
-  :is(#today, #inbox, #project, #place):not(.td-board) .td-row:has(> .td-hover-actions):not(.is-lifted, .is-swiping, .is-selected):hover { background: var(--td-hover); }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-row:has(> .td-hover-actions):not(.is-lifted, .is-swiping, .is-selected):hover { background: var(--td-hover); }
   .td-hover-actions { position: absolute; top: 4px; right: 0; z-index: 2; display: none; gap: 2px; padding-inline-start: 4px; background: var(--td-hover); }
   .td-hover-actions > button { display: grid; place-items: center; width: 28px; height: 28px; min-width: 0; min-height: 0; padding: 0; border: 0;
     border-radius: 4px; background: none; color: var(--td-text-2); cursor: pointer; }
@@ -282,4 +282,124 @@
   #settings-modal #settings-host .theme-switch > label::after, #settings-modal #settings-host .theme-switch > label::before { display: none; }
   #settings-modal #settings-host .theme-switch select { box-sizing: border-box; width: 400px; max-width: 100%; height: 32px; min-height: 32px; margin: 0; padding: 0 8px;
     border: 1px solid var(--td-hair); border-radius: 6px; background: var(--td-page-bg); color: var(--td-text); font-size: 13px; font-weight: 400; text-align: start; text-align-last: start; }
+
+  /* ---------- boards (board.js) and tables (wide/table.js): the page full width, from 40 px in ---------- */
+  :root[data-wide-side] .ui-shell.td > .ui-screens > .ui-screen:has(.td-list.td-board, .td-table-box) { max-width: none; margin-inline: 0; }
+  :is(#today, #inbox, #project, #place).td-board { gap: 33px; margin-inline: -40px; padding: 0 40px 24px; scroll-snap-type: none; scroll-padding-inline: 40px;
+    scrollbar-width: thin; }
+  .td-board::-webkit-scrollbar { display: block; height: 8px; }
+  :is(#today, #inbox, #project, #place).td-board > .td-col { width: 260px; max-width: none; }
+  :is(#today, #inbox, #project, #place).td-board .td-col-head { height: 36px; min-height: 0; gap: 8px; padding: 0 0 4px; }
+  :is(#today, #inbox, #project, #place).td-board .td-col-title { font-size: 14px; line-height: 21px; font-weight: 700; }
+  :is(#today, #inbox, #project, #place).td-board .td-col-count { font-size: 14px; color: var(--td-text-2); }
+  .td-board .td-col-head .td-resched { height: 28px; min-height: 0; margin: 0; padding: 0 4px; font-size: 14px; font-weight: 700; color: var(--td-accent); }
+  .td-board .td-col-head:has(.td-resched) .td-col-count { flex: 1; }
+  :is(#today, #inbox, #project, #place).td-board .td-row { border: 1px solid var(--td-hair); border-radius: 8px; background: light-dark(#fff, var(--td-side-bg));
+    box-shadow: none; }
+  :is(#today, #inbox, #project, #place).td-board .td-row:not(.is-lifted):hover { box-shadow: 0 1px 4px light-dark(rgb(0 0 0 / .08), rgb(0 0 0 / .4)); }
+  :is(#today, #inbox, #project, #place).td-board .td-row .td-check { width: 18px; height: 18px; margin: 11px 8px 0 10px; border-width: 1px; }
+  :is(#today, #inbox, #project, #place).td-board .td-row-main { gap: 4px; padding: 10px 12px 10px 0; }
+  :is(#today, #inbox, #project, #place).td-board .td-title { font-size: 14px; line-height: 21px; }
+  :is(#today, #inbox, #project, #place).td-board .td-add-row { min-height: 32px; margin-top: 8px; padding: 0 4px; gap: 8px; border: 0; border-radius: 6px;
+    background: none; font-size: 14px; color: var(--td-muted); }
+  :is(#today, #inbox, #project, #place).td-board .td-add-row:hover { background: var(--td-hover); color: var(--td-side-sel-text); }
+  :is(#today, #inbox, #project, #place).td-board .td-add-row .td-add-icon { color: var(--td-accent); }
+  .td-board .td-col-new { padding-top: 0; width: 258px !important; }
+  .td-board .td-col-add-section { justify-content: flex-start; height: 40px; min-height: 40px; padding: 0 8px; border: 0; border-radius: 6px; background: none;
+    font-size: 14px; font-weight: 700; color: var(--td-muted); }
+  .td-board .td-col-add-section::before, .td-board .td-col-add-section::after { display: none; }
+  .td-board .td-col-add-section:hover { background: var(--td-hover); color: var(--td-side-sel-text); }
+  .td-dots { display: none; }
+
+  /* ---------- Upcoming: the phone's strip and days in the page's column; a week back, on and Today at the strip's right ---------- */
+  #upcoming-strip { background: var(--td-page-bg); }
+  #upcoming-strip .td-strip-top { display: flex; align-items: center; gap: 8px; }
+  #upcoming-strip .td-month { margin-inline-start: -4px; padding-inline-start: 4px; }
+  .td-strip-nav { display: flex; align-items: center; gap: 4px; margin-inline-start: auto; }
+  .td-strip-nav[hidden] { display: none; }
+  .td-strip-go { display: grid; place-items: center; min-width: 28px; height: 28px; min-height: 0; padding: 0 8px; border: 1px solid var(--td-hair);
+    border-radius: 6px; background: none; color: var(--td-text); font-size: 13px; cursor: pointer; }
+  .td-strip-go:has(> .ui-icon) { width: 28px; padding: 0; }
+  .td-strip-go .ui-icon { width: 16px; height: 16px; }
+  .td-strip-go:hover:not(:disabled) { background: var(--td-hover); }
+  .td-strip-go:disabled { opacity: .4; cursor: default; }
+  #upcoming-strip .td-strip-handle { display: none; }
+
+  /* ---------- the table (wide/table.js): a head row 40 tall, rows 48 with hairlines, a chip a cell ---------- */
+  .td-table-box { margin-inline: -40px; padding: 0 40px 8px; overflow-x: auto; }
+  .td-table { min-width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 14px; }
+  .td-th { height: 39px; padding: 0 12px; border-bottom: 1px solid var(--td-hair); text-align: start; font-size: 13px; font-weight: 700; color: var(--td-text-2);
+    white-space: nowrap; }
+  .td-th-task { width: 370px; padding-inline-start: 0; }
+  .td-th:not(.td-th-task) { width: 140px; }
+  .td-tgroup-head { padding: 24px 0 4px; border-bottom: 1px solid var(--td-hair); text-align: start; }
+  .td-tgroup-line { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+  .td-tgroup-title { font-size: 14px; font-weight: 700; color: var(--td-text); }
+  .td-tgroup-count { flex: 1; font-size: 14px; font-weight: 400; color: var(--td-text-2); }
+  .td-table .td-resched { height: 28px; padding: 0 4px; border: 0; background: none; font-size: 14px; font-weight: 700; color: var(--td-accent); cursor: pointer; }
+  .td-trow { height: 48px; border-bottom: 1px solid var(--td-hair); cursor: pointer; }
+  .td-trow:hover { background: var(--td-hover); }
+  .td-tcell { padding: 0 12px; vertical-align: middle; font-weight: 400; text-align: start; white-space: nowrap; overflow: hidden; }
+  .td-tcell-task { padding-inline-start: 0; }
+  .td-tcell-in { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .td-tcell-in > .td-check { flex: none; width: 18px; height: 18px; margin: 0 4px 0 0; border-width: 1px; }
+  .td-tcell-in[data-priority="4"] > .td-check:not([aria-checked="true"]) { --ring: light-dark(#999, #aaa); }
+  .td-tname { flex: 0 1 auto; min-width: 0; padding: 0; border: 0; background: none; color: var(--td-text); font: inherit; text-align: start; cursor: pointer; }
+  .td-tname-text { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .td-trow.is-complete .td-tname { color: var(--td-text-3); text-decoration: line-through; }
+  .td-tmore { flex: none; display: grid; place-items: center; width: 28px; height: 28px; min-height: 0; margin-inline-start: auto; padding: 0; border: 0;
+    border-radius: 4px; background: none; color: var(--td-text-2); opacity: 0; cursor: pointer; }
+  .td-trow:is(:hover, :focus-within) .td-tmore { opacity: 1; }
+  .td-tmore:hover { background: light-dark(rgb(0 0 0 / .06), rgb(255 255 255 / .08)); color: var(--td-text); }
+  .td-tmore .ui-icon { width: 18px; height: 18px; }
+  .td-tchip { display: inline-flex; min-width: 0; min-height: 0; align-items: center; gap: 4px; box-sizing: border-box; max-width: 100%; height: 24px; margin: 2px 4px 2px 0; padding: 0 6px;
+    border: 1px solid var(--td-hair); border-radius: 6px; background: none; color: var(--td-text-2); font: inherit; font-size: 12px; white-space: nowrap;
+    vertical-align: middle; overflow: hidden; }
+  .td-tchip .td-tchip-icon { flex: none; width: 12px; height: 12px; }
+  .td-tchip-text { overflow: hidden; text-overflow: ellipsis; }
+  button.td-tchip { cursor: pointer; }
+  button.td-tchip:hover:not(:disabled) { background: var(--td-page-bg); }
+  .td-tchip-pri[data-priority="1"] { color: var(--td-p1); }
+  .td-tchip-pri[data-priority="2"] { color: var(--td-p2); }
+  .td-tchip-pri[data-priority="3"] { color: var(--td-p3); }
+  .td-tchip-place .td-tchip-icon { color: var(--td-place); }
+  .td-tchip-label .td-tchip-icon { color: var(--c); }
+  .td-table-add { margin-top: 4px; }
+  #today:has(> .td-table-box) ~ .td-empty, #today-empty:empty { display: none; }
+
+  /* ---------- Display (wide/display-pop.js): a card under its button, right-aligned ---------- */
+  .td-display-words { margin-inline-start: 6px; font-size: 13px; font-weight: 500; }
+  .ui-shell.td #display-btn:has(> .td-display-words) { display: inline-flex; flex-direction: row; align-items: center; gap: 0; width: auto; height: 32px;
+    min-height: 0; padding: 0 8px; border-radius: 6px; color: var(--td-text-2); }
+  .ui-shell.td #display-btn:has(> .td-display-words) .ui-icon { width: 18px; height: 18px; }
+  #display-btn:has(> .td-display-words)::after { display: none; }
+  #display-btn:has(> .td-display-words):hover { background: var(--td-hover); }
+  #display-pop.td-pop { position: fixed; inset: auto; box-sizing: border-box; width: 300px; min-width: 300px; max-width: calc(100vw - 16px); margin: 0; padding: 12px;
+    border: 1px solid var(--td-hair); border-radius: 12px; background: var(--td-page-bg); color: var(--td-text);
+    box-shadow: 0 8px 24px light-dark(rgb(0 0 0 / .14), rgb(0 0 0 / .5)); overflow-y: auto; }
+  .td-pop::backdrop { background: transparent; }
+  .td-pop-h { margin: 0 0 8px; font-size: 13px; font-weight: 700; }
+  .td-pop-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; padding: 2px; border-radius: 8px; background: var(--td-side-bg); }
+  .td-pop-tile { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 52px; padding: 6px 2px; border: 1px solid transparent;
+    border-radius: 6px; background: none; color: var(--td-text-2); font-size: 12px; cursor: pointer; }
+  .td-pop-tile .td-pop-tile-icon { width: 18px; height: 18px; }
+  .td-pop-tile:hover { color: var(--td-text); }
+  .td-pop-tile[aria-checked="true"] { border-color: var(--td-hair); background: var(--td-page-bg); color: var(--td-text); font-weight: 600;
+    box-shadow: 0 1px 2px light-dark(rgb(0 0 0 / .08), rgb(0 0 0 / .4)); }
+  .td-pop-rows { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
+  .td-pop-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; font-size: 13px; }
+  .td-pop-name { display: inline-flex; align-items: center; gap: 6px; }
+  .td-pop-dot { width: 6px; height: 6px; border-radius: 50%; background: #f38317; }
+  .td-pop-select { box-sizing: border-box; width: 160px; height: 28px; min-height: 0; padding: 0 6px; border: 1px solid var(--td-hair); border-radius: 6px;
+    background: var(--td-page-bg); color: var(--td-text); font-size: 13px; }
+  .td-pop-foot { display: flex; justify-content: flex-end; margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--td-hair); }
+  .td-pop-reset { height: 28px; padding: 0 8px; border: 0; border-radius: 6px; background: none; color: var(--td-side-sel-text); font-size: 13px; font-weight: 700;
+    cursor: pointer; }
+  .td-pop-reset:hover:not(:disabled) { background: var(--td-hover); }
+  .td-pop-reset:disabled { color: var(--td-text-3); cursor: default; }
+
+  /* ---------- polish: a 2 px accent ring on whatever the keyboard is on; hover shades; empty pages in the column's middle ---------- */
+  .ui-shell.td :focus-visible, .td-pop :focus-visible, dialog :focus-visible { outline: 2px solid var(--td-accent); outline-offset: 2px; }
+  .ui-shell.td > .ui-bar :is(button, a):hover:not(:disabled) { background: var(--td-hover); }
+  .td-empty-page, :is(#today-empty, #inbox-empty, #project-empty, #place-empty) > .td-empty { margin-inline: auto; text-align: center; }
 }
