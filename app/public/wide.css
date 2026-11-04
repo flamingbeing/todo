@@ -77,4 +77,80 @@
   /* quick add: a card in the middle, not a side panel */
   #add-sheet.td-sheet { inset: 0 0 auto; width: 550px; max-width: calc(100% - 32px); height: fit-content; min-height: 0; max-height: none; margin: 18vh auto auto;
     border-radius: 10px; box-shadow: 0 12px 40px rgb(0 0 0 / .25); }
+
+  /* ---------- the list pages (wide/list.js): Today, the Inbox, a project, a label or filter ---------- */
+  /* the page: its column (800 at most, the kit's) 40 px in from each side; the title big at its left */
+  :is(#today-page, #inbox-page, #project-page, #place-page) { box-sizing: border-box; padding-inline: 40px; }
+  :is(#today-page, #inbox-page, #project-page, #place-page) > :not(.ui-large-title, .ui-back) { max-width: none; }
+  :root .ui-shell.td :is(#today-page, #inbox-page, #project-page, #place-page) > .ui-large-title { position: static; width: auto; height: auto;
+    margin: 8px 0 24px; padding: 0; overflow: visible; clip-path: none; white-space: normal; font-size: 26px; line-height: 35px; font-weight: 700; }
+  :is(#today-page, #inbox-page, #project-page, #place-page) > .ui-large-title + * { margin-top: 0; }
+  .ui-shell.td #today-page > .ui-large-title:has(+ .td-wide-count:not([hidden])) { margin-bottom: 0; }
+  .td-wide-count { display: flex; align-items: center; gap: 4px; margin: 4px 0 24px; color: var(--td-text-2); font-size: 13px; line-height: 18px; }
+  .td-wide-count[hidden], .td-wide-crumb[hidden] { display: none; }
+  .td-wide-count .td-wide-count-icon { width: 14px; height: 14px; }
+  .td-wide-crumb { margin: 8px 0 0; color: var(--td-text-2); font-size: 13px; line-height: 18px; }
+  .ui-shell.td #project-page > .td-wide-crumb:not([hidden]) + .ui-large-title { margin-top: 4px; }
+  /* the bar keeps only its buttons, at the right of a 56 px strip the page's colour */
+  :root[data-td-list-top] .ui-shell.td > .ui-bar { min-height: 56px; border: 0; box-shadow: none; background: var(--td-page-bg); }
+  :root[data-td-list-top] .ui-shell.td > .ui-bar > .ui-bar-title { visibility: hidden; }
+  /* (no back arrow: the side bar is the way between pages; Escape and the browser's back still go back) */
+  :root[data-td-list-top] .ui-shell.td > .ui-bar > [data-bar-lead] { visibility: hidden; }
+
+  /* flat rows: no card, a ring 18 at the column's left, the words 30 px right of it, a hairline from the ring to the end */
+  :is(#today, #inbox, #project, #place):not(.td-board) { --td-inset: 0px; --td-card-r: 0px; --td-row-bg: transparent; }
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-row { min-height: 0; }
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-row::after { left: calc(var(--depth, 0) * 24px); border-bottom: 1px solid var(--td-hair); }
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-rows > .td-row:last-child::after { border-color: var(--td-hair); }
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-row > .td-check { width: 18px; height: 18px; margin: 9.5px 12px 0 0; border-width: 1px; }
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-row[data-priority="4"] > .td-check:not([aria-checked="true"]) { --ring: light-dark(#999, #aaa); }
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-row-main { gap: 0; padding: 8px 0; }
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-title { font-size: 14px; line-height: 21px; }
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-title + .td-meta,
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-desc + .td-meta { margin-top: 4px; }
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-meta { font-size: 12px; line-height: 18px; }
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-desc { font-size: 13px; line-height: 18px; }
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-fold { right: auto; left: calc(var(--depth, 0) * 24px - 24px); width: 20px; height: 36px; }
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-row:has(> .td-fold) .td-title { padding-inline-end: 0; }
+
+  /* group heads: the chevron hanging 24 px left of the column, the name bold, its count beside it, a hairline under */
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-group-head { position: relative; min-height: 0; margin: 24px 0 0; padding: 0 0 4px;
+    border-bottom: 1px solid var(--td-hair); }
+  :is(#today, #inbox, #project, #place):not(.td-board) :is(.td-group-title, .td-group-h) { font-size: 14px; line-height: 21px; font-weight: 700; }
+  :is(#today, #inbox, #project, #place):not(.td-board) button.td-group-title { padding: 6px 0; gap: 0; }
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-group-head .td-group-chevron { position: absolute; left: -24px; top: 8px;
+    width: 16px !important; height: 16px !important; margin: 0; }
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-group-count { font-size: 14px; color: var(--td-text-2); }
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-group-head.is-plain .td-group-title { font-weight: 700; color: var(--td-text); }
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-resched { height: 28px; padding: 0 4px; font-size: 14px; font-weight: 700; color: var(--td-accent); }
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-group-head :is(.td-group-add, .td-group-more) { width: 28px; height: 28px; min-width: 0; min-height: 0; }
+
+  /* "+ Add task": the plus in the accent, the words muted; on hover the words take the accent and the plus a filled circle */
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-add-row { width: 100%; min-height: 36px; margin: 0; gap: 12px; padding: 0; border-radius: 0; background: none;
+    font-size: 14px; color: var(--td-muted); }
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-add-row .td-add-icon { box-sizing: border-box; width: 18px; height: 18px; padding: 1px;
+    border-radius: 50%; }
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-add-row:hover { color: var(--td-side-sel-text); }
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-add-row:hover .td-add-icon { background: var(--td-accent); color: #fff; }
+
+  /* no + button: the side bar's Add task does it */
+  :root[data-wide-side] .ui-fab.td-fab, :root:has(#side[data-td-side] > .td-side-add:not([hidden])) .ui-fab.td-fab { display: none; }
+
+  /* a mouse over a row (wide/hover.js puts its parts in the row a mouse is over: a finger never gets them): the row
+     shaded, three buttons at its right, a grip left of the ring */
+  :is(#today, #inbox, #project, #place):not(.td-board) .td-row:has(> .td-hover-actions):not(.is-lifted, .is-swiping, .is-selected):hover { background: var(--td-hover); }
+  .td-hover-actions { position: absolute; top: 4px; right: 0; z-index: 2; display: none; gap: 2px; padding-inline-start: 4px; background: var(--td-hover); }
+  .td-hover-actions > button { display: grid; place-items: center; width: 28px; height: 28px; min-width: 0; min-height: 0; padding: 0; border: 0;
+    border-radius: 4px; background: none; color: var(--td-text-2); cursor: pointer; }
+  .td-hover-actions > button:hover { background: light-dark(rgb(0 0 0 / .06), rgb(255 255 255 / .08)); color: var(--td-text); }
+  .td-hover-actions > button[hidden] { display: none; }
+  .td-hover-actions .ui-icon { width: 18px; height: 18px; }
+  .td-grip { position: absolute; top: 10px; left: calc(var(--depth, 0) * 24px - 22px); display: none; width: 16px; height: 16px; color: var(--td-text-3);
+    cursor: grab; }
+  .td-grip .ui-icon { width: 16px; height: 16px; }
+  .td-row:has(> .td-fold) > .td-grip { left: calc(var(--depth, 0) * 24px - 42px); }
+  .td-row:is(:hover, :focus-within):not(.is-lifted, .is-swiping, .is-selected) > :is(.td-hover-actions, .td-grip) { display: flex; }
+  .td-row > .td-grip[hidden] { display: none; }
+  .td-row:has(> .td-hover-actions) .td-row-main { padding-inline-end: 0; }
 }
+

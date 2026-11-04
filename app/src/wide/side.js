@@ -19,6 +19,7 @@ import { screens, tabButton, openSettingsPage } from '../shell.js';
 import { openMenu } from '../ui/menu.js';
 import { el } from '../screens/pick.js';
 import { TABS, sideRows, litRow } from './side-rows.js';
+import { startList } from './list.js';
 
 /** @typedef {import('../screens/views.js').Ctx} Ctx */
 
@@ -93,6 +94,15 @@ export function startSide(ctx) {
   host?.addEventListener('ui-tab', relight);
   host?.addEventListener('ui-screen', relight);
   draw(ctx);
+  // the list pages' wide parts (titles, counts, inline Add task); a mouse's row buttons once a mouse moves (a pointer that
+  // hovers, read from the move itself: a touch screen never sends one, and a hybrid laptop's mouse still gets them)
+  startList(ctx);
+  const mouse = (/** @type {PointerEvent} */ e) => {
+    if (e.pointerType !== 'mouse') return;
+    removeEventListener('pointermove', mouse);
+    void import('./hover.js').then(m => m.startHover(ctx, e));
+  };
+  addEventListener('pointermove', mouse, { passive: true });
 }
 
 /** a place or project row: a link like index.html's side links (a tab's row keeps data-tab-page, so the kit's tabs
