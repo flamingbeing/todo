@@ -381,7 +381,7 @@ span.td-chip { height: 26px; padding: 0 8px; cursor: default; }
    (--qa-* set by ui/quick-add-morph.js; the red fades over the first 60%, the words only show in the last 30%); closes in
    150ms back toward the button after a 60ms hold, scrim in the same time. Transform and opacity only. */
 @media (prefers-reduced-motion: no-preference) {
-  #add-sheet.td-sheet { --qa-dx: 36vw; --qa-dy: 40px; --qa-s: .12; transform-origin: 50% 50%; position: relative;
+  #add-sheet.td-sheet { --qa-dx: 36vw; --qa-dy: 40px; --qa-s: .12; transform-origin: 50% 50%;
     transition: opacity 150ms cubic-bezier(.2, 0, .2, 1) 60ms, transform 150ms cubic-bezier(.2, 0, .2, 1) 60ms, display 210ms allow-discrete, overlay 210ms allow-discrete; }
   #add-sheet.td-sheet:not([open]) { opacity: 0; transform: translate(var(--qa-dx), var(--qa-dy)) scale(var(--qa-s)); }
   #add-sheet.td-sheet[open] { animation: td-qa-open 300ms cubic-bezier(0, 0, .2, 1); }
