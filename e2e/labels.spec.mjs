@@ -2,11 +2,11 @@
 // "…" pick them (or make one there); a label's page lists its tasks; select mode adds or takes one off several tasks
 // at once; a favourite shows in Browse. The screen, the sheet and the picker pass axe.
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, db, openTab, gesturesReady } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, db, openTab, gesturesReady, space } from './fixtures.mjs';
 
-const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
-const get = id => db.get(`spaces/_/tasks/${id}`);
-const labelsNamed = async name => (await db.list('spaces/_/labels')).filter(d => d.name === name);
+const put = (id, fields) => db.put(`${space()}/tasks/${id}`, { projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
+const get = id => db.get(`${space()}/tasks/${id}`);
+const labelsNamed = async name => (await db.list(`${space()}/labels`)).filter(d => d.name === name);
 const openFL = async page => {
   await openTab(page, 'browse');
   await page.locator('#browse').getByRole('button', { name: 'Filters & Labels' }).click();
@@ -51,7 +51,7 @@ test('a label made in Filters & Labels, picked in the task sheet, its page, a fa
   await expect.poll(async () => (await get(t))?.labels?.length).toBe(1);
   const id = (await get(t)).labels[0];
   // (the new label and the task are separate saves: either can reach the server first)
-  await expect.poll(async () => (await db.get(`spaces/_/labels/${id}`))?.name, { timeout: 15_000 }).toBe(name);
+  await expect.poll(async () => (await db.get(`${space()}/labels/${id}`))?.name, { timeout: 15_000 }).toBe(name);
   await page.keyboard.press('Escape');
   await expect(ts).toBeHidden();
 
@@ -86,7 +86,7 @@ test('quick add\'s "…" > Labels makes one, and select mode puts a label on sev
   await expect(pick).toBeHidden();
   await add.locator('.td-add-title').press('Enter');
   await page.keyboard.press('Escape');
-  await expect.poll(async () => (await db.list('spaces/_/tasks')).find(d => d.title === title)?.labels?.length, { timeout: 15_000 }).toBe(1);
+  await expect.poll(async () => (await db.list(`${space()}/tasks`)).find(d => d.title === title)?.labels?.length, { timeout: 15_000 }).toBe(1);
   const [made] = await labelsNamed(name);
   expect(made).toBeTruthy();
 

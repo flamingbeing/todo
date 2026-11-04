@@ -4,10 +4,10 @@
 // in the Date sheet is written into the name as words, # opens the My Projects card above the sheet, the + menu stacks
 // upward with Reminders, and the send button is grey until the name has text.
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, today, db } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, today, db, space } from './fixtures.mjs';
 
 const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return today(d); };
-const task = async title => (await db.list('spaces/_/tasks')).find(d => d.title === title);
+const task = async title => (await db.list(`${space()}/tasks`)).find(d => d.title === title);
 const name = '#add-sheet .td-add-title';
 /** @param {import('@playwright/test').Page} page */
 const openAdd = async page => {
@@ -42,8 +42,8 @@ test('typed words mark a date, a time and a priority, fill the chips, and the ta
 test('a repeat, a label and a project by name; # suggests the projects', async ({ phone }) => {
   const page = await phone();
   const pname = uniq('Errands Home').replace(/-/g, ' ');
-  await db.put(`spaces/_/projects/${uniq('p')}`, { name: pname, color: 'blue', parentId: null, order: 50, view: 'list', createdAt: Date.now(), updatedAt: Date.now() });
   await signIn(page, 'member');
+  await db.put(`${space()}/projects/${uniq('p')}`, { name: pname, color: 'blue', parentId: null, order: 50, view: 'list', createdAt: Date.now(), updatedAt: Date.now() });
   await synced(page);
   await openAdd(page);
   const t = uniq('standup');
@@ -61,7 +61,7 @@ test('a repeat, a label and a project by name; # suggests the projects', async (
   // (a task keeps its label's id; the label "meet" is made if it isn't there yet)
   await expect.poll(async () => {
     const d = await task(t);
-    const names = d ? await Promise.all((d.labels ?? []).map(async id => (await db.get(`spaces/_/labels/${id}`))?.name)) : [];
+    const names = d ? await Promise.all((d.labels ?? []).map(async id => (await db.get(`${space()}/labels/${id}`))?.name)) : [];
     return d && [d.due?.rrule, names, typeof d.projectId === 'string' && d.projectId !== 'inbox'];
   }, { timeout: 15_000 }).toEqual(['FREQ=WEEKLY;BYDAY=MO', ['meet'], true]);
 });

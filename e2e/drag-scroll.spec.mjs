@@ -1,25 +1,25 @@
 // A row held and dragged near the foot of a long list scrolls the list by itself (faster the deeper the finger goes),
 // and lands where it is let go once the finger leaves the edge: here between tasks 34 and 35 of 40. The same in a
 // board's column, and a card held at the board's side scrolls the board sideways to the next columns.
-import { test, expect, signIn, synced, uniq, db, openTab, gesturesReady, still, press, slide, letGo, listFoot } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, db, openTab, gesturesReady, still, press, slide, letGo, listFoot, space } from './fixtures.mjs';
 
 const now = () => ({ createdAt: Date.now(), updatedAt: Date.now() });
-const get = id => db.get(`spaces/_/tasks/${id}`);
+const get = id => db.get(`${space()}/tasks/${id}`);
 const n2 = i => String(i).padStart(2, '0');
 
 /** a project of its own with 40 tasks (or the sections given, two tasks each), its page open */
 async function project(page, p, { view = 'list', sections = [] } = {}) {
   const pid = uniq(`${p}-p`), u = uniq(p);
-  await db.put(`spaces/_/projects/${pid}`, { name: pid, color: 'blue', parentId: null, order: -1e12 - Date.now(), view, ...now() });
+  await db.put(`${space()}/projects/${pid}`, { name: pid, color: 'blue', parentId: null, order: -1e12 - Date.now(), view, ...now() });
   /** @type {string[]} */
   const ids = [];
   if (sections.length) {
     for (const [k, s] of sections.entries()) {
-      await db.put(`spaces/_/sections/${s}`, { name: `Column ${k + 1}`, projectId: pid, order: k + 1, collapsed: false, ...now() });
-      for (const j of [1, 2]) { const id = `${u}-${k + 1}${j}`; ids.push(id); await db.put(`spaces/_/tasks/${id}`, { title: id, projectId: pid, sectionId: s, order: j * 1000, priority: 4, done: false, ...now() }); }
+      await db.put(`${space()}/sections/${s}`, { name: `Column ${k + 1}`, projectId: pid, order: k + 1, collapsed: false, ...now() });
+      for (const j of [1, 2]) { const id = `${u}-${k + 1}${j}`; ids.push(id); await db.put(`${space()}/tasks/${id}`, { title: id, projectId: pid, sectionId: s, order: j * 1000, priority: 4, done: false, ...now() }); }
     }
   } else {
-    for (let i = 1; i <= 40; i++) { const id = `${u}-${n2(i)}`; ids.push(id); await db.put(`spaces/_/tasks/${id}`, { title: id, projectId: pid, order: i * 1000, priority: 4, done: false, ...now() }); }
+    for (let i = 1; i <= 40; i++) { const id = `${u}-${n2(i)}`; ids.push(id); await db.put(`${space()}/tasks/${id}`, { title: id, projectId: pid, order: i * 1000, priority: 4, done: false, ...now() }); }
   }
   await synced(page);
   await gesturesReady(page);

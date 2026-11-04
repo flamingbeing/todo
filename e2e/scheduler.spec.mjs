@@ -2,11 +2,11 @@
 // wait for Save; the custom repeat builds its rule; typed words set the date. A repeating task, ticked, stays open on
 // its next date, and Undo puts the old one back. The sheet and the custom screen pass axe. Duration (a menu or typed minutes).
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, today, db, clickOpens } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, today, db, clickOpens, space } from './fixtures.mjs';
 
 const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return today(d); };
-const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
-const dueOf = async id => (await db.get(`spaces/_/tasks/${id}`))?.due ?? null;
+const put = (id, fields) => db.put(`${space()}/tasks/${id}`, { projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
+const dueOf = async id => (await db.get(`${space()}/tasks/${id}`))?.due ?? null;
 const sheet = '#schedule-sheet';
 /** @param {import('@playwright/test').Page} page @param {string} t */
 const openScheduler = async (page, t) => {
@@ -104,7 +104,7 @@ test('a repeating task, ticked, moves to its next date; Undo puts it back', asyn
   await expect(page.locator('#today')).toContainText(t);
   await page.getByRole('checkbox', { name: `Complete: ${t}` }).click();
   await expect.poll(async () => (await dueOf(t))?.date, { timeout: 15_000 }).toBe(day(1));
-  expect((await db.get(`spaces/_/tasks/${t}`))?.done).toBe(false);
+  expect((await db.get(`${space()}/tasks/${t}`))?.done).toBe(false);
   await expect(page.locator('#today')).not.toContainText(t);
   await page.locator('.toast').last().getByRole('button', { name: 'Undo' }).click();
   await expect(page.locator('#today')).toContainText(t);
@@ -126,7 +126,7 @@ test('Duration: a length from the menu or typed minutes waits for Save; the row 
   expect(await AxeBuilder(page)).toEqual([]);
   await page.locator(`${sheet} .td-sched-save`).click();
   await expect(page.locator(sheet)).toBeHidden();
-  await expect.poll(async () => (await db.get(`spaces/_/tasks/${t}`))?.duration, { timeout: 15_000 }).toBe(45);
+  await expect.poll(async () => (await db.get(`${space()}/tasks/${t}`))?.duration, { timeout: 15_000 }).toBe(45);
   await expect(page.locator('#task-sheet .td-attr[aria-label^="Date"]')).toContainText(/10:00\s?AM–10:45\s?AM/);
 
   // Custom: minutes typed
@@ -136,12 +136,12 @@ test('Duration: a length from the menu or typed minutes waits for Save; the row 
   await page.locator('#td-sched-min').fill('50');
   await expect(row).toContainText('50 min');
   await page.locator(`${sheet} .td-sched-save`).click();
-  await expect.poll(async () => (await db.get(`spaces/_/tasks/${t}`))?.duration, { timeout: 15_000 }).toBe(50);
+  await expect.poll(async () => (await db.get(`${space()}/tasks/${t}`))?.duration, { timeout: 15_000 }).toBe(50);
   await page.keyboard.press('Escape');
   await expect(page.locator('#today .td-row').filter({ hasText: t })).toContainText(/10:00\s?AM–10:50\s?AM/);
   // Today's count (the bar's subtitle, shown once) counts every open task due by today ("17 tasks"), other tests' tasks
   // too (the data is shared): it matches the data
-  const sum = async () => (await db.list('spaces/_/tasks')).filter(x => x.title && !x.done && x.due?.date && x.due.date <= day(0)).length;
+  const sum = async () => (await db.list(`${space()}/tasks`)).filter(x => x.title && !x.done && x.due?.date && x.due.date <= day(0)).length;
   const shown = async () => {
     const m = (await page.locator('.ui-bar-title').getAttribute('data-sub') ?? '').match(/^\s*(\d+) tasks?\s*$/);
     return m ? Number(m[1]) : null;

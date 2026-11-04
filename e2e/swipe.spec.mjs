@@ -1,9 +1,9 @@
 // Swiping a row: right past the line completes it (Undo puts it back), left opens the scheduler for it, a short swipe
 // springs back and changes nothing. The band shows the action's colour while the row moves.
-import { test, expect, signIn, synced, uniq, today, db, finger, gesturesReady, steps, openSettings, openToday } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, today, db, finger, gesturesReady, steps, openSettings, openToday, space } from './fixtures.mjs';
 
 const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return today(d); };
-const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
+const put = (id, fields) => db.put(`${space()}/tasks/${id}`, { projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
 const rowOf = id => `#today .td-row[data-id="${id}"]`;
 
 test('right completes, with Undo; a short swipe springs back', async ({ phone }) => {
@@ -19,7 +19,7 @@ test('right completes, with Undo; a short swipe springs back', async ({ phone })
   await finger(page, rowOf(t), steps(40, 2, 4), { wait: 120 });
   await expect(page.locator(`${rowOf(t)} .td-row-main`)).toHaveCSS('transform', 'none');
   await expect(page.locator(`${rowOf(t)} .td-swipe-band`)).toHaveCount(0);
-  expect((await db.get(`spaces/_/tasks/${t}`))?.done).toBe(false);
+  expect((await db.get(`${space()}/tasks/${t}`))?.done).toBe(false);
 
   // mid-swipe: Complete's green band with its white check
   await page.evaluate(sel => {
@@ -40,7 +40,7 @@ test('right completes, with Undo; a short swipe springs back', async ({ phone })
 
   // long: done
   await finger(page, rowOf(t), steps(260, 4, 8));
-  await expect.poll(async () => (await db.get(`spaces/_/tasks/${t}`))?.done, { timeout: 15_000 }).toBe(true);
+  await expect.poll(async () => (await db.get(`${space()}/tasks/${t}`))?.done, { timeout: 15_000 }).toBe(true);
   await expect(page.locator('#today')).not.toContainText(t);
   await page.locator('.toast').last().getByRole('button', { name: 'Undo' }).click();
   await expect(page.locator('#today')).toContainText(t);
@@ -56,7 +56,7 @@ test('left opens the scheduler for the row; its choice is saved', async ({ phone
   await finger(page, rowOf(t), steps(-260, 3, 8));
   await expect(page.locator('#schedule-sheet')).toBeVisible();
   await page.locator('#schedule-sheet .td-sched-row').filter({ hasText: 'Tomorrow' }).click();
-  await expect.poll(async () => (await db.get(`spaces/_/tasks/${t}`))?.due?.date, { timeout: 15_000 }).toBe(day(1));
+  await expect.poll(async () => (await db.get(`${space()}/tasks/${t}`))?.due?.date, { timeout: 15_000 }).toBe(day(1));
   await expect(page.locator('#today')).not.toContainText(t);
 });
 
@@ -74,5 +74,5 @@ test('Select as a swipe (Settings > General): the row springs back and select mo
   await expect(page.locator('html')).toHaveClass(/td-selecting/);
   await expect(page.locator(rowOf(t))).toHaveClass(/is-selected/);
   await expect(page.locator(`${rowOf(t)} .td-row-main`)).toHaveCSS('transform', 'none');
-  expect((await db.get(`spaces/_/tasks/${t}`))?.done).toBe(false);
+  expect((await db.get(`${space()}/tasks/${t}`))?.done).toBe(false);
 });

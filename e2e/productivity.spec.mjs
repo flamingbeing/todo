@@ -2,10 +2,10 @@
 // tasks against the goal set in Settings > Productivity (this device, off by default); the streak; the last 7 days (or
 // 4 weeks) as vertical bars, oldest to newest, split by project colour. Counts only. The page passes axe, light and dark.
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, db, openTab, openSettings, settingsBack } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, db, openTab, openSettings, settingsBack, space } from './fixtures.mjs';
 
 const now = () => ({ createdAt: Date.now(), updatedAt: Date.now() });
-const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { projectId: 'inbox', order: Date.now(), priority: 4, done: false, ...now(), ...fields });
+const put = (id, fields) => db.put(`${space()}/tasks/${id}`, { projectId: 'inbox', order: Date.now(), priority: 4, done: false, ...now(), ...fields });
 const openProductivity = async page => {
   await openTab(page, 'browse');
   await page.locator('#browse').getByRole('button', { name: 'Reporting' }).click();
@@ -17,7 +17,7 @@ test('the tabs, the ring, the streak and stacked bars per project; a goal shows 
   const page = await phone();
   await signIn(page, 'member');
   const pid = uniq('p'), a = uniq('done'), b = uniq('done');
-  await db.put(`spaces/_/projects/${pid}`, { name: uniq('Proj'), color: 'blue', parentId: null, view: 'list', order: Date.now(), ...now() });
+  await db.put(`${space()}/projects/${pid}`, { name: uniq('Proj'), color: 'blue', parentId: null, view: 'list', order: Date.now(), ...now() });
   await put(a, { title: a, done: true, doneAt: Date.now() });
   await put(b, { title: b, projectId: pid, done: true, doneAt: Date.now() });
   await synced(page);

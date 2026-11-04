@@ -27,7 +27,7 @@ const call = (store, route, body, { token = 'u1', method = 'POST', extra = {}, r
 const item = (n, over = {}) => ({ key: `t${n}|0|${n}`, at: NOW + (n + 1) * 60000, title: `Task ${n}`, body: 'Due now', taskId: `t${n}`, date: '2026-11-05', time: '14:00', lead: 0, ...over });
 /** the task doc an item was made from (what the job reads) */
 const taskOf = (it, over = {}) => ({ id: it.taskId, title: it.title, done: false, due: { date: it.date, time: it.time }, reminders: [it.lead], ...over });
-const seedTask = (s, it, over) => s.docs.set(`spaces/_/tasks/${it.taskId}`, taskOf(it, over));
+const seedTask = (s, it, over, uid = 'u1') => s.docs.set(`spaces/${uid}/tasks/${it.taskId}`, taskOf(it, over));
 
 test('only a signed-in person with a role, from the app’s own origin, by POST', async () => {
   const s = memory();
@@ -218,7 +218,7 @@ test('a run in progress holds its items: a second run does not send them too', a
   assert.equal(second.sent, 0);
 });
 
-test('the job drops the reminders of a removed person, and of a task that is done, deleted, moved or without that reminder', async () => {
+test('the job drops the reminders of a removed person, and of a task that is done, deleted, moved, without that reminder or not in their own space', async () => {
   const s = await setup();
   queue(s, 1, {}, { done: true });
   queue(s, 2, {}, null);                                  // the task is gone
@@ -228,8 +228,10 @@ test('the job drops the reminders of a removed person, and of a task that is don
   queue(s, 6, {}, { reminders: [30] });                    // this lead was taken off
   queue(s, 7);                                             // still right
   queue(s, 8, { time: '' }, { due: { date: '2026-11-05' } });   // a day with no time stays right
+  seedTask(s, queue(s, 9, {}, null), {}, '_');               // only in the old shared space: not this person's task
+  seedTask(s, queue(s, 10, {}, null), {}, 'u2');             // in someone else's space
   const log = [];
-  assert.deepEqual(await run(s, { send: sender(201, log) }), { sent: 2, dropped: 6, gone: 0, retry: 0, deferred: 0 });
+  assert.deepEqual(await run(s, { send: sender(201, log) }), { sent: 2, dropped: 8, gone: 0, retry: 0, deferred: 0 });
   assert.deepEqual(log.map(l => l.payload.taskId).sort(), ['t7', 't8']);
   assert.deepEqual(await ids(s), ['u1_7', 'u1_8']);
   // a removed person

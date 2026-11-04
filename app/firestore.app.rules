@@ -13,6 +13,16 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // A space is one person's own (spaces/{uid}/..., 4 Nov 2026): only they read or change it, with their role in the app's
+    // single group '_'. The old shared space '_' matches no one's uid, so nobody reads or writes it any more.
+    function mine(g, roles) { return isSignedIn() && request.auth.uid == g && can('_', roles); }
+
+    // The old shared space (before 4 Nov 2026): admins read it, so their first sign-in copies it into their own space
+    // (app/src/move-shared.js); nobody writes it.
+    match /spaces/_/{coll}/{id} {
+      allow read: if can('_', ['admin']);
+    }
+
     // Shared checks for the app's records: d is the record as it would be saved.
     function gone(d, k) { return !(k in d) || d[k] == null; }
     function optText(d, k, max) { return gone(d, k) || (d[k] is string && d[k].size() <= max); }
@@ -44,7 +54,7 @@ service cloud.firestore {
       return d.updatedAt is number && (!('_edits' in d) || d._edits is map) && optNum(d, 'createdAt')
         && (resource == null || !('createdAt' in resource.data) || !('createdAt' in d) || d.createdAt == resource.data.createdAt);
     }
-    function writer(g) { return can(g, ['admin', 'member']) && stamped(); }
+    function writer(g) { return mine(g, ['admin', 'member']) && stamped(); }
     // a due date: { date, time?, rrule?, string?, fromDone? }, local (floating) day and time
     function dueOk(d) {
       return gone(d, 'due') || (d.due is map
@@ -57,7 +67,7 @@ service cloud.firestore {
     // A task: in a project (the Inbox is the project 'inbox'), optionally in one of its sections and under a parent task.
     // priority 1 is the most urgent, 4 the default. Optional fields are absent or null (null clears one).
     match /spaces/{g}/tasks/{id} {
-      allow read: if can(g, ['admin', 'member', 'viewer']);
+      allow read: if mine(g, ['admin', 'member', 'viewer']);
       allow create, update: if writer(g)
         && request.resource.data.keys().hasOnly(['title', 'description', 'projectId', 'sectionId', 'parentId', 'order', 'dayOrder',
           'priority', 'labels', 'due', 'deadline', 'duration', 'reminders', 'collapsed', 'done', 'doneAt', 'extId', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
@@ -79,12 +89,12 @@ service cloud.firestore {
         && request.resource.data.done is bool && optNum(request.resource.data, 'doneAt')
         && optId(request.resource.data, 'extId')
         && synced(request.resource.data);
-      allow delete: if can(g, ['admin', 'member']);
+      allow delete: if mine(g, ['admin', 'member']);
     }
 
     // A project. The Inbox is the project with the id 'inbox' (inbox: true), made once by the app and never deleted.
     match /spaces/{g}/projects/{id} {
-      allow read: if can(g, ['admin', 'member', 'viewer']);
+      allow read: if mine(g, ['admin', 'member', 'viewer']);
       allow create, update: if writer(g)
         && request.resource.data.keys().hasOnly(['name', 'color', 'parentId', 'order', 'favorite', 'view', 'inbox', 'collapsed', 'extId',
           'createdAt', 'updatedAt', 'serverAt', '_edits'])
@@ -94,70 +104,70 @@ service cloud.firestore {
         && (gone(request.resource.data, 'inbox') || (request.resource.data.inbox is bool && (request.resource.data.inbox == false || id == 'inbox')))
         && optBool(request.resource.data, 'collapsed') && optId(request.resource.data, 'extId')
         && synced(request.resource.data);
-      allow delete: if can(g, ['admin', 'member']) && id != 'inbox';
+      allow delete: if mine(g, ['admin', 'member']) && id != 'inbox';
     }
 
     // A section of a project.
     match /spaces/{g}/sections/{id} {
-      allow read: if can(g, ['admin', 'member', 'viewer']);
+      allow read: if mine(g, ['admin', 'member', 'viewer']);
       allow create, update: if writer(g)
         && request.resource.data.keys().hasOnly(['name', 'projectId', 'order', 'collapsed', 'description', 'extId', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
         && text(request.resource.data, 'name', 120) && text(request.resource.data, 'projectId', 64)
         && request.resource.data.order is number && optBool(request.resource.data, 'collapsed') && optId(request.resource.data, 'extId')
         && optText(request.resource.data, 'description', 2000)
         && synced(request.resource.data);
-      allow delete: if can(g, ['admin', 'member']);
+      allow delete: if mine(g, ['admin', 'member']);
     }
 
     // A label (a task names it in labels). No #, @, % or / in a name: quick add reads those as other things.
     match /spaces/{g}/labels/{id} {
-      allow read: if can(g, ['admin', 'member', 'viewer']);
+      allow read: if mine(g, ['admin', 'member', 'viewer']);
       allow create, update: if writer(g)
         && request.resource.data.keys().hasOnly(['name', 'color', 'order', 'favorite', 'extId', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
         && text(request.resource.data, 'name', 60) && request.resource.data.name.matches('^[^#@%/]+$')
         && colorOk(request.resource.data) && request.resource.data.order is number
         && optBool(request.resource.data, 'favorite') && optId(request.resource.data, 'extId')
         && synced(request.resource.data);
-      allow delete: if can(g, ['admin', 'member']);
+      allow delete: if mine(g, ['admin', 'member']);
     }
 
     // A saved filter: a name and a query in the filter language.
     match /spaces/{g}/filters/{id} {
-      allow read: if can(g, ['admin', 'member', 'viewer']);
+      allow read: if mine(g, ['admin', 'member', 'viewer']);
       allow create, update: if writer(g)
         && request.resource.data.keys().hasOnly(['name', 'query', 'color', 'order', 'favorite', 'extId', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
         && text(request.resource.data, 'name', 120) && text(request.resource.data, 'query', 1000)
         && colorOk(request.resource.data) && request.resource.data.order is number
         && optBool(request.resource.data, 'favorite') && optId(request.resource.data, 'extId')
         && synced(request.resource.data);
-      allow delete: if can(g, ['admin', 'member']);
+      allow delete: if mine(g, ['admin', 'member']);
     }
 
-    // A comment on a task: plain text (up to 2000), by the person who wrote it (uid; name is for show). Members and admins
-    // add; only its author (or an admin) edits or deletes it, and a comment never moves to another task or author.
-    // Anyone with a role reads. Comments are not in the bin: a delete is final.
+    // A comment on a task: plain text (up to 2000), by the person who wrote it (uid; name is for show), in the space's
+    // owner's own space. Its author edits or deletes it; an owner who is an admin may also keep a comment by someone else
+    // (the copy of the old shared space keeps each comment's author), and a comment never moves to another task or author. Comments are not in the bin: a delete is final.
     match /spaces/{g}/comments/{id} {
-      allow read: if can(g, ['admin', 'member', 'viewer']);
+      allow read: if mine(g, ['admin', 'member', 'viewer']);
       allow create: if writer(g)
         && request.resource.data.keys().hasOnly(['taskId', 'text', 'uid', 'name', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
         && text(request.resource.data, 'taskId', 64) && text(request.resource.data, 'text', 2000)
         && text(request.resource.data, 'uid', 64) && optText(request.resource.data, 'name', 120)
-        && (request.resource.data.uid == request.auth.uid || can(g, ['admin']))
+        && (request.resource.data.uid == request.auth.uid || mine(g, ['admin']))
         && synced(request.resource.data);
       allow update: if writer(g)
         && request.resource.data.keys().hasOnly(['taskId', 'text', 'uid', 'name', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
         && text(request.resource.data, 'text', 2000) && optText(request.resource.data, 'name', 120)
         && request.resource.data.taskId == resource.data.taskId && request.resource.data.uid == resource.data.uid
-        && (resource.data.uid == request.auth.uid || can(g, ['admin']))
+        && (resource.data.uid == request.auth.uid || mine(g, ['admin']))
         && synced(request.resource.data);
-      allow delete: if can(g, ['admin', 'member']) && (resource.data.uid == request.auth.uid || can(g, ['admin']));
+      allow delete: if mine(g, ['admin', 'member']) && (resource.data.uid == request.auth.uid || mine(g, ['admin']));
     }
 
     // A project template, the person's own: a name, colour and view, section names (up to 50) and task entries (up to 300:
     // title, priority, label names, section and parent positions; no dates). Members and admins write; anyone with a role reads.
     // Templates are not in the bin: a delete is final.
     match /spaces/{g}/templates/{id} {
-      allow read: if can(g, ['admin', 'member', 'viewer']);
+      allow read: if mine(g, ['admin', 'member', 'viewer']);
       allow create, update: if writer(g)
         && request.resource.data.keys().hasOnly(['name', 'color', 'view', 'sections', 'tasks', 'createdAt', 'updatedAt', 'serverAt', '_edits'])
         && text(request.resource.data, 'name', 120) && colorOk(request.resource.data)
@@ -165,7 +175,7 @@ service cloud.firestore {
         && request.resource.data.sections is list && request.resource.data.sections.size() <= 50
         && request.resource.data.tasks is list && request.resource.data.tasks.size() <= 300
         && synced(request.resource.data);
-      allow delete: if can(g, ['admin', 'member']);
+      allow delete: if mine(g, ['admin', 'member']);
     }
 
     // modules: rules{ written from app/rules/*.rules by node tools/modules.mjs; edit those, not this block
@@ -175,8 +185,8 @@ service cloud.firestore {
     // docs because a list listen cannot be proven to ask for only one (rules are not filters); keep secrets out of options.
     // One field per option (src/options.js); null forgets a saved value.
     match /spaces/{g}/settings/{id} {
-      allow read: if can(g, ['admin', 'member', 'viewer']);
-      allow create, update: if can(g, ['admin', 'member', 'viewer']) && request.auth.uid == id && stamped()
+      allow read: if mine(g, ['admin', 'member', 'viewer']);
+      allow create, update: if mine(g, ['admin', 'member', 'viewer']) && request.auth.uid == id && stamped()
         // (defaultList and showCounts: an older version's options, no longer written here (showCounts is per device now);
         // allowed so a doc that still has them can be saved)
         && request.resource.data.keys().hasOnly(['profile', 'showCounts', 'defaultList', 'updatedAt', 'serverAt', '_edits'])
@@ -196,8 +206,8 @@ service cloud.firestore {
 
     // A deleted item's last version, written in the delete's own transaction (cloud.js onCommit).
     match /spaces/{g}/bin/{id} {
-      allow read: if can(g, ['admin', 'member', 'viewer']);
-      allow create, update: if can(g, ['admin', 'member']) && stamped()
+      allow read: if mine(g, ['admin', 'member', 'viewer']);
+      allow create, update: if mine(g, ['admin', 'member']) && stamped()
         && request.resource.data.keys().hasOnly(['id', 'kind', 'data', 'deletedAt', 'updatedAt', 'serverAt']);
     }
   }

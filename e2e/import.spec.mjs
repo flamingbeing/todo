@@ -3,7 +3,7 @@
 // nothing, and the token never lands in storage and leaves the field. The page passes axe.
 import fs from 'node:fs';
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, db, openSettings, settingsBack, openTab } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, db, openSettings, settingsBack, openTab, space } from './fixtures.mjs';
 
 // every import writes the one shared Inbox (it learns the source's id), so two imports at once make each other's
 // second preview see a change: run this file's tests one after another
@@ -57,7 +57,7 @@ const stored = page => page.evaluate(async () => {
 
 const field = page => page.locator('#settings-host #import-token');
 const countOf = (page, name) => page.locator('#settings-host .td-import-count').filter({ has: page.locator('dt', { hasText: new RegExp(`^${name}$`) }) }).locator('dd');
-const byExt = async (coll, prefix) => (await db.list(`spaces/_/${coll}`)).filter(d => String(d.extId ?? '').startsWith(prefix));
+const byExt = async (coll, prefix) => (await db.list(`${space()}/${coll}`)).filter(d => String(d.extId ?? '').startsWith(prefix));
 
 test('preview, import, no token left behind, a second import adds nothing', async ({ phone }) => {
   const page = await phone();
@@ -111,7 +111,7 @@ test('preview, import, no token left behind, a second import adds nothing', asyn
   expect(task('Water the ferns').deadline).toBe('2099-12-01');
   expect(task('Sort the drawers').due).toEqual({ date: '2099-11-09' });
   expect(task('Buy stamps').projectId).toBe('inbox');
-  expect((await db.list('spaces/_/projects')).filter(p => p.inbox)).toHaveLength(1);
+  expect((await db.list(`${space()}/projects`)).filter(p => p.inbox)).toHaveLength(1);
   expect(await byExt('filters', `${u}-`)).toHaveLength(2);
 
   // on screen: the projects in Browse, a project with its sections and the rings' priorities

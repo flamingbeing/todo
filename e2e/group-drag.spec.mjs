@@ -2,11 +2,11 @@
 // of the one it had, a project with its subtasks), with Undo naming the group. A sorted list has no drag: moved after
 // the hold, a toast says why and offers manual order, which brings the drag back. The "+" by a group's name opens
 // quick add with that group's value.
-import { test, expect, signIn, synced, uniq, db, openTab, gesturesReady, still, press, slide, letGo } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, db, openTab, gesturesReady, still, press, slide, letGo, space } from './fixtures.mjs';
 
 const now = () => ({ createdAt: Date.now(), updatedAt: Date.now() });
-const get = id => db.get(`spaces/_/tasks/${id}`);
-const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { title: id, projectId: 'inbox', priority: 4, done: false, ...now(), ...fields });
+const get = id => db.get(`${space()}/tasks/${id}`);
+const put = (id, fields) => db.put(`${space()}/tasks/${id}`, { title: id, projectId: 'inbox', priority: 4, done: false, ...now(), ...fields });
 
 async function display(page) {
   await page.locator('#display-btn').click();
@@ -25,7 +25,7 @@ const choose = async (page, row, value) => {
 /** a project of its own, its page open */
 async function project(page, p, tasks) {
   const pid = uniq(`${p}-p`);
-  await db.put(`spaces/_/projects/${pid}`, { name: pid, color: 'blue', parentId: null, order: -1e12 - Date.now(), view: 'list', ...now() });
+  await db.put(`${space()}/projects/${pid}`, { name: pid, color: 'blue', parentId: null, order: -1e12 - Date.now(), view: 'list', ...now() });
   for (const [id, f] of Object.entries(tasks)) await put(id, { projectId: pid, ...f });
   await synced(page);
   await gesturesReady(page);
@@ -62,8 +62,8 @@ test('grouped by label: dragged to another label\'s group, the label is swapped'
   const page = await phone();
   await signIn(page, 'member');
   const l1 = uniq('l1'), l2 = uniq('l2'), n1 = uniq('errand'), n2 = uniq('garden'), a = uniq('gl-a'), b = uniq('gl-b');
-  await db.put(`spaces/_/labels/${l1}`, { name: n1, color: 'blue', order: -2e12, favorite: false, ...now() });
-  await db.put(`spaces/_/labels/${l2}`, { name: n2, color: 'green', order: -2e12 + 1, favorite: false, ...now() });
+  await db.put(`${space()}/labels/${l1}`, { name: n1, color: 'blue', order: -2e12, favorite: false, ...now() });
+  await db.put(`${space()}/labels/${l2}`, { name: n2, color: 'green', order: -2e12 + 1, favorite: false, ...now() });
   await project(page, 'gl', { [a]: { labels: [l1], order: 1 }, [b]: { labels: [l2], order: 2 } });
   await choose(page, 'Grouping', 'Label');
   await expect(page.locator('#project .td-group-title')).toHaveText([n1, n2]);
@@ -77,9 +77,9 @@ test('grouped by project on a label\'s page: dragged to another project, it move
   const page = await phone();
   await signIn(page, 'member');
   const l = uniq('lp'), name = uniq('trip'), p1 = uniq('gpa'), p2 = uniq('gpb'), a = uniq('pj-a'), kid = uniq('pj-kid'), b = uniq('pj-b');
-  await db.put(`spaces/_/labels/${l}`, { name, color: 'blue', order: -3e12, favorite: true, ...now() });
+  await db.put(`${space()}/labels/${l}`, { name, color: 'blue', order: -3e12, favorite: true, ...now() });
   const first = -1e12 - Date.now();
-  for (const [k, p] of [p1, p2].entries()) await db.put(`spaces/_/projects/${p}`, { name: p, color: 'blue', parentId: null, order: first + k, view: 'list', ...now() });
+  for (const [k, p] of [p1, p2].entries()) await db.put(`${space()}/projects/${p}`, { name: p, color: 'blue', parentId: null, order: first + k, view: 'list', ...now() });
   await put(a, { projectId: p1, labels: [l], order: 1 });
   await put(kid, { projectId: p1, parentId: a, order: 1 });
   await put(b, { projectId: p2, labels: [l], order: 1 });
@@ -138,5 +138,5 @@ test('the "+" by a group\'s name opens quick add with that group\'s priority', a
   const t = uniq('from plus');
   await page.fill('#add-sheet .td-add-title', t);
   await page.locator('#add-sheet .td-send').click();
-  await expect.poll(async () => (await db.list('spaces/_/tasks')).find(d => d.title === t), { timeout: 15_000 }).toMatchObject({ priority: 2, projectId: pid });
+  await expect.poll(async () => (await db.list(`${space()}/tasks`)).find(d => d.title === t), { timeout: 15_000 }).toMatchObject({ priority: 2, projectId: pid });
 });

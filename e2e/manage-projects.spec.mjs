@@ -1,10 +1,10 @@
 // Browse > Manage projects: every project with a grip; a grip dragged, or moved with the arrow keys, puts the project
 // before or after the one beside it at its level, and the new order is saved. The sheet passes axe.
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, db, openTab } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, db, openTab, space } from './fixtures.mjs';
 
-const put = (id, fields) => db.put(`spaces/_/projects/${id}`, { color: 'blue', parentId: null, view: 'list', createdAt: Date.now(), updatedAt: Date.now(), ...fields });
-const order = async id => (await db.get(`spaces/_/projects/${id}`))?.order;
+const put = (id, fields) => db.put(`${space()}/projects/${id}`, { color: 'blue', parentId: null, view: 'list', createdAt: Date.now(), updatedAt: Date.now(), ...fields });
+const order = async id => (await db.get(`${space()}/projects/${id}`))?.order;
 
 test('a project moves with the keys and with its grip; the order is saved', async ({ phone }) => {
   const page = await phone();
