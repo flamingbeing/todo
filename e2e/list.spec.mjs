@@ -59,6 +59,25 @@ test('each person has their own list: two members never see each other’s tasks
   expect((await db.list(`${spaceA}/tasks`)).map(d => d.title)).not.toContain(tb);
 });
 
+test('an admin’s first sign-in copies the old shared list into their own; a member’s does not', async ({ phone }) => {
+  const pid = uniq('oldp'), name = uniq('Old project'), t = uniq('old-task');
+  await db.put(`spaces/_/projects/${pid}`, { name, color: 'blue', parentId: null, view: 'list', order: 1, createdAt: 1, updatedAt: 1 });
+  await db.put(`spaces/_/tasks/${t}`, { title: t, projectId: pid, order: 1, priority: 4, done: false, createdAt: 1, updatedAt: 1 });
+  try {
+    const member = await phone();
+    await signIn(member, 'member');
+    const memberSpace = space();
+    const admin = await phone();
+    await signIn(admin, 'admin');
+    await expect.poll(async () => (await db.get(`${space()}/tasks/${t}`))?.projectId, { timeout: 30_000 }).toBe(pid);
+    expect((await db.get(`${space()}/projects/${pid}`))?.name).toBe(name);
+    expect(await db.get(`${memberSpace}/tasks/${t}`)).toBeFalsy();
+  } finally {
+    await db.del(`spaces/_/tasks/${t}`);
+    await db.del(`spaces/_/projects/${pid}`);
+  }
+});
+
 test('a viewer reads but cannot add or edit', async ({ phone }) => {
   const t = uniq('seen');
   const page = await phone();

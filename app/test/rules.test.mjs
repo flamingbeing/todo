@@ -56,7 +56,7 @@ const at = { serverAt: true };
 
 // Each person's space is theirs alone (4 Nov 2026): read by its owner with any role, written by an owner who is an admin or
 // member, and refused to everyone else, admins included; the old shared space '_' is nobody's.
-test('each space is its owner’s alone: other people, admins included, and the old shared space are refused', async () => {
+test('each space is its owner’s alone: other people, admins included, are refused; only admins read the old shared space, nobody writes it', async () => {
   const other = emu.as('u-other', { g: { _: 'member' }, v: 1 });
   for (const [coll, data] of Object.entries(VALID)) {
     for (const role of ['admin', 'member', 'viewer']) {
@@ -79,8 +79,13 @@ test('each space is its owner’s alone: other people, admins included, and the 
     assert.equal((await as('admin').list(`spaces/u-member/${coll}`)).ok, false, `${coll}: an admin lists someone else’s`);
     assert.equal((await as('admin').set(`spaces/u-member/${coll}/x2`, data, at)).ok, false, `${coll}: an admin writes someone else’s`);
     await emu.seed(`spaces/_/${coll}/old`, data);
-    for (const role of ['admin', 'member', 'viewer']) {
+    assert.equal((await as('admin').get(`spaces/_/${coll}/old`)).ok, true, `${coll}: an admin reads the old shared space (to copy it)`);
+    assert.equal((await as('admin').list(`spaces/_/${coll}`)).ok, true, `${coll}: an admin lists the old shared space`);
+    for (const role of ['member', 'viewer']) {
       assert.equal((await as(role).get(`spaces/_/${coll}/old`)).ok, false, `${coll}: ${role} reads the old shared space`);
+      assert.equal((await as(role).list(`spaces/_/${coll}`)).ok, false, `${coll}: ${role} lists the old shared space`);
+    }
+    for (const role of ['admin', 'member', 'viewer']) {
       assert.equal((await as(role).set(`spaces/_/${coll}/n`, data, at)).ok, false, `${coll}: ${role} writes the old shared space`);
     }
     assert.equal((await as('member').set(`spaces/u-member/${coll}/s`, data)).ok, false, `${coll}: unstamped`);

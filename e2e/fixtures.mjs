@@ -195,7 +195,7 @@ async function check(made) {
 let signedIn = '';
 export const space = () => { if (!signedIn) throw new Error('space(): sign in first'); return `spaces/${signedIn}`; };
 // Sign in as a new made-up Google account; with a role, an admin "adds" it (the role doc) and the page picks the
-// new claims up by itself. -> { uid, email }
+// new claims up by itself. -> { uid, email, space } (space: their own, spaces/<uid>; also space() until the next sign-in)
 export async function signIn(page, role = 'member', { path = APP } = {}) {
   const email = `${uniq('u')}@example.com`;
   // (not 'load': that waits on the design kit and core files over the internet, which can stall for a minute; the next line waits for the page itself)
@@ -210,7 +210,7 @@ export async function signIn(page, role = 'member', { path = APP } = {}) {
     await expect(page.locator('#list-view')).toBeVisible();
     await expect.poll(() => page.evaluate(() => window.starter.ready)).toBe(true);
   }
-  return { uid, email };
+  return { uid, email, space: `spaces/${uid}` };
 }
 
 // The same account on a second phone (a new context signs in with the same made-up Google credential)

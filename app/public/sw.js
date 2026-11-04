@@ -45,6 +45,7 @@ const SHELL = [
   'src/items.js',
   'src/markdown.js',
   'src/modules.js',
+  'src/move-shared.js',
   'src/options.js',
   'src/order.js',
   'src/parse.js',

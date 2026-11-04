@@ -153,6 +153,14 @@ export async function start({ canReload = null }) {
   const app = createApp({ config: { name: APP.name, sdk }, modules });
   /** the signed-in person's own space ('' signed out) */
   const space = () => spaceOf(app.auth.user());
+  /** the space the lists are heard from ('' none): a save goes there only while it is still the signed-in person's, so a
+   * change started on one account never lands in the next one's space */
+  let listening = '';
+  /** @param {string} coll @param {Record<string, unknown>} record @param {unknown} base */
+  const saveOwn = (coll, record, base) => {
+    const s = space();
+    return s && s === listening ? app.sync.save(coll, s, record, base) : Promise.reject(new Error('Signed out: not saved.'));
+  };
   // the bin is on unless its option (the bin recipe's) is off: a deleted item is then not copied there
   const binOn = () => { try { return app.settings.get('binOn') !== false; } catch { return true; } };
   await app.ready;
@@ -185,7 +193,7 @@ export async function start({ canReload = null }) {
     try { claims = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); } catch { /* none */ }
     return { token, claims, stale: true };
   };
-  const stopList = () => { latest = { tasks: [], projects: [], sections: [], labels: [], filters: [], comments: [] }; offList?.forEach(f => f()); offList = null; offFiles?.(); offFiles = null; offSettings?.(); offSettings = null; };
+  const stopList = () => { listening = ''; latest = { tasks: [], projects: [], sections: [], labels: [], filters: [], comments: [] }; offList?.forEach(f => f()); offList = null; offFiles?.(); offFiles = null; offSettings?.(); offSettings = null; };
   // the token as it is now decides what the page shows (after sign-in, and after every claims ask); the newest call wins
   show = async () => {
     if (!hooks) return;
@@ -209,14 +217,36 @@ export async function start({ canReload = null }) {
     offSettings ??= app.settings.follow();   // the account's options, heard from other devices (listening needs the role)
     // one listen per collection; each change draws everything again (changed: the tasks that moved, for the rows' flash)
     let first = true;
+    if (!offList) listening = me.uid;
     offList ??= [...RECORDS, COMMENTS, TEMPLATES].map(coll => app.sync.watch(spaceOf(me), coll, (/** @type {any[]} */ list, /** @type {{ changed?: string[] }} */ meta) => {
       latest = { ...latest, [KEY[coll]]: list.filter(x => !x._deleted) };
       onData(latest, new Set(first || coll !== COLL ? [] : meta?.changed || []));
       if (coll === COLL) first = false;
     }));
     if (onFiles && dataModules.files) offFiles ??= dataModules.files.watch(app, spaceOf(me), onFiles);
+    if (role === 'admin') void bringShared(me.uid);
   };
   app.auth.onUser(() => { claimsStatus = 0; void show(); });
+
+  // An admin's first sign-in on this device: the old shared space copied into their own, once (move-shared.js)
+  let bringing = false;
+  /** @param {string} uid */
+  const bringShared = async uid => {
+    const key = `${APP.name}:moved-shared:${uid}`;
+    try { if (localStorage.getItem(key)) return; } catch { /* no storage: try anyway */ }
+    if (bringing) return;
+    bringing = true;
+    try {
+      for (let i = 0; i < 60 && !app.sync.facts().confirmed; i++) await new Promise(r => setTimeout(r, 500));
+      if (!app.sync.facts().confirmed || listening !== uid) return;
+      const [{ moveShared }, { F, db }] = await Promise.all([import('./move-shared.js'), sdk()]);
+      const n = await moveShared({
+        list: async coll => (await F.getDocs(F.collection(db, 'spaces', '_', coll))).docs.map((/** @type {any} */ d) => ({ id: d.id, data: d.data() })),
+        data: () => latest, write: (coll, rec) => ops.writeRecord(coll, rec, undefined), still: () => listening === uid,
+      });
+      if (n >= 0) try { localStorage.setItem(key, '1'); } catch { /* tried again next time */ }
+    } catch { /* tried again at the next start */ } finally { bringing = false; }
+  };
 
   /** @param {string} method @param {string} uid @param {unknown} [body] @returns {Promise<string>} */
   const membersCall = async (method, uid, body) => {
@@ -231,7 +261,7 @@ export async function start({ canReload = null }) {
   /** @type {Set<() => Promise<unknown>>} */
   const outHooks = new Set();
   const id = () => (crypto.randomUUID?.() || String(Date.now()) + Math.random().toString(36).slice(2)).replace(/-/g, '');
-  const { removeTask, removeProject, removeSection, put, ...ops } = taskOps({ save: (coll, record, base) => app.sync.save(coll, space(), record, base), id,
+  const { removeTask, removeProject, removeSection, put, ...ops } = taskOps({ save: saveOwn, id,
     data: () => latest, drop: (coll, ids) => { void app.sync.hub.drop(space(), coll, ids); } });
   /** @param {Item[]} gone @param {Promise<string>} deleting @param {((id: string) => unknown[]) | undefined} filesOf */
   const withFiles = async (gone, deleting, filesOf) => {

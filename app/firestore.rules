@@ -69,6 +69,12 @@ service cloud.firestore {
     // single group '_'. The old shared space '_' matches no one's uid, so nobody reads or writes it any more.
     function mine(g, roles) { return isSignedIn() && request.auth.uid == g && can('_', roles); }
 
+    // The old shared space (before 4 Nov 2026): admins read it, so their first sign-in copies it into their own space
+    // (app/src/move-shared.js); nobody writes it.
+    match /spaces/_/{coll}/{id} {
+      allow read: if can('_', ['admin']);
+    }
+
     // Shared checks for the app's records: d is the record as it would be saved.
     function gone(d, k) { return !(k in d) || d[k] == null; }
     function optText(d, k, max) { return gone(d, k) || (d[k] is string && d[k].size() <= max); }
@@ -189,9 +195,9 @@ service cloud.firestore {
       allow delete: if mine(g, ['admin', 'member']);
     }
 
-    // A comment on a task: plain text (up to 2000), by the person who wrote it (uid; name is for show). Members and admins
-    // add; only its author (or an admin) edits or deletes it, and a comment never moves to another task or author.
-    // Anyone with a role reads. Comments are not in the bin: a delete is final.
+    // A comment on a task: plain text (up to 2000), by the person who wrote it (uid; name is for show), in the space's
+    // owner's own space. Its author edits or deletes it; an owner who is an admin may also keep a comment by someone else
+    // (the copy of the old shared space keeps each comment's author), and a comment never moves to another task or author. Comments are not in the bin: a delete is final.
     match /spaces/{g}/comments/{id} {
       allow read: if mine(g, ['admin', 'member', 'viewer']);
       allow create: if writer(g)
