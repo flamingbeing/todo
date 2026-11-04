@@ -20,16 +20,16 @@ const el = (tag, cls = '', text = '') => { const e = document.createElement(tag)
 
 /**
  * One full sync, as the parsed answer. Throws an Error whose message is what the page says.
- * @param {string} token @param {typeof fetch} fetcher @param {AbortSignal} signal
+ * @param {string} token @param {typeof fetch} fetcher @param {AbortSignal} signal @param {string[]} [resources] what to ask for (the export asks for less)
  */
-export async function fetchSync(token, fetcher, signal) {
+export async function fetchSync(token, fetcher, signal, resources = RESOURCES) {
   /** @type {Response} */
   let res;
   try {
     res = await fetcher(SYNC_URL, {
       method: 'POST', signal, credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ sync_token: '*', resource_types: JSON.stringify(RESOURCES) }),
+      body: new URLSearchParams({ sync_token: '*', resource_types: JSON.stringify(resources) }),
     });
   } catch (e) {
     if (signal.aborted) throw new Error('That took too long. Try again.');
