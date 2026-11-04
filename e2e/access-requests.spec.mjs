@@ -27,7 +27,8 @@ test('an admin declines a request; members never see the page', async ({ phone }
   await openSettings(admin, 'Access requests');
   await admin.locator(`.td-people-row[data-uid="${uid}"]`).getByRole('button', { name: 'Decline' }).click();
   await expect(admin.locator(`.td-people-row[data-uid="${uid}"]`)).toHaveCount(0);
-  expect(await db.get(`requests/${uid}`)).toBeFalsy();
+  // (the row goes at once, from the page's own copy; the server's delete lands a moment later)
+  await expect.poll(() => db.get(`requests/${uid}`).then(d => !!d)).toBe(false);
   expect(await db.get(`members/${uid}`)).toBeFalsy();
 
   await signIn(member, 'member');
