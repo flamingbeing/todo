@@ -121,6 +121,13 @@
   :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-group-head .td-group-chevron { position: absolute; left: -24px; top: 8px;
     width: 16px !important; height: 16px !important; margin: 0; }
   :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-group-count { font-size: 14px; color: var(--td-text-2); }
+  /* a bare head's fold button (wide/list.js), in the same place as a section's chevron; a folded group keeps only its head */
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-wide-fold { position: absolute; left: -28px; top: 4px; display: grid; place-items: center;
+    width: 24px; height: 24px; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 4px; background: none; color: var(--td-text-2); cursor: pointer; }
+  :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-wide-fold:hover { background: var(--td-hover); color: var(--td-text); }
+  .td-wide-fold .td-wide-fold-ic { width: 16px; height: 16px; transition: transform .15s ease-out; }
+  .td-wide-fold[aria-expanded="false"] .td-wide-fold-ic { transform: rotate(-90deg); }
+  .td-group[data-wide-folded] > :not(.td-group-head) { display: none; }
   :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-group-head.is-plain .td-group-title { font-weight: 700; color: var(--td-text); }
   :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-resched { height: 28px; padding: 0 4px; font-size: 14px; font-weight: 700; color: var(--td-accent); }
   :is(#today, #inbox, #upcoming, #project, #place):not(.td-board) .td-group-head :is(.td-group-add, .td-group-more) { width: 28px; height: 28px; min-width: 0; min-height: 0; }

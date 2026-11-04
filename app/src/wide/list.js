@@ -8,6 +8,9 @@
 //   inline "Add task"       at the end of Today's day, of the Inbox's and a project's tasks outside sections (each
 //                           section already has one): quick add for that place
 //   the Display button      reads "Display", or "Display: n" while n of the list's choices are not its own
+//   group heads' count and  a heading the phone draws bare (Today's Overdue and day, Upcoming's days, a grouped list's
+//   fold chevron            groups) gets its open tasks' count beside it and a chevron 24 px to its left that folds the
+//                           group (remembered on this device only)
 // The hover actions on a row are wide/hover.js's. Back under 840 px everything added here goes (and the phone's
 // lists are as they were).
 import { icon } from '@core/ui';
@@ -48,8 +51,10 @@ export function startList(ctx) {
     const c = on && top === 'project-page' ? crumbs(ctx.data().projects, ctx.project()) : [];
     crumb.textContent = c.length ? `${c.join(' / ')} /` : '';
     crumb.hidden = !c.length;
-    if (!on) for (const b of document.querySelectorAll('.td-wide-add')) b.remove();
+    if (!on) for (const b of document.querySelectorAll('.td-wide-add, .td-wide-fold, .td-wide-gcount')) b.remove();
     else for (const h of HOSTS) adds(ctx, h);
+    if (!on) for (const g of document.querySelectorAll('[data-wide-folded]')) g.removeAttribute('data-wide-folded');
+    else for (const h of HEAD_HOSTS) heads(h);
   };
   if (bar) new MutationObserver(sync).observe(bar, { attributes: true, attributeFilter: ['data-sub'] });
   const host = document.querySelector('.ui-screens');
@@ -57,9 +62,12 @@ export function startList(ctx) {
   host?.addEventListener('ui-screen', () => requestAnimationFrame(sync));
   big.addEventListener('change', sync);
   // (each list is drawn again whole on every change: its rows are put back once it is)
-  for (const h of HOSTS) {
+  for (const h of HEAD_HOSTS) {
     const into = $(h);
-    if (into) new MutationObserver(() => { if (big.matches) adds(ctx, h); if (h === 'project') sync(); }).observe(into, { childList: true });
+    if (into) new MutationObserver(() => {
+      if (big.matches) { const a = HOSTS.find(x => x === h); if (a) adds(ctx, a); heads(h); }
+      if (h === 'project') sync();
+    }).observe(into, { childList: true });
   }
   sync();
 
@@ -84,6 +92,43 @@ export function startList(ctx) {
 
 /** @type {('today' | 'inbox' | 'project')[]} */
 const HOSTS = ['today', 'inbox', 'project'];
+
+/** the lists whose bare group heads get a count and a fold chevron */
+const HEAD_HOSTS = [...HOSTS, 'upcoming', 'place'];
+
+const FOLDS = 'td-wide-folds';
+/** the groups folded on this device ("host|day or title") @type {Set<string>} */
+let folds;
+try { folds = new Set(JSON.parse(localStorage.getItem(FOLDS) || '[]')); } catch { folds = new Set(); }
+
+/** a bare group head's count and fold chevron (a section's head has its own: ui/row.js) @param {string} h */
+function heads(h) {
+  const into = document.getElementById(h);
+  if (!into || into.classList.contains('td-board')) return;
+  for (const head of into.querySelectorAll(':scope > .td-group > .td-group-head:not(.is-plain)')) {
+    const title = head.querySelector(':scope > h2.td-group-title');
+    if (!title || head.querySelector(':scope > .td-wide-fold')) continue;
+    const g = /** @type {HTMLElement} */ (head.parentElement);
+    const n = g.querySelectorAll(':scope > .td-rows > .td-row:not(.is-complete):not([style*="--depth"])').length;
+    if (!g.querySelector(':scope > .td-rows > .td-row')) continue;
+    if (n) title.append(el('span', 'td-group-count td-wide-gcount', String(n)));
+    const name = title.firstChild?.textContent ?? '';
+    const key = `${h}|${g.dataset.day ?? name}`;
+    const b = /** @type {HTMLButtonElement} */ (el('button', 'td-wide-fold'));
+    b.type = 'button';
+    b.setAttribute('aria-label', `Fold ${name}`);
+    b.append(icon(ICONS.chevronDown, { class: 'td-wide-fold-ic' }));
+    const put = (/** @type {boolean} */ shut) => { b.setAttribute('aria-expanded', String(!shut)); g.toggleAttribute('data-wide-folded', shut); };
+    put(folds.has(key));
+    b.addEventListener('click', () => {
+      const shut = !folds.has(key);
+      if (shut) folds.add(key); else folds.delete(key);
+      try { localStorage.setItem(FOLDS, JSON.stringify([...folds])); } catch { /* private window: open again on reload */ }
+      put(shut);
+    });
+    head.prepend(b);
+  }
+}
 
 /** the inline "Add task" rows a list lacks @param {Ctx} ctx @param {'today' | 'inbox' | 'project'} h */
 function adds(ctx, h) {

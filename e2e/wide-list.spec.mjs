@@ -61,6 +61,26 @@ test('wide Today, Inbox and a project: the title, the count, flat rows, Reschedu
   const head = await box(page.locator('#today .td-group-head').first());
   expect(Math.abs((await box(resched)).x + (await box(resched)).w - (head.x + head.w))).toBeLessThanOrEqual(1);
 
+  // group heads: the open count beside the name in text-2, a fold chevron 24 px left of the column, always shown
+  const over = page.locator('#today > .td-group').first(), oh = over.locator('.td-group-head');
+  await expect(oh.locator('.td-group-count')).toHaveText('1');
+  const cs = await oh.locator('.td-group-count').evaluate(e => ({ c: getComputedStyle(e).color, t2: getComputedStyle(document.body).getPropertyValue('--td-text-2'), fs: getComputedStyle(e).fontSize }));
+  expect(cs.fs).toBe('14px');
+  const t2 = await page.evaluate(v => { const p = document.createElement('p'); p.style.color = v; document.body.append(p); const c = getComputedStyle(p).color; p.remove(); return c; }, cs.t2.trim());
+  expect(cs.c).toBe(t2);
+  await expect(page.locator('#today > .td-group[data-day] .td-group-count')).toHaveText('2');
+  const fold = oh.locator('.td-wide-fold');
+  await expect(fold).toBeVisible();
+  await expect(fold).toHaveAttribute('aria-expanded', 'true');
+  const fb = await box(fold.locator('svg'));
+  expect(check.x - fb.x).toBeGreaterThanOrEqual(22);
+  expect(check.x - fb.x).toBeLessThanOrEqual(26);
+  await fold.click();
+  await expect(fold).toHaveAttribute('aria-expanded', 'false');
+  await expect(over.locator('.td-rows')).toBeHidden();
+  await fold.click();
+  await expect(over.locator('.td-rows')).toBeVisible();
+
   // inline Add task at the day's end: quick add for today, in the Inbox
   const add = page.locator('#today .td-wide-add');
   await expect(add).toHaveCount(1);
@@ -141,7 +161,7 @@ test('at 390 px the lists are the phone\'s: no row buttons, no inline Add task, 
   const page = await sized(390);
   await seed(page);
   await expect(page.locator('#today-page')).toBeVisible();
-  await expect(page.locator('.td-hover-actions, .td-wide-add, .td-wide-count:not([hidden])')).toHaveCount(0);
+  await expect(page.locator('.td-hover-actions, .td-wide-add, .td-wide-fold, .td-wide-gcount, .td-wide-count:not([hidden])')).toHaveCount(0);
   await expect(page.locator('#today-title')).not.toHaveCSS('font-size', '26px');
   await expect(page.locator('html')).not.toHaveAttribute('data-td-list-top', '');
 });
