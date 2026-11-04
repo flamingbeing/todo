@@ -52,6 +52,22 @@ test('people read their own role doc, not others’; nobody writes or deletes on
   assert.equal((await as('member').delete('members/u-member')).ok, false);
 });
 
+test('anyone signed in asks for access with their own request doc; admins list and remove them', async () => {
+  await emu.clear();
+  const ask = { name: 'Sam', email: 'sam@example.com', at: 1 };
+  const nobody = emu.as('u-new', {});
+  assert.equal((await nobody.set('requests/u-new', ask)).ok, true, 'no role yet: may ask');
+  assert.equal((await nobody.get('requests/u-new')).ok, true);
+  assert.equal((await nobody.set('requests/u-else', ask)).ok, false, 'only for themselves');
+  assert.equal((await nobody.set('requests/u-new', { ...ask, role: 'admin' })).ok, false, 'name, email and time only');
+  assert.equal((await nobody.set('requests/u-new', { ...ask, name: 'x'.repeat(101) })).ok, false);
+  assert.equal((await emu.as('u-other', {}).get('requests/u-new')).ok, false, 'others cannot read it');
+  assert.equal((await as('member').list('requests')).ok, false, 'members cannot list requests');
+  assert.equal((await as('admin').list('requests')).ok, true, 'admins list requests');
+  assert.equal((await as('admin').delete('requests/u-new')).ok, true, 'admins decline or tidy up');
+  assert.equal((await nobody.delete('requests/u-new')).ok, true, 'the asker may withdraw');
+});
+
 const at = { serverAt: true };
 
 // Each person's space is theirs alone (4 Nov 2026): read by its owner with any role, written by an owner who is an admin or

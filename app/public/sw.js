@@ -80,6 +80,7 @@ const SHELL = [
   'src/screens/not-set-up.js',
   'src/screens/page-menu.js',
   'src/screens/party.js',
+  'src/screens/people.js',
   'src/screens/pick.js',
   'src/screens/productivity.js',
   'src/screens/project-sheet.js',

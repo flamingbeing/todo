@@ -229,6 +229,10 @@ export function buildSettings(app, { arranged, repaints, rules, steps, synced, s
       box.append(el('p', 'td-settings-caption', 'Icons: Lucide (ISC licence).'));
       return { leave: () => {}, destroy: () => box.remove() };
     }) },
+    // admins: the people asking for access (requests/{uid}), each let in or declined
+    { title: 'Access requests', icon: MORE.user, sub: 'Let people in who signed in with Google', group: 'More', find: 'people users members invite approve access sign up',
+      visible: () => !!(/** @type {any} */ (app).members?.admin?.()),
+      mount: host => onShow(host, async h => (await import('./people.js')).peopleScreen(h, { members: /** @type {any} */ (app).members })) },
     // the recipes' own pages (an empty slot adds none)
     ...Object.values(modules.settingsPages ?? {}).flatMap(slot => { const section = slot?.({ app }); return section ? [section] : []; }),
   ];
