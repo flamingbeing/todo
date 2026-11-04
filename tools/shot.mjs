@@ -7,7 +7,7 @@
 //
 // --tab: a tab's page id (inbox-page, today-page, upcoming-page, search-page, browse-page; default the first screen).
 // --project: open that project's page from Browse (its name). --task: open that task's sheet (its title, on the
-// screen shown). --settings: open Settings from Browse's gear, then that page (About shows "Install this app").
+// screen shown). --settings: open Settings from Browse's gear, then that page (About shows "Install this app"; 840 px and up: the dialog's nav row).
 // --click / --eval run in order after that (a sheet, a swipe, a menu); --wait pauses; --full is the whole page.
 // --seed: { "<firestore doc path>": { fields } }; "{{today}}" and "{{today+3}}" in a string become that day (YYYY-MM-DD),
 //   "{{now}}" alone the time in ms, a number (default tools/shot-seed.json, the app's data model, kept in step with it).
@@ -132,12 +132,23 @@ try {
     await page.waitForTimeout(600);
   }
   if (opts.settings) {
-    await browse();
-    await page.locator('#browse-settings').click();
+    // (with the wide side bar: its account menu's Settings; else Browse's gear)
+    if (await page.locator('.td-side-me:visible').count()) {
+      await page.locator('.td-side-me').click();
+      await page.locator('.td-menu .ui-menu-item').filter({ hasText: /^Settings/ }).first().click();
+    } else {
+      await browse();
+      await page.locator('#browse-settings').click();
+    }
     await page.waitForTimeout(500);
-    const back = page.locator('#settings-host .ui-settings-back:visible');
-    if (await back.count()) await back.click();
-    await page.locator('#settings-host .ui-settings-menu-groups .ui-settings-go').filter({ hasText: new RegExp(`^${opts.settings}`) }).click();
+    // (840 px and up: the Settings dialog, its nav's row; else the screen's menu row)
+    if (await page.locator('#settings-modal[open]').count()) {
+      await page.locator('#settings-modal .td-set-row').filter({ hasText: new RegExp(`^${opts.settings}`) }).first().click();
+    } else {
+      const back = page.locator('#settings-host .ui-settings-back:visible');
+      if (await back.count()) await back.click();
+      await page.locator('#settings-host .ui-settings-menu-groups .ui-settings-go').filter({ hasText: new RegExp(`^${opts.settings}`) }).click();
+    }
     await page.waitForTimeout(500);
   }
   for (const c of opts.click) { await page.locator(c).first().click(); await page.waitForTimeout(400); }

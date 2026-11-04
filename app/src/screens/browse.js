@@ -74,7 +74,7 @@ export function drawBrowse(ctx, host) {
   gear.id = 'browse-settings';
   gear.setAttribute('aria-label', 'Settings');
   gear.append(icon(MORE.settings));
-  gear.addEventListener('click', () => screens()?.push('#settings-page'));
+  gear.addEventListener('click', () => { if (!(/** @type {any} */ (globalThis).tdWideSettings?.())) screens()?.push('#settings-page'); });   // (840 px and up: a dialog, wide/side.js)
   // (no bell: there is no notifications inbox)
   const end = el('span', 'td-bar-browse-end');
   end.append(gear);

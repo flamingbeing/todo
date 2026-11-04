@@ -124,6 +124,7 @@ function setIcon(id) {
  * in the menu once the screen is built. @param {string} title the page's title, as its menu row starts
  */
 export async function openSettingsPage(title) {
+  if (/** @type {any} */ (globalThis).tdWideSettings?.(title)) return;   // (840 px and up: a dialog, wide/settings-modal.js)
   const until = async (/** @type {() => unknown} */ ok) => { for (let i = 0; i < 60 && !ok(); i++) await new Promise(r => setTimeout(r, 50)); return !!ok(); };
   const page = /** @type {HTMLElement} */ (document.getElementById('settings-page'));
   if (page.hidden) {

@@ -32,6 +32,13 @@ let lastSynced = 0;
 
 /** @param {Ctx} ctx */
 export function startSide(ctx) {
+  // Settings from anywhere at this width is a dialog in the middle (settings-modal.js), not the pushed screen:
+  // shell.js's openSettingsPage, Browse's gear and the account menu ask this first (false below 840 px)
+  /** @type {any} */ (globalThis).tdWideSettings ??= (/** @type {string | undefined} */ title) => {
+    if (!matchMedia('(min-width: 840px)').matches) return false;
+    void import('./settings-modal.js').then(m => m.openSettingsModal(title));
+    return true;
+  };
   if (made) return;
   const side = /** @type {HTMLElement | null} */ (document.getElementById('side'));
   if (!side) return;
@@ -191,12 +198,15 @@ function go(ctx, id) {
   else if (id === 'reporting') screens()?.push('#reporting-page');
 }
 
+/** Settings as the wide dialog (true: it is opening) @param {string} [title] @returns {boolean} */
+const wideSettings = title => !!(/** @type {any} */ (globalThis).tdWideSettings?.(title));
+
 /** the account menu, under the head's button @param {Ctx} ctx @param {HTMLElement} at */
 function accountMenu(ctx, at) {
   const u = ctx.user(), who = String(u?.name ?? '').trim().split('@')[0];
   const click = (/** @type {string} */ id) => () => { document.getElementById(id)?.click(); };
   openMenu(at, [
-    { label: 'Settings', icon: MORE.settings, run: () => { if (document.getElementById('settings-page')?.hidden) screens()?.push('#settings-page'); } },
+    { label: 'Settings', icon: MORE.settings, run: () => { if (!wideSettings() && document.getElementById('settings-page')?.hidden) screens()?.push('#settings-page'); } },
     null,
     { label: 'Sync', icon: MORE.refreshCw, run: click('sync-btn') },
     null,
