@@ -122,8 +122,13 @@ try {
     await page.waitForSelector('#browse-settings', { state: 'visible' });
   };
   if (opts.project) {
-    await browse();
-    await page.locator('#browse .td-browse-row').filter({ hasText: new RegExp(`^${opts.project}`) }).first().click();
+    // (with the wide side bar: its My Projects row; else Browse's)
+    const side = page.locator('#side .td-side-row:visible').filter({ hasText: new RegExp(`^${opts.project}`) });
+    if (await side.count()) await side.first().click();
+    else {
+      await browse();
+      await page.locator('#browse .td-browse-row').filter({ hasText: new RegExp(`^${opts.project}`) }).first().click();
+    }
     await page.waitForTimeout(600);
   }
   if (opts.task) {
