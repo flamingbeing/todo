@@ -7,6 +7,17 @@
   <meta name="theme-color" content="#1e1e1e" media="(prefers-color-scheme: dark)">
   <meta name="robots" content="noindex, nofollow">
   <title>Todo</title>
+  <meta name="description" content="Todo: your tasks by day, in projects and lists. Works offline and syncs between your devices.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Todo">
+  <meta property="og:title" content="Todo">
+  <meta property="og:description" content="Todo: your tasks by day, in projects and lists. Works offline and syncs between your devices.">
+  <meta property="og:url" content="https://todo.anawj.com/">
+  <meta property="og:image" content="https://todo.anawj.com/icons/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Todo">
+  <meta name="twitter:card" content="summary_large_image">
   <script type="importmap">
 {
   "imports": {
@@ -92,7 +103,7 @@
         <!-- cloud{ sign-in, access and set-up: a static app has none (tools/flavour.mjs) -->
         <div id="signed-out" hidden></div>
         <div id="no-access" hidden>
-          <p>This account has no access yet. Ask an admin to add it.</p>
+          <p>Access requested. Once the app's owner lets you in, your list opens here by itself.</p>
           <p class="small">Account id: <code id="uid"></code></p>
         </div>
         <div id="not-set-up" hidden>

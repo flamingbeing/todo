@@ -65,6 +65,18 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Access requests (4 Nov 2026): anyone signed in with Google but without a role asks for access with one doc named by
+    // their uid; admins list them and approve (/api/members/ gives the role) or decline (delete). Name and email only.
+    match /requests/{uid} {
+      allow read: if (isSignedIn() && request.auth.uid == uid) || can('_', ['admin']);
+      allow create, update: if isSignedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'email', 'at'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 100
+        && request.resource.data.email is string && request.resource.data.email.size() <= 200
+        && request.resource.data.at is number;
+      allow delete: if (isSignedIn() && request.auth.uid == uid) || can('_', ['admin']);
+    }
+
     // A space is one person's own (spaces/{uid}/..., 4 Nov 2026): only they read or change it, with their role in the app's
     // single group '_'. The old shared space '_' matches no one's uid, so nobody reads or writes it any more.
     function mine(g, roles) { return isSignedIn() && request.auth.uid == g && can('_', roles); }
