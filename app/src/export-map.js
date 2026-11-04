@@ -196,3 +196,25 @@ export function readAnswer(sent, answer, mapping, failed) {
   }
   return { ok, failures };
 }
+
+/** the fields that belong to syncing, not to the person's records */
+const INTERNAL = new Set(['_edits', 'serverAt', '_deleted']);
+
+/** the file name of a backup, from the local day @param {string} day YYYY-MM-DD */
+export const backupName = day => `todo-backup-${day}.json`;
+
+/**
+ * Everything the person has as one JSON text: projects, sections, labels, filters, tasks (open and finished), comments and
+ * templates, without the sync-internal fields; records marked deleted are left out.
+ * @param {Partial<Data>} data @param {{ day: string, now?: number }} o @returns {string}
+ */
+export function backupJson(data, { day, now = Date.now() }) {
+  /** @param {any[] | undefined} list */
+  const clean = list => (Array.isArray(list) ? list : []).filter(r => r && typeof r === 'object' && !r._deleted)
+    .map(r => Object.fromEntries(Object.entries(r).filter(([k]) => !INTERNAL.has(k))));
+  return JSON.stringify({
+    app: 'todo', kind: 'backup', day, savedAt: now,
+    projects: clean(data.projects), sections: clean(data.sections), labels: clean(data.labels), filters: clean(data.filters),
+    tasks: clean(data.tasks), comments: clean(data.comments), templates: clean(data.templates),
+  }, null, 2);
+}

@@ -216,7 +216,7 @@ export function buildSettings(app, { arranged, repaints, rules, steps, synced, s
     } },
     { title: 'Import from Todoist', icon: MORE.folderInput, sub: 'Bring your projects and tasks over', group: 'More', find: 'migrate move api token tasks',
       mount: host => onShow(host, async h => (await import('./import.js')).importScreen(h, { app, openInbox: () => tabButton('inbox')?.click() })) },
-    { title: 'Export to Todoist', icon: MORE.folderInput, sub: 'Copy your projects and tasks to your account there', group: 'More', find: 'migrate move copy api token tasks backup',
+    { title: 'Export to Todoist', icon: MORE.folderInput, sub: 'Copy your tasks there, or save a backup file', group: 'More', find: 'migrate move copy api token tasks backup download file json',
       mount: host => onShow(host, async h => (await import('./export.js')).exportScreen(h, { app })) },
     { title: LICENCES, icon: MORE.scale, group: 'More', find: 'licence license open source', mount: host => onShow(host, async h => {
       const box = el('div', 'td-licences');

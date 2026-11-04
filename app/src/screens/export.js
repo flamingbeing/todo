@@ -6,7 +6,8 @@
 import { icon, confirmModal, plural } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { MORE } from '../icons-more.js';
-import { mapExport, batches, prepare, readAnswer } from '../export-map.js';
+import { mapExport, batches, prepare, readAnswer, backupJson, backupName } from '../export-map.js';
+import { dayKey } from '../dates.js';
 import { SYNC_URL, fetchSync } from './import.js';
 
 /** @param {string} tag @param {string} [cls] @param {string} [text] */
@@ -79,7 +80,22 @@ export function exportScreen(host, { app, fetcher = (...a) => fetch(...a), id, p
   const status = el('p', 'td-import-status');
   status.setAttribute('role', 'status');
   const result = el('div', 'td-import-result');
-  root.append(intro, field, preview, status, result);
+  // a backup file: everything this app holds, saved on this device (no token, no network)
+  const backup = el('section', 'td-import-card');
+  backup.setAttribute('aria-label', 'Backup file');
+  const save = /** @type {HTMLButtonElement} */ (el('button', 'td-primary td-import-go', 'Download a backup file'));
+  save.type = 'button';
+  const saved = el('p', 'td-import-note');
+  saved.setAttribute('role', 'status');
+  backup.append(el('p', 'td-import-h', 'Backup'), el('p', 'td-import-note', 'One file with all your projects, sections, labels, filters, tasks (open and finished), comments and templates.'), save, saved);
+  save.addEventListener('click', () => {
+    const day = dayKey(), name = backupName(day);
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([backupJson(app.data(), { day })], { type: 'application/json' })), download: name });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+    saved.textContent = `Saved ${name}.`;
+  });
+  root.append(intro, field, preview, status, result, backup);
   host.append(root);
 
   const say = (/** @type {string} */ text, error = false) => { status.textContent = text; status.classList.toggle('is-error', error); };

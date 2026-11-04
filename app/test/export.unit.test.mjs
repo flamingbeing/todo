@@ -2,7 +2,7 @@
 // node --test app/test/export.unit.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mapExport, dueArg, batches, prepare, readAnswer, BATCH } from '../src/export-map.js';
+import { backupJson, backupName, mapExport, dueArg, batches, prepare, readAnswer, BATCH } from '../src/export-map.js';
 
 const counter = () => { let n = 0; return () => `t${++n}`; };
 const data = () => ({
@@ -142,4 +142,19 @@ test('a mapped id is swapped into later requests', () => {
   const { send } = prepare([task(m, 'Water ferns')], mapping, new Map());
   assert.equal(send[0].args.project_id, 'REAL-HOME');
   assert.equal(task(m, 'Water ferns').args.project_id, home.temp_id);   // the plan itself is not changed
+});
+
+test('backup: everything, open and finished, without sync fields or deleted records', () => {
+  const d = data();
+  d.tasks[0] = { ...d.tasks[0], _edits: { title: 1 }, serverAt: 5 };
+  d.comments = [{ id: 'c1', taskId: 'k1', text: 'hi', uid: 'u', serverAt: 1 }];
+  d.templates = [{ id: 'tp', name: 'T' }];
+  const out = JSON.parse(backupJson(d, { day: '2099-01-02', now: 7 }));
+  assert.equal(backupName('2099-01-02'), 'todo-backup-2099-01-02.json');
+  assert.deepEqual([out.day, out.savedAt], ['2099-01-02', 7]);
+  assert.equal(out.tasks.length, 7);   // the finished one stays, the deleted one goes
+  assert.ok(out.tasks.some(t => t.title === 'Finished' && t.done));
+  assert.equal(out.projects.length, 4);
+  assert.deepEqual([out.comments.length, out.templates.length, out.filters.length], [1, 1, 0]);
+  assert.ok(!JSON.stringify(out).match(/_edits|serverAt|_deleted/));
 });

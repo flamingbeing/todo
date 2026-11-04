@@ -2,6 +2,7 @@
 // it adds, so a second run makes copies), the export sends Sync API commands (projects and sections with their links, parents
 // before children, priorities turned back, a repeat's own words, the Inbox mapped to the account's Inbox), a failure is named in
 // plain words with the rest still sent, and the token never lands in storage and leaves the field. The page passes axe.
+import fs from 'node:fs';
 import AxeBuilder from './axe.mjs';
 import { test, expect, signIn, synced, uniq, db, openSettings } from './fixtures.mjs';
 
@@ -96,8 +97,8 @@ test('preview, export the commands, no token left behind', async ({ phone }) => 
   await host.getByRole('button', { name: 'Preview' }).click();
 
   // the preview: what the account has, what will be added (the shared test account may hold other specs' records too), and that it only adds
-  await expect(host.locator('.td-import-card')).toBeVisible();
-  const sentence = await host.locator('.td-import-card > .td-import-h').textContent();
+  await expect(host.locator('.td-import-result .td-import-card')).toBeVisible();
+  const sentence = await host.locator('.td-import-result .td-import-card > .td-import-h').textContent();
   const [, p, s, l, t] = /^(\d+) projects?, (\d+) sections?, (\d+) labels?, (\d+) tasks? will be added to your Todoist account$/.exec(sentence).map(Number);
   expect(p).toBeGreaterThanOrEqual(2); expect(s).toBeGreaterThanOrEqual(1); expect(l).toBeGreaterThanOrEqual(2); expect(t).toBeGreaterThanOrEqual(4);
   expect(Number(await countOf(page, 'Tasks').textContent())).toBe(t);
@@ -188,4 +189,22 @@ test('a token that is not accepted says so and sends nothing else', async ({ pho
   await expect(host.locator('.td-import-status')).toHaveText('That token was not accepted');
   expect(seen).toHaveLength(1);
   await expect(host.getByRole('button', { name: 'Export', exact: true })).toHaveCount(0);
+});
+
+test('Download a backup file saves everything as JSON', async ({ phone }) => {
+  const page = await phone();
+  await signIn(page, 'member');
+  const u = uniq('eb');
+  const names = await seed(u);
+  await synced(page);
+  await openSettings(page, TITLE);
+  const host = page.locator('#settings-host');
+  const [download] = await Promise.all([page.waitForEvent('download'), host.getByRole('button', { name: 'Download a backup file' }).click()]);
+  expect(download.suggestedFilename()).toMatch(/^todo-backup-\d{4}-\d{2}-\d{2}\.json$/);
+  const file = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
+  expect(file.tasks.find(t => t.title === names.top)).toMatchObject({ priority: 1, projectId: `${u}-home` });
+  expect(file.tasks.find(t => t.title === names.done).done).toBe(true);   // finished tasks are in the backup
+  expect(file.projects.map(p => p.name)).toContain(names.home);
+  expect(JSON.stringify(file)).not.toMatch(/_edits|serverAt|_deleted/);
+  await expect(host).toContainText('Saved todo-backup-');
 });
