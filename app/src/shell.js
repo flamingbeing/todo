@@ -52,7 +52,12 @@ export function startShell() {
   if (start) for (const t of tabs) { if (t === start) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); }
   const go = tabPages(bar, { screens: kit.screens, host, ahead: page => page.dispatchEvent(new CustomEvent('draw-ahead')), backToFirst: false, swipe: false });
   kit.tabs = go;
-  goTo = page => { if (go.current() !== page) go.go(page); };
+  // (a Settings page open over the tabs closes its history step first, as a tab tap does: the screens' Back would
+  // otherwise land on that step and leave the pushed screen up, so a sign-out from Settings never showed the sign-in)
+  goTo = page => {
+    const to = () => { if (go.current() !== page) go.go(page); };
+    if (history.state?.uiTransient?.ids?.length) void steps.dismissAll().then(to); else to();
+  };
   try { history.scrollRestoration = 'manual'; } catch { /* none */ }
   /** @type {(() => void) | null} */
   let unsay = null;

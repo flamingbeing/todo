@@ -487,10 +487,9 @@ div.td-chip { gap: 0; padding: 0; cursor: default; }
 .td-menu-pop .td-menu-icon { order: -1; width: 20px !important; height: 20px !important; }
 .td-menu .ui-danger, .td-menu .ui-danger .td-menu-icon { color: var(--td-d-overdue); }
 
-/* the app's icon beside its name in the side bar and on the signed-out screen */
+/* the app's icon beside its name in the side bar */
 .ui-sidebar-name { display: flex; align-items: center; gap: .5rem; }
 .app-mark { flex: none; border-radius: 22%; }
-.app-mark-big { display: block; margin: 16px 0 8px; }
 #signed-out, #no-access, #not-set-up, #account { padding-inline: 16px; }
 @media (min-width: 600px) { .toasts { bottom: 16px; } }
 

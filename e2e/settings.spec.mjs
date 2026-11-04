@@ -60,7 +60,6 @@ test('the device value survives sign-out and a reload', async ({ phone }) => {
   await big(a).check();
   await openSettings(a, 'Account');
   await a.click('#sign-out');
-  await openToday(a);
   await expect(a.locator('#signed-out')).toBeVisible();
   await a.reload({ waitUntil: 'domcontentloaded' });
   await expect(a.locator('#signed-out')).toBeVisible();

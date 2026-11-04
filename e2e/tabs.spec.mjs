@@ -4,7 +4,7 @@ import { test, expect, APP, openSettings, openTab, settingsBack, signIn, synced,
 
 test('a tab taken off the bar is one tap away in Browse and stays off', async ({ phone }) => {
   const page = await phone();
-  await page.goto(APP, { waitUntil: 'domcontentloaded' });
+  await signIn(page, 'member');
   const search = page.locator('.ui-tabbar [data-tab-id="upcoming"]');
   await expect(search).toBeVisible();
   // the current tab's icon sits in a 56 x 32 pill
@@ -73,7 +73,7 @@ test('a pushed Settings page hides the tab bar until Back leaves Settings', asyn
 
 test('the app opts in to the tab dip, the sheet bar fade, the keyboard bar fade and the held press', async ({ phone }) => {
   const page = await phone();
-  await page.goto(APP, { waitUntil: 'domcontentloaded' });
+  await signIn(page, 'member');
   await expect(page.locator('html')).toHaveAttribute('data-slide', 'dip');
   await expect(page.locator('html')).toHaveAttribute('data-sheet-bar', 'fade');
   await expect(page.locator('html')).toHaveAttribute('data-keyboard-bar', 'fade');
