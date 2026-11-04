@@ -4,7 +4,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { projectView, todayView, placeText, projectCascade, sectionCascade, cleanFields, cleanDue, isTask, dayOrder, labelsOf, cleanDisplay,
   plainDisplay, sortKey, ownOrder } from '../src/tasks.js';
-import { upcomingView, completedView, projectTree, projectCounts, todayCount, upcomingCount, sideCounts, narrowTasks, sorter, groupTasks } from '../src/arrange.js';
+import { upcomingView, completedView, projectTree, projectCounts, todayCount, upcomingCount, narrowTasks, sorter, groupTasks } from '../src/arrange.js';
+import { sideCounts } from '../src/wide/side-rows.js';
 import { rescheduled } from '../src/recur.js';
 import { taskOps, refusal, tasksGone } from '../src/task-ops.js';
 

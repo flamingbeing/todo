@@ -12,13 +12,13 @@
 import { icon } from '@core/ui';
 import { ICONS } from '../icons.js';
 import { MORE } from '../icons-more.js';
-import { projectTree, sideCounts } from '../arrange.js';
+import { projectTree } from '../arrange.js';
 import { colorHex } from '../colors.js';
 import { dayKey } from '../dates.js';
 import { screens, tabButton, openSettingsPage } from '../shell.js';
 import { openMenu } from '../ui/menu.js';
 import { el } from '../screens/pick.js';
-import { TABS, sideRows, litRow } from './side-rows.js';
+import { TABS, sideRows, litRow, sideCounts } from './side-rows.js';
 import { startList } from './list.js';
 
 /** @typedef {import('../screens/views.js').Ctx} Ctx */

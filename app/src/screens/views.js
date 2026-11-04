@@ -4,7 +4,7 @@
 // Completed load the first time they are needed (lazyModules), then in idle moments after the first screen; so do
 // Filters & Labels, Search's results, a project's board, the Display sheet and Upcoming's week strip.
 // Display's choices (grouping, order, what shows) are kept per list on this device (the option "display").
-import { conflictSheet, refusedList, toaster, undoToast, loadState, lazyModules, glide, holdKeyboard, captured, plural } from '@core/ui';
+import { conflictSheet, refusedList, toaster, undoToast, loadState, lazyModules, holdKeyboard, captured, plural } from '@core/ui';
 import { COLL, REFUSED, INBOX, itemText } from '../items.js';
 import { projectView, todayView, isTask, placeText, projectOf, priorityOf, cleanDisplay, plainDisplay } from '../tasks.js';
 import { dayKey, dayTitle, dayHeading, dueLine } from '../dates.js';
@@ -86,6 +86,7 @@ export function views(app) {
     party: () => import('./party.js'),
     confetti: () => import('./confetti.js'),
     gap: () => import('../ui/gap.js'),
+    done: () => import('./complete.js'),
   });
   /** a list's Display choices on this device @param {string} view */
   const disp = view => cleanDisplay(/** @type {any} */ (app.settings.get('display'))?.[view], view);
@@ -125,37 +126,9 @@ export function views(app) {
     setTimeout(() => document.body.removeAttribute('data-fab-pop'), 450);
   }, true);
 
-  /** done: the box fills, the row fades out, then the save and the undo toast @param {Task} t @param {HTMLElement | null} [row] */
-  // A repeating task stays open and moves to its next date (recur.js, loaded then); past its last one it is done.
-  const complete = async (t, row) => {
-    if (!canWrite) return;
-    let next = /** @type {string | null} */ (null);
-    if (t.due?.rrule) {
-      try {
-        const { nextDay, dateLibs } = await import('../recur.js'), today = dayKey();
-        next = nextDay(t.due, { done: today, today }, (await dateLibs()).RRule);
-      } catch { /* offline before the library was kept: done for good is wrong, so leave it */ toast('Could not work out the next date'); redraw(); return; }
-    }
-    if (row) {
-      await new Promise(r => setTimeout(r, 150));
-      // (every completion bursts from the checkbox as the row starts to fade; off under reduced motion)
-      const bit = row.querySelector('.td-check');
-      if (bit) void lazy.withMod('confetti', m => m.burst(bit));
-      // (the ring has filled and its check drawn, 150 ms: app.css; then the row fades, and the list drawn again closes the gap)
-      if (!next) { row.classList.add('is-leaving'); await glide([[row, x => ({ opacity: String(1 - x), transform: `translateX(${x * 12}px)` })]], 0, 1).done; await (await lazy.need('gap')).closeGap(row); }
-    }
-    const party = app.settings.get('goalParty') ? await lazy.need('party') : null;
-    const before = party ? party.doneToday(data.tasks) : 0;
-    const { refused, ticked, moved, reopened } = await app.complete(t, { next, keepSubs: app.settings.get('resetSubs') === false });
-    if (refused) { toast(REFUSED); redraw(); return; }
-    // (Settings: the complete tone, and a cheer when this one meets the daily goal; a repeating task's move counts too)
-    if (app.settings.get('tone')) void lazy.withMod('tone', m => m.playTone());
-    const met = !!party?.metNow(before, before + 1, Number(app.settings.get('dailyGoal') ?? 0));
-    if (met) party?.cheer();
-    const said = met ? 'Task completed. Daily goal reached' : 'Task completed';
-    if (moved) undo.show(said, async () => { if (await app.unmove(t, moved, reopened)) toast(REFUSED); });
-    else undo.show(said, async () => { if (await app.untick(ticked)) toast(REFUSED); });
-  };
+  /** done: the box fills, the row fades out, then the save and the undo toast (complete.js, warmed after the first draw)
+   * @param {Task} t @param {HTMLElement | null} [row] */
+  const complete = (t, row) => (canWrite ? lazy.need('done').then(m => m.complete(ctx, t, row, lazy)) : Promise.resolve());
 
   // ---- where the person is: the tab page, and the screen pushed over it
   const host = /** @type {HTMLElement} */ (document.querySelector('.ui-screens'));
@@ -265,53 +238,20 @@ export function views(app) {
   /** @param {string} pid @param {string} [after] @param {number} [order] */
   const newSection = (pid, after, order) => {
     if (after === undefined && order === undefined) { openSectionPage(pid); return; }
-    naming = { projectId: pid, sectionId: '', after, order }; fresh.clear(); paint(top); focusNaming();
+    void lazy.withMod('section', m => {
+      field ??= m.nameFields(ctx, { naming: () => naming, stop: () => { naming = null; }, redraw: () => { fresh.clear(); paint(top); } });
+      naming = { projectId: pid, sectionId: '', after, order }; fresh.clear(); paint(top); focusNaming();
+    });
   };
   // a new section at the end of a list: its own screen (a name and the tick), as the page menu's Add section opens it
   /** (section: its Edit section) @param {string} pid @param {import('../items.js').Section | null} [section] */
   const openSectionPage = (pid, section = null) => { void lazy.withMod('section', m => m.openSectionPage(ctx, pid, () => fresh.clear(), () => screens(), section)); };
   const focusNaming = () => requestAnimationFrame(() => /** @type {HTMLInputElement | null} */ (document.querySelector(`#${top} .td-name-field input`))?.focus());
-  // (the page is drawn again on every change, synced ones too: the open field is the same element each time, so what
-  // was typed stays; the browser blurs a focused element it takes out, so that blur is not the person leaving it)
-  /** @type {{ for: object | null, form: HTMLFormElement, moving: boolean } | null} */
-  let shown = null;
+  // (the field itself: section-page.js, loaded the first time a section is named in place)
+  /** @type {((value: string, section: import('../items.js').Section | null, pid: string) => HTMLFormElement) | null} */
+  let field = null;
   /** @param {string} value @param {import('../items.js').Section | null} section @param {string} pid */
-  const nameField = (value, section, pid) => {
-    if (shown && naming && shown.for === naming) {
-      const was = shown, input = /** @type {HTMLInputElement} */ (was.form.elements[0]);
-      was.moving = document.activeElement === input;
-      queueMicrotask(() => { was.moving = false; });
-      return was.form;
-    }
-    const form = document.createElement('form'), input = document.createElement('input');
-    const me = shown = { for: naming, form, moving: false };
-    form.className = 'td-name-field';
-    input.value = value; input.maxLength = 120; input.placeholder = 'Name this section';
-    input.setAttribute('aria-label', section ? `New name for ${section.name}` : 'Name of the new section');
-    let done = false;
-    const at = naming?.order;
-    const finish = async (/** @type {boolean} */ save) => {
-      if (done) return;
-      done = true; naming = null;
-      if (shown === me) shown = null;
-      const name = input.value.trim();
-      if (save && name) {
-        const r = section ? await app.renameSection(section, name) : (await app.addSection(pid, name, at)).refused;
-        if (r) toast(REFUSED);
-      }
-      fresh.clear(); paint(top);
-    };
-    form.addEventListener('submit', e => { e.preventDefault(); void finish(true); });
-    input.addEventListener('blur', () => {
-      if (!me.moving) { void finish(true); return; }
-      // (moved by a redraw: focus it again where the caret was)
-      const [a, b] = [input.selectionStart, input.selectionEnd];
-      queueMicrotask(() => { if (input.isConnected && !done) { input.focus({ preventScroll: true }); input.setSelectionRange(a, b); } });
-    });
-    input.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); void finish(false); } });
-    form.append(input);
-    return form;
-  };
+  const nameField = (value, section, pid) => /** @type {NonNullable<typeof field>} */ (field)(value, section, pid);
   /** @param {import('../items.js').Section} s @param {HTMLElement} b */
   const sectionMenu = (s, b) => { void lazy.withMod('menus', m => m.sectionMenu(ctx, s, b, x => openSectionPage(x.projectId, x), newSection)); };
 
@@ -556,6 +496,7 @@ export function views(app) {
       // the quick add and the task sheet straight after the first draw (the main ways in, and may be used offline), then the rest
       if (!warmed) {
         warmed = true;
+        void lazy.need('done').catch(() => {});
         lazy.need('add').then(() => lazy.need('sheet')).then(() => { if (window.starter) window.starter.warm = true; }).catch(() => {});   // (warm: for the tests)
         // the rows' swipes, holds and drags, and the + button's drag (each list host is wired once)
         lazy.need('gestures').then(m => m.wire(ctx, { hosts: { today: 'days', upcoming: 'days', inbox: 'tree', project: 'tree', search: null, place: 'own' },
