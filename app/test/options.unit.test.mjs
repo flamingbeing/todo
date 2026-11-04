@@ -106,3 +106,15 @@ test('the wide side bar lists a place unless it is off both the tab bar and Brow
   assert.equal(litRow('search-page', 'inbox', 1), 'search');
   assert.equal(litRow('settings-page', 'inbox', 1), '');
 });
+
+test("Display's layout: Table is kept (this device); it is drawn only at 840 px and up, the list's own look under it", async () => {
+  const { cleanDisplay } = await import('../src/tasks.js');
+  const { drawnLayout } = await import('../src/wide/table-parts.js');
+  assert.equal(cleanDisplay({ layout: 'table' }, 'today').layout, 'table');
+  assert.equal(cleanDisplay({ layout: 'table' }, 'project:p1').layout, 'table');
+  assert.equal(cleanDisplay({ layout: 'grid' }, 'today').layout, '');
+  assert.equal(drawnLayout('table', true), 'table');
+  assert.equal(drawnLayout('table', false), '');
+  assert.equal(drawnLayout('board', false), 'board');
+  assert.equal(drawnLayout('', true), '');
+});

@@ -147,3 +147,36 @@ test('grouping and sorting by deadline: Overdue, each day, No deadline; nearest 
   await expect(page.locator('#project .td-group-title').last()).toHaveText('No deadline');
   await expect(page.locator('#project .td-group').nth(2).locator('.td-title')).toHaveText([`A ${u}`, `D ${u}`]);
 });
+
+test('840 px and up: Display is a card under its button (right edges lined up), a choice is kept at once, "Display: n", Reset all', async ({ sized }) => {
+  const page = await sized(1280, { mouse: true });
+  await signIn(page, 'member');
+  await synced(page);
+  await expect(page.locator('#today-page')).toBeVisible();
+  const btn = page.locator('#display-btn');
+  await btn.click();
+  const pop = page.locator('#display-pop');
+  await expect(pop).toBeVisible();
+  await expect(page.locator('#display-sheet')).toBeHidden();
+  await page.waitForTimeout(250);   // (the dialog's own fade in)
+  const [b, p] = await Promise.all([btn, pop].map(l => l.evaluate(e => { const r = e.getBoundingClientRect(); return { right: r.right, top: r.top, bottom: r.bottom, w: /** @type {HTMLElement} */ (e).offsetWidth }; })));
+  expect(Math.round(p.w)).toBe(300);
+  expect(Math.abs(p.right - b.right)).toBeLessThanOrEqual(2);
+  expect(p.top).toBeGreaterThanOrEqual(b.bottom);
+  await expect(pop.getByRole('radio')).toHaveText(['List', 'Board', 'Table', 'Calendar']);
+  expect(await AxeBuilder(page)).toEqual([]);
+  // a choice is kept at once, with an orange dot on its row
+  await pop.getByLabel('Sorting').selectOption('name');
+  await expect(pop.locator('.td-pop-row').filter({ hasText: 'Sorting' }).locator('.td-pop-dot')).toHaveCount(1);
+  await pop.getByRole('radio', { name: 'Table' }).click();
+  await expect(page.locator('#today .td-table')).toBeVisible();
+  const wideReady = await page.evaluate(() => document.documentElement.hasAttribute('data-wide-ready'));
+  if (wideReady) await expect(btn).toHaveAccessibleName('Display: 2');
+  await pop.getByRole('button', { name: 'Reset all' }).click();
+  await expect(pop.locator('.td-pop-dot')).toHaveCount(0);
+  await expect(pop.getByRole('button', { name: 'Reset all' })).toBeDisabled();
+  await expect(page.locator('#today .td-table')).toHaveCount(0);
+  if (wideReady) await expect(btn).toHaveAccessibleName('Display');
+  await page.keyboard.press('Escape');
+  await expect(pop).toBeHidden();
+});

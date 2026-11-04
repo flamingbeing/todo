@@ -24,5 +24,5 @@ test('crumbs: My Projects, then the parents from the top; none for the Inbox; a 
 });
 
 test('the list pages that take the wide look', () => {
-  assert.deepEqual(LIST_PAGES, ['today-page', 'inbox-page', 'project-page', 'place-page']);
+  assert.deepEqual(LIST_PAGES, ['today-page', 'inbox-page', 'upcoming-page', 'project-page', 'place-page']);
 });
