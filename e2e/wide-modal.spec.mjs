@@ -97,7 +97,8 @@ test('wide task view: a dialog with two sides, next and previous, saves, the sch
   await expect(menu.locator('.ui-menu-note')).toHaveText(/^Added on /);
   await expect(menu.locator('.ui-menu-item').filter({ hasText: 'Delete task' })).toContainText('Shift Delete');
   await expect(menu.locator('.ui-menu-item').filter({ hasText: 'Copy link to task' })).toBeVisible();
-  expect(Math.abs((await box(menu)).w - 224)).toBeLessThanOrEqual(2);
+  // offsetWidth: the menu pops in from scale .9 (120 ms), so a bounding box taken mid-pop is too small
+  expect(Math.abs((await menu.evaluate(e => e.offsetWidth)) - 224)).toBeLessThanOrEqual(2);
   await page.keyboard.press('Escape');
   await expect(menu).toHaveCount(0);
 
