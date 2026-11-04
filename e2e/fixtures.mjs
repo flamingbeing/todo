@@ -160,12 +160,13 @@ export const test = base.extend({
     });
     await check(made);
   },
-  // a touch screen of this width (390 phone, 820 tablet, 1280 laptop with touch): the same CSP check after the test
+  // a touch screen of this width (390 phone, 820 tablet, 1280 laptop with touch; { mouse: true }: a mouse, no touch): the
+  // same CSP check after the test
   sized: async ({ browser, browserName }, use) => {
     const made = [];
-    await use(async (/** @type {number} */ width) => {
+    await use(async (/** @type {number} */ width, { mouse = false } = {}) => {
       const height = width < 600 ? 844 : width < 1000 ? 1180 : 800;
-      const context = await newContext(browser, browserName, { viewport: { width, height }, ...touch(browserName, width < 1000) });
+      const context = await newContext(browser, browserName, { viewport: { width, height }, ...(mouse ? {} : touch(browserName, width < 1000)) });
       await context.addInitScript(seed);
       await routeHermetic(context);
       const page = await context.newPage();
