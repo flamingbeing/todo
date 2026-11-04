@@ -1,6 +1,6 @@
 // The 1.0 engine features the starter shows: sign-out keeps this device's data, forget wipes it, refused saves wait
 // in a list, the task sheet follows its task live (watchDoc), the list marks what changed, and "Check for updates".
-import { test, expect, clickOpens, signIn, signInAgain, add, synced, serverHas, uniq, db, itemIdOf, today, APP, openSettings, space } from './fixtures.mjs';
+import { test, expect, clickOpens, signIn, signInAgain, add, synced, serverHas, uniq, db, itemIdOf, today, APP, openSettings, openToday, space } from './fixtures.mjs';
 
 const kept = page => page.evaluate(async () => {
   let n = 0;
@@ -104,7 +104,7 @@ test('the task sheet follows its task: a change elsewhere shows, a delete elsewh
 
 test('check for updates: a new version takes over at once', async ({ phone }) => {
   const page = await phone();
-  await page.goto(APP + '&sw', { waitUntil: 'domcontentloaded' });
+  await signIn(page, 'member', { path: APP + '&sw' });
   await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller), { timeout: 30_000 }).toBe(true);
   await page.evaluate(() => { window.__same = true; });
   await page.request.get('/__test/bump');
