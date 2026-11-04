@@ -37,6 +37,7 @@
  * @property {ItemFiles | undefined} files
  * @property {(kind: 'labels' | 'filters', id: string) => void} openPlace  a label's or a filter's page
  * @property {() => string} top  the screen on top
+ * @property {() => string} project  the project the project page shows
  * @property {(view: string) => import('../tasks.js').Display} display  a list's Display choices
  * @property {() => void} redraw
  * @property {{ menu: (s: import('../items.js').Section, b: HTMLElement) => void, field: (value: string, s: import('../items.js').Section | null, pid: string) => HTMLElement,

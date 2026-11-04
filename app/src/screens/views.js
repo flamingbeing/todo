@@ -109,7 +109,7 @@ export function views(app) {
     removeProject: p => lazy.need('menus').then(m => m.removeProject(ctx, p, () => { if (top === 'project-page' && projectId === p.id) screens()?.pop(); })),
     rows: o => rowCtx(o ?? {}),
     openPlace: (kind, id) => { place = { kind, id }; fresh.delete('place-page'); paint('place-page'); if (top !== 'place-page') screens()?.push('#place-page'); },
-    top: () => top, display: disp, redraw: () => redraw(),
+    top: () => top, project: () => projectId, display: disp, redraw: () => redraw(),
     sections: { menu: (s, b) => sectionMenu(s, b), field: (v, s, pid) => nameField(v, s, pid), naming: () => naming, add: pid => newSection(pid) },
   };
 
@@ -503,8 +503,14 @@ export function views(app) {
     for (const s of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.ui-screen.is-beside'))) paint(s.id);
     void lazy.loaded('sheet')?.redraw(ctx);
     void lazy.loaded('activity')?.redraw(ctx);
+    wide.loaded('side')?.draw(ctx);
     changed = new Set();
   };
+  // the wide side bar's rows (from 840 px only)
+  const wide = lazyModules({ side: () => import('../wide/side.js') }), big = matchMedia('(min-width: 840px)');
+  const side = () => { if (big.matches) void wide.withMod('side', m => m.startSide(ctx)); };
+  big.addEventListener('change', side);
+  side();
 
   // the day number on the Today tab, and a new day after midnight
   const dayNumber = () => { for (const n of document.querySelectorAll('[data-today-num]')) n.textContent = String(new Date().getDate()); };

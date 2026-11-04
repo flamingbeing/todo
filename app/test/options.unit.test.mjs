@@ -81,3 +81,28 @@ test('every swipe action but none has a band colour (colors.js SWIPE_TONES), non
   assert.deepEqual({ ...SWIPE_TONES }, { complete: '#058527', schedule: '#692EC2', delete: '#DC4C3E', select: '#148FAD' });
   assert.ok(Object.isFrozen(SWIPE_TONES));
 });
+
+test('the wide side bar: shown and My Projects open by default, on this device', () => {
+  for (const k of ['sideHidden', 'sideProjectsFolded']) {
+    assert.equal(OPTIONS[k].scope, 'device');
+    assert.equal(OPTIONS[k].default, false);
+  }
+});
+
+test('the wide side bar lists a place unless it is off both the tab bar and Browse; the row the page on top lights', async () => {
+  const { sideRows, litRow, SIDE_ROWS } = await import('../src/wide/side-rows.js');
+  const none = () => false, all = () => true;
+  assert.deepEqual(sideRows(none, []), SIDE_ROWS);
+  assert.deepEqual(sideRows(none, ['inbox', 'search']), SIDE_ROWS);   // on the bar: still a row
+  assert.deepEqual(sideRows(all, ['inbox', 'search']), ['today', 'upcoming', 'filters', 'reporting']);
+  assert.deepEqual(sideRows(none, ['reporting', 'filters']), ['search', 'inbox', 'today', 'upcoming']);
+  assert.deepEqual(sideRows(none, null), SIDE_ROWS);
+  assert.equal(litRow('today-page', 'inbox', 0), 'today');
+  assert.equal(litRow('today-page', 'inbox', 1), '');
+  assert.equal(litRow('project-page', 'p1', 1), 'project:p1');
+  assert.equal(litRow('project-page', 'inbox', 1), 'inbox');
+  assert.equal(litRow('place-page', 'inbox', 2), 'filters');
+  assert.equal(litRow('productivity-page', 'inbox', 2), 'reporting');
+  assert.equal(litRow('search-page', 'inbox', 1), 'search');
+  assert.equal(litRow('settings-page', 'inbox', 1), '');
+});

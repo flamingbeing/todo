@@ -1,0 +1,80 @@
+/* The wide layout (840 px and up), linked with media="(min-width: 840px)" so a phone or a tablet never applies it;
+   every rule is inside the same query too. app-ui (rc.93+) draws the side bar's frame (html[data-wide-side]: 280 px,
+   the hide button); this file is the app's own part: its colours, and the rows wide/side.js puts in nav#side (the
+   person, Add task, the places with their counts, My Projects). Classes here start td-side- (or are the kit's). */
+@media (min-width: 840px) {
+  :root {
+    --td-side-bg: light-dark(#fcfaf8, #262626);
+    --td-page-bg: light-dark(#fff, #1f1f1f);
+    --td-hair: light-dark(#dddddb, #3c3c3c);
+    --td-side-sel: light-dark(#ffefe5, #472524);
+    --td-side-sel-text: light-dark(#dc4c3e, #f0776f);
+    --td-hover: light-dark(#f2efed, #363636);
+    --td-menu-bg: light-dark(#fff, #272727);
+    --td-muted: #808080;
+    --side-bg: var(--td-side-bg);
+  }
+  body { background: var(--td-page-bg); }
+  .ui-shell.td > .ui-sidebar { background: var(--td-side-bg); border: 0; }
+
+  /* the rows replace index.html's links and the app's name (both kept for the narrower side bar) */
+  #side[data-td-side] > a.ui-side-link, #side[data-td-side] .ui-sidebar-name { display: none; }
+  #side .td-side-head { display: flex; align-items: center; gap: 8px; min-height: 36px; margin: 0 12px 12px; padding: 0; }
+  #side .td-side-head > .ui-side-toggle { margin-inline-start: auto; }
+
+  .td-side-me { display: flex; align-items: center; gap: 8px; min-width: 0; height: 36px; margin: 0; padding: 0 6px 0 4px; border: 0;
+    border-radius: 6px; background: none; color: var(--td-text); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .td-side-me[hidden] { display: none; }
+  .td-side-me:hover, .td-side-me[aria-expanded="true"] { background: var(--td-hover); }
+  .td-side-face { display: grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 50%; overflow: hidden;
+    background: var(--td-fill); color: #fff; font-size: 13px; font-weight: 600; }
+  .td-side-face img { width: 100%; height: 100%; object-fit: cover; }
+  .td-side-face .ui-icon { width: 16px; height: 16px; }
+  .td-side-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .td-side-me .td-side-chev { flex: none; width: 14px; height: 14px; color: var(--td-text-2); }
+
+  .td-side-add { display: flex; align-items: center; gap: 6px; height: 34px; margin: 0 12px; padding: 0 5px; border: 0; border-radius: 6px;
+    background: none; color: var(--td-fill); font: inherit; font-size: 14px; font-weight: 700; text-align: start; cursor: pointer; }
+  .td-side-add[hidden] { display: none; }
+  .td-side-add:hover { background: var(--td-hover); }
+  .td-side-plus { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--td-fill); color: #fff; }
+  .td-side-plus .ui-icon { width: 16px; height: 16px; stroke-width: 2.5; }
+
+  .td-side-nav { display: flex; flex-direction: column; }
+  .td-side-nav[hidden] { display: none; }
+  #side .td-side-row { display: flex; flex: none; align-items: center; justify-content: flex-start; gap: 9px; min-height: 34px; margin: 0 12px;
+    padding: 0 12px 0 8px; border-radius: 6px; background: none; color: var(--td-text); font-size: 14px; font-weight: 400; text-align: start;
+    text-decoration: none; }
+  #side .td-side-row:hover { background: var(--td-hover); }
+  #side .td-side-row[aria-current="page"] { background: var(--td-side-sel); color: var(--td-side-sel-text); font-weight: 400; }
+  #side .td-side-row .td-side-ic { flex: none; width: 18px; height: 18px; color: var(--td-text-2); }
+  #side .td-side-row[aria-current="page"] .td-side-ic, #side .td-side-row[aria-current="page"] .ui-side-count { color: inherit; }
+  .td-side-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #side .td-side-row .ui-side-count { margin-inline-start: auto; color: var(--td-muted); font-size: 12px; font-weight: 400; }
+  /* Today's icon holds the day's number */
+  .td-side-day { position: relative; display: block; }
+  .td-side-day > .ui-icon { width: 18px; height: 18px; }
+  #side .td-side-day .today-num { display: block; position: absolute; inset: 7px 0 auto; font-size: 8px; font-weight: 700; line-height: 1;
+    text-align: center; }
+
+  /* My Projects: a header that folds them (its chevron shows on hover or focus), then the tree */
+  .td-side-group { display: flex; align-items: center; justify-content: space-between; height: 34px; margin: 22px 12px 0; padding: 0 8px;
+    border: 0; border-radius: 6px; background: none; color: var(--td-text-2); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .td-side-group:hover { background: var(--td-hover); }
+  .td-side-group .td-side-fold { width: 16px; height: 16px; opacity: 0; }
+  .td-side-group:hover .td-side-fold, .td-side-group:focus-visible .td-side-fold { opacity: 1; }
+  .td-side-projects { display: flex; flex-direction: column; }
+  #side .td-side-projects .td-side-row { padding-inline-start: calc(10px + 16px * var(--td-depth, 0)); gap: 9px; }
+  #side .td-side-projects .td-side-ic { width: 16px; height: 16px; }
+
+  /* the account menu: a card under the head, rows 32 tall, a hint at each end */
+  .td-menu.td-side-menu { min-width: 280px; padding: 4px 0; border: 1px solid var(--td-hair); border-radius: 8px; background: var(--td-menu-bg); }
+  .td-side-menu .ui-menu-title { padding: 10px 14px 6px; font-size: 14px; font-weight: 700; color: var(--td-text); }
+  .td-side-menu .ui-menu-item { min-height: 32px; padding: 0 14px; gap: 10px; font-size: 14px; }
+  .td-side-menu .td-menu-icon { width: 18px !important; height: 18px !important; }
+  .td-side-hint { margin-inline-start: auto; padding-inline-start: 16px; color: var(--td-muted); font-size: 12px; }
+
+  /* quick add: a card in the middle, not a side panel */
+  #add-sheet.td-sheet { inset: 0; width: 550px; max-width: calc(100% - 32px); height: auto; max-height: none; margin: 18vh auto auto;
+    border-radius: 10px; box-shadow: 0 12px 40px rgb(0 0 0 / .25); }
+}
