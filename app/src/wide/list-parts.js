@@ -3,7 +3,7 @@
 import { INBOX } from '../items.js';
 
 /** the list pages that take the wide look (their page ids), and each one's list host */
-export const LIST_PAGES = ['today-page', 'inbox-page', 'project-page', 'place-page'];
+export const LIST_PAGES = ['today-page', 'inbox-page', 'upcoming-page', 'project-page', 'place-page'];
 
 /**
  * What quick add starts with from an inline "Add task" row (pure): a section's row adds to that section, Today's to
