@@ -14,6 +14,7 @@ import { flatten } from '../tree.js';
 import { dayKey } from '../dates.js';
 import { rowList, addRow, emptyNote, groupHead } from '../ui/row.js';
 import { addFor } from '../group-drop.js';
+import { INBOX } from '../items.js';
 import { el } from './pick.js';
 export { addFor };
 
@@ -51,11 +52,19 @@ export function drawGroups(ctx, { into, tasks, d, c, base, resched, byDay }) {
   return gs.reduce((n, g) => n + g.tasks.length, 0);
 }
 
+/** Display's Table, 840 px and up only (views.js sends it here; wide/table.js draws it) @param {import('../tasks.js').Display} d */
+const table = d => d.layout === 'table' && matchMedia('(min-width: 840px)').matches;
+
 /**
  * @param {Ctx} ctx @param {string} pid @param {HTMLElement} host @param {HTMLElement} below  for the dots
  * @param {import('../tasks.js').Display} d
  */
 export function drawBoard(ctx, pid, host, below, d) {
+  if (table(d)) {
+    const name = pid === INBOX ? 'Inbox' : ctx.data().projects.find(p => p.id === pid)?.name ?? '';
+    void import('../wide/table.js').then(m => m.drawTable(ctx, { host, empty: below, tasks: ctx.data().tasks, d, pid, base: { projectId: pid }, label: name }));
+    return;
+  }
   if (d.group !== 'none') {
     // a project grouped by Display: its groups as columns
     const n = drawGroupBoard(ctx, { host, below, tasks: ctx.data().tasks.filter(t => projectOf(t) === pid), d, group: d.group, base: { projectId: pid }, title: '' });
@@ -121,6 +130,7 @@ export function drawBoard(ctx, pid, host, below, d) {
  *   base: import('./views.js').AddContext, title: string }} o  group: the columns' grouping; base: what a new task starts with; title: a single column's name
  */
 export function drawGroupBoard(ctx, { host, below, tasks, d, group, base, title }) {
+  if (table(d)) { void import('../wide/table.js').then(m => m.drawTable(ctx, { host, empty: below, tasks, d, base, byDay: title === 'Today', label: title || 'Tasks' })); return 1; }
   const data = ctx.data(), canWrite = ctx.canWrite(), today = dayKey(), all = data.tasks.filter(isTask);
   host.classList.add('td-board');
   host.setAttribute('data-swipe-own', '');
@@ -139,6 +149,13 @@ export function drawGroupBoard(ctx, { host, below, tasks, d, group, base, title 
     col.setAttribute('aria-label', name);
     const head = el('div', 'td-col-head');
     head.append(el('h2', 'td-col-title', name), el('span', 'td-col-count', g.tasks.length ? String(g.tasks.length) : ''));
+    // (840 px and up: Overdue's Reschedule at its head's right, as in a list)
+    if (canWrite && group === 'date' && g.key === '0' && matchMedia('(min-width: 840px)').matches) {
+      const b = /** @type {HTMLButtonElement} */ (el('button', 'td-text-btn td-resched', 'Reschedule'));
+      b.type = 'button';
+      b.addEventListener('click', () => { void import('./select.js').then(m => m.rescheduleTasks(ctx, g.tasks)); });
+      head.append(b);
+    }
     col.append(head, rowList(flatten(g.tasks, all, { open: () => false }), { ...c, own: day }, name));
     const a = addFor(group, g.key, data, base);
     if (canWrite && a) col.append(addRow('Add task', () => ctx.openQuickAdd(a)));

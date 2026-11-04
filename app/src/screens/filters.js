@@ -193,6 +193,11 @@ export function drawPlace(ctx, place, host, empty, d, cal) {
     if (!drawGroupBoard(ctx, { host, below: empty, tasks: [...new Set(lists.flatMap(l => l.tasks))], d, group: d.group, base, title })) empty.prepend(none());
     return;
   }
+  // (Display's Table: 840 px and up only, a list under it)
+  if (d.layout === 'table' && matchMedia('(min-width: 840px)').matches) {
+    void import('../wide/table.js').then(m => { if (!m.drawTable(ctx, { host, empty, tasks: [...new Set(lists.flatMap(l => l.tasks))], d, base, label: title })) empty.prepend(none()); });
+    return;
+  }
   host.classList.remove('td-board');
   host.removeAttribute('data-swipe-own');
   host.toggleAttribute('data-sorted', d.sort !== 'manual');

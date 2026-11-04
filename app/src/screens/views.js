@@ -341,13 +341,15 @@ export function views(app) {
   /** a list as a board of Display's groups (board.js) @param {HTMLElement} host @param {HTMLElement | null} below @param {Task[]} tasks
    * @param {import('../tasks.js').Display} d @param {string} group @param {AddContext} base @param {string} title */
   const groupBoard = (host, below, tasks, d, group, base, title) => { void lazy.withMod('board', m => m.drawGroupBoard(ctx, { host, below, tasks, d, group, base, title })); };
+  // (Display's Table: 840 px and up, board.js hands it to wide/table.js; a list under it)
+  const wide = lazyModules({ side: () => import('../wide/side.js') }), big = matchMedia('(min-width: 840px)'), tab = (/** @type {import('../tasks.js').Display} */ d) => d.layout === 'table' && big.matches;
 
   /** a project's page (the Inbox too) into host @param {HTMLElement} into @param {string} pid @param {HTMLElement} empty */
   const projectList = (into, pid, empty) => {
     const view = pid === INBOX ? 'inbox' : `project:${pid}`;
     if (inCal(view)) { drawCal(view, into, empty, filtered().filter(t => projectOf(t) === pid), { projectId: pid }); return; }
     const p = data.projects.find(x => x.id === pid), d = disp(view), today = dayKey();
-    const board = d.layout === 'board' || pid !== INBOX && p?.view === 'board';
+    const board = d.layout === 'board' || tab(d) || pid !== INBOX && p?.view === 'board';
     into.classList.toggle('td-board', board);
     into.toggleAttribute('data-swipe-own', board);
     into.toggleAttribute('data-sorted', d.sort !== 'manual');
@@ -418,7 +420,7 @@ export function views(app) {
     if (inCal('today')) { shownToday = []; drawCal('today', $('today'), $('today-empty'), filtered().filter(t => !!t.due?.date), { projectId: INBOX }); return; }
     const host = $('today'), base = { projectId: INBOX, due: { date: today } }, ts = filtered().filter(t => { const k = t.due?.date; return !!k && (t.done ? k === today : k <= today); });
     host.toggleAttribute('data-sorted', d.sort !== 'manual');
-    if (d.layout === 'board') { groupBoard(host, $('today-empty'), ts, d, d.group, base, 'Today'); return; }
+    if (d.layout === 'board' || tab(d)) { groupBoard(host, $('today-empty'), ts, d, d.group, base, 'Today'); return; }
     host.classList.remove('td-board'); host.removeAttribute('data-swipe-own');
     if (!plainDisplay(d, 'today')) { groups(host, $('today-empty'), ts, d, rowCtx({ place: true }), base, todayEmpty(), true); return; }
     delete host.dataset.grouped;
@@ -473,7 +475,7 @@ export function views(app) {
   /** draws a page if the data changed since it was last drawn @param {string} id */
   const paint = id => {
     // (the Display button's dot: this list's display is not its default; plainDisplay is the diff)
-    if (id === top) { const v = viewOf(); display.classList.toggle('has-dot', !display.hidden && !plainDisplay(disp(v), v)); }
+    if (id === top) { const v = viewOf(); display.dataset.view = v; display.classList.toggle('has-dot', !display.hidden && !plainDisplay(disp(v), v)); }
     if (fresh.has(id)) return;
     fresh.add(id);
     if (id === 'today-page' || id === 'inbox-page' || id === 'upcoming-page') applied(id.slice(0, -5), id.slice(0, -5));
@@ -507,9 +509,9 @@ export function views(app) {
     changed = new Set();
   };
   // the wide side bar's rows (from 840 px only)
-  const wide = lazyModules({ side: () => import('../wide/side.js') }), big = matchMedia('(min-width: 840px)');
   const side = () => { if (big.matches) void wide.withMod('side', m => m.startSide(ctx)); };
   big.addEventListener('change', side);
+  big.addEventListener('change', redraw);
   side();
 
   // the day number on the Today tab, and a new day after midnight
