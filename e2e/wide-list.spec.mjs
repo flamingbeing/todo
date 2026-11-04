@@ -116,7 +116,7 @@ test('wide Today, Inbox and a project: the title, the count, flat rows, Reschedu
   await expect(page.locator('#project .td-section .td-add-row')).toHaveCount(1);
   expect(await AxeBuilder(page)).toEqual([]);
 
-  test.skip(!s.wideReady, 'needs app-ui rc.93: runs after the pin bump');
+  test.skip(!s.wideReady, 'needs app-ui rc.97: runs after the pin bump');
   // app-ui's frame: no + button (the side bar's Add task), the column 800 at most
   await expect(page.locator('#fab')).toBeHidden();
   expect((await box(page.locator('#project-page'))).w).toBeLessThanOrEqual(800);

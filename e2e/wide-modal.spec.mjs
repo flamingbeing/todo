@@ -22,7 +22,7 @@ async function seed(page) {
 }
 const rowOf = (page, title) => page.locator('.ui-screen:not([hidden]) li.td-row').filter({ hasText: title }).first();
 
-/** opens Settings: the side bar's account menu (app-ui rc.93) or Browse's gear */
+/** opens Settings: the side bar's account menu (app-ui rc.97) or Browse's gear */
 async function openSettings(page) {
   if (await page.locator('.td-side-me:visible').count()) {
     await page.locator('.td-side-me').click();

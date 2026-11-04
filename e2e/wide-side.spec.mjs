@@ -1,7 +1,7 @@
 // The wide side bar (840 px and up, app/src/wide/side.js + wide.css): the person and the account menu, Add task, the
 // places with their counts (Today's icon holds the day's number), My Projects; the page on top lights its row; Q opens
 // quick add. Under 840 px (a phone, a narrow window) none of it loads and the side bar is as before. The parts that need
-// app-ui rc.93's frame (the 280 px bar, its hide button) wait for the pin bump.
+// app-ui rc.97's frame (the 280 px bar, its hide button) wait for the pin bump.
 import AxeBuilder from './axe.mjs';
 import { test, expect, signIn, synced, uniq, db, space, today } from './fixtures.mjs';
 
@@ -74,7 +74,7 @@ test('the wide side bar: rows, counts, the day, the lit row, a project, Add task
   await expect(menu).toHaveCount(0);
   expect(await AxeBuilder(page)).toEqual([]);
 
-  test.skip(!wideReady, 'needs app-ui rc.93: runs after the pin bump');
+  test.skip(!wideReady, 'needs app-ui rc.97: runs after the pin bump');
   // app-ui's frame: 280 px; its hide button hides it and the option sideHidden keeps that after a reload
   await expect.poll(() => page.locator('#side').evaluate(e => Math.round(e.getBoundingClientRect().width))).toBe(280);
   await page.locator('#side .ui-side-toggle').click();

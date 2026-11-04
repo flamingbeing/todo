@@ -50,7 +50,7 @@ test('wide boards: Today\'s columns 260 wide, Overdue\'s Reschedule, a project\'
   await expect(cols.first().locator('.td-col-head .td-resched')).toHaveText('Reschedule');
   expect(await AxeBuilder(page)).toEqual([]);
 
-  test.skip(!s.wideReady, 'needs app-ui rc.93: runs after the pin bump');
+  test.skip(!s.wideReady, 'needs app-ui rc.97: runs after the pin bump');
   await page.locator('#side .td-side-row').filter({ hasText: new RegExp(`^${s.name}`) }).first().click();
   await expect(page.locator('#project.td-board')).toBeVisible();
   const ghost = page.locator('#project .td-col-new .td-add-section');

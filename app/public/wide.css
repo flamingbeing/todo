@@ -1,5 +1,5 @@
 /* The wide layout (840 px and up), linked with media="(min-width: 840px)" so a phone or a tablet never applies it;
-   every rule is inside the same query too. app-ui (rc.93+) draws the side bar's frame (html[data-wide-side]: 280 px,
+   every rule is inside the same query too. app-ui (rc.97+) draws the side bar's frame (html[data-wide-side]: 280 px,
    the hide button); this file is the app's own part: its colours, and the rows wide/side.js puts in nav#side (the
    person, Add task, the places with their counts, My Projects). Classes here start td-side- (or are the kit's). */
 @media (min-width: 840px) {

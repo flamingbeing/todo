@@ -1,7 +1,7 @@
 // The wide side bar's rows (840 px and up only; views.js imports this file once the window is that wide, so a phone or
 // a tablet never loads it). It fills nav#side, whose look is wide.css's:
 //   head      the person (initial, name, a chevron) opening the account menu: Settings, Sync (the last sync's time),
-//             Sign out and the version; app-ui (rc.93+) puts its hide button at the row's end
+//             Sign out and the version; app-ui (rc.97+) puts its hide button at the row's end
 //   add       "Add task": quick add, as the + button does (also the Q key)
 //   places    Search, Inbox, Today (the day's number in its icon), Upcoming, Filters & Labels, Reporting, each with its
 //             count of open tasks; a place left out of both the tab bar and Browse (Settings) is left out here too
@@ -44,7 +44,7 @@ export function startSide(ctx) {
   if (!side) return;
   const big = matchMedia('(min-width: 840px)');
 
-  // the head: the person's button (app-ui's hide button joins the row; before rc.93 the row is the button alone)
+  // the head: the person's button (app-ui's hide button joins the row; before rc.97 the row is the button alone)
   let head = /** @type {HTMLElement | null} */ (side.querySelector('.ui-side-head'));
   if (!head) { head = el('div', 'ui-side-head'); side.prepend(head); }
   head.classList.add('td-side-head');
@@ -81,7 +81,7 @@ export function startSide(ctx) {
     ctx.openQuickAdd();
   });
 
-  // hidden or shown (app-ui rc.93's hide button, which keeps it on this device too): the option sideHidden follows it,
+  // hidden or shown (app-ui rc.97's hide button, which keeps it on this device too): the option sideHidden follows it,
   // and a change to the option (a settings file, Reset) moves it
   const settings = ctx.app.settings, html = document.documentElement;
   const follow = () => /** @type {any} */ (window).shell?.side?.()?.toggle(!!settings.get('sideHidden'));
