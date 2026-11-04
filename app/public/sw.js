@@ -17,6 +17,7 @@ const SHELL = [
   'icons/icon-512.png',
   'icons/icon-maskable-512.png',
   'icons/icon.svg',
+  'icons/og.png',
   'icons/variants/mint.png',
   'icons/variants/mint.svg',
   'icons/variants/night.png',
