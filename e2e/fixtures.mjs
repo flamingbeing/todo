@@ -141,6 +141,8 @@ export async function setOffline(context, offline) {
 }
 
 export const test = base.extend({
+  // a test starts with nobody signed in (space() throws until it signs someone in)
+  freshSpace: [async ({}, use) => { signedIn = ''; await use(undefined); }, { auto: true }],
   // a new phone: its own browser context; CSP reports collected for the check after the test
   phone: async ({ browser, browserName }, use) => {
     const made = [];
@@ -188,6 +190,10 @@ async function check(made) {
 }
 
 // cloud{ sign-in and the server's copy
+// Each person's tasks live in their own space, spaces/{uid} (cloud.js): space() is the one of the person this test signed in
+// last (each test runs in one worker at a time, so the module's value is the running test's). Before any sign-in it throws.
+let signedIn = '';
+export const space = () => { if (!signedIn) throw new Error('space(): sign in first'); return `spaces/${signedIn}`; };
 // Sign in as a new made-up Google account; with a role, an admin "adds" it (the role doc) and the page picks the
 // new claims up by itself. -> { uid, email }
 export async function signIn(page, role = 'member', { path = APP } = {}) {
@@ -198,6 +204,7 @@ export async function signIn(page, role = 'member', { path = APP } = {}) {
   await page.evaluate(e => window.starter.signInAs(e), email);
   await expect(page.locator('#no-access')).toBeVisible();
   const uid = await page.locator('#uid').textContent();
+  signedIn = uid || '';
   if (role) {
     await db.put(`members/${uid}`, { role, v: 1 });
     await expect(page.locator('#list-view')).toBeVisible();
@@ -305,13 +312,13 @@ export const synced = async page => {
   await page.waitForFunction(() => window.starter.warm === true, null, { timeout: 15_000 });
 };
 // cloud{
-export const serverHas = text => expect.poll(async () => (await db.list('spaces/_/tasks')).some(d => d.title === text), { timeout: 15_000 }).toBe(true);
+export const serverHas = text => expect.poll(async () => (await db.list(`${space()}/tasks`)).some(d => d.title === text), { timeout: 15_000 }).toBe(true);
 // The id of the shared task with this title (db.list leaves document ids out).
 export async function itemIdOf(text) {
   const host = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
   // (every page: the shared list grows over a long --repeat-each soak, past one page)
   for (let token = ''; ;) {
-    const r = await fetch(`http://${host}/v1/projects/demo-todo/databases/(default)/documents/spaces/_/tasks?pageSize=300${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`, { headers: { Authorization: 'Bearer owner' } });
+    const r = await fetch(`http://${host}/v1/projects/demo-todo/databases/(default)/documents/${space()}/tasks?pageSize=300${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`, { headers: { Authorization: 'Bearer owner' } });
     const j = await r.json();
     const d = (j.documents || []).find(x => x.fields?.title?.stringValue === text);
     if (d) return d.name.split('/').pop();

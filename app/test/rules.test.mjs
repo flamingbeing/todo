@@ -29,8 +29,8 @@ const emu = suite({
   rules: readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8'),
   roles: ['admin', 'member', 'viewer'],
   collections: [
-    ...Object.entries(VALID).map(([coll, data]) => ({ path: `spaces/_/${coll}/x1`, read: ['admin', 'member', 'viewer'], write: ['admin', 'member'],
-      data, stamp: /** @type {'strict'} */ ('strict'), list: { roles: ['admin', 'member', 'viewer'] } })),
+    // (the app's spaces are each one person's own, spaces/{uid}/…: the kit's cases put every role on one path, so the
+    // spaces' cases are the app's own below, 'each space is its owner's alone')
     ...mods.flatMap(m => m.collections ?? []),
   ],
 });
@@ -53,12 +53,48 @@ test('people read their own role doc, not others’; nobody writes or deletes on
 });
 
 const at = { serverAt: true };
+
+// Each person's space is theirs alone (4 Nov 2026): read by its owner with any role, written by an owner who is an admin or
+// member, and refused to everyone else, admins included; the old shared space '_' is nobody's.
+test('each space is its owner’s alone: other people, admins included, and the old shared space are refused', async () => {
+  const other = emu.as('u-other', { g: { _: 'member' }, v: 1 });
+  for (const [coll, data] of Object.entries(VALID)) {
+    for (const role of ['admin', 'member', 'viewer']) {
+      await emu.clear();
+      const path = `spaces/u-${role}/${coll}/x1`, rec = coll === 'comments' ? { ...data, uid: `u-${role}` } : data;
+      const writes = role !== 'viewer';
+      assert.equal((await as(role).set(path, rec, at)).ok, writes, `${coll}: ${role} writes own`);
+      if (!writes) await emu.seed(path, rec);
+      assert.equal((await as(role).get(path)).ok, true, `${coll}: ${role} reads own`);
+      assert.equal((await as(role).list(`spaces/u-${role}/${coll}`)).ok, true, `${coll}: ${role} lists own`);
+      assert.equal((await other.get(path)).ok, false, `${coll}: another member reads ${role}’s`);
+      assert.equal((await other.list(`spaces/u-${role}/${coll}`)).ok, false, `${coll}: another member lists ${role}’s`);
+      assert.equal((await other.set(path, { ...rec, updatedAt: 2 }, at)).ok, false, `${coll}: another member writes ${role}’s`);
+      assert.equal((await other.delete(path)).ok, false, `${coll}: another member deletes ${role}’s`);
+      assert.equal((await emu.as(`u-${role}`, { v: 1 }).get(path)).ok, false, `${coll}: ${role} with no role now`);
+      assert.equal((await emu.anon().get(path)).ok, false, `${coll}: signed out`);
+    }
+    await emu.clear();
+    assert.equal((await as('admin').get(`spaces/u-member/${coll}/x1`)).ok, false, `${coll}: an admin reads someone else’s`);
+    assert.equal((await as('admin').list(`spaces/u-member/${coll}`)).ok, false, `${coll}: an admin lists someone else’s`);
+    assert.equal((await as('admin').set(`spaces/u-member/${coll}/x2`, data, at)).ok, false, `${coll}: an admin writes someone else’s`);
+    await emu.seed(`spaces/_/${coll}/old`, data);
+    for (const role of ['admin', 'member', 'viewer']) {
+      assert.equal((await as(role).get(`spaces/_/${coll}/old`)).ok, false, `${coll}: ${role} reads the old shared space`);
+      assert.equal((await as(role).set(`spaces/_/${coll}/n`, data, at)).ok, false, `${coll}: ${role} writes the old shared space`);
+    }
+    assert.equal((await as('member').set(`spaces/u-member/${coll}/s`, data)).ok, false, `${coll}: unstamped`);
+    await emu.seed('revoked/u-member', { at: 1 });
+    assert.equal((await as('member').get(`spaces/u-member/${coll}/x1`)).ok, false, `${coll}: revoked`);
+    assert.equal((await emu.as('u-member', { g: { _: 'member' }, v: 1, x: Math.floor(Date.now() / 1000) - 60 }).get(`spaces/u-member/${coll}/x1`)).ok, false, `${coll}: access ended`);
+  }
+});
 /** each change of a valid record, saved by a member: whether the rules take it */
 const cases = async (coll, rows, id = 'c') => {
   for (const [label, change, ok] of rows) {
     await emu.clear();
     const data = typeof change === 'function' ? change({ ...VALID[coll] }) : { ...VALID[coll], ...change };
-    assert.equal((await as('member').set(`spaces/_/${coll}/${id}`, data, at)).ok, ok, `${coll}: ${label}`);
+    assert.equal((await as('member').set(`spaces/u-member/${coll}/${id}`, data, at)).ok, ok, `${coll}: ${label}`);
   }
 };
 const drop = k => d => { delete d[k]; return d; };
@@ -66,10 +102,10 @@ const drop = k => d => { delete d[k]; return d; };
 test('every collection: writers stamp a valid record; viewers and the unknown are refused; createdAt never changes', async () => {
   for (const [coll, data] of Object.entries(VALID)) {
     await emu.clear();
-    const path = `spaces/_/${coll}/s`;
+    const path = `spaces/u-member/${coll}/s`;
     assert.equal((await as('member').set(path, { ...data, createdAt: 1 }, at)).ok, true, `${coll}: valid create`);
     assert.equal((await as('member').set(path, { ...data, createdAt: 1, updatedAt: 2 }, at)).ok, true, `${coll}: member update`);
-    assert.equal((await as('admin').set(path, { ...data, createdAt: 1, updatedAt: 3 }, at)).ok, true, `${coll}: admin update`);
+    assert.equal((await as('admin').set(path, { ...data, createdAt: 1, updatedAt: 3 }, at)).ok, false, `${coll}: an admin cannot change someone else’s`);
     assert.equal((await as('member').set(path, { ...data, createdAt: 2 }, at)).ok, false, `${coll}: createdAt cannot change`);
     assert.equal((await as('member').set(path, { ...data, createdAt: 'x' }, at)).ok, false, `${coll}: createdAt is a number`);
     assert.equal((await as('member').set(path, { ...data, owner: 'me' }, at)).ok, false, `${coll}: an unknown field`);
@@ -78,7 +114,7 @@ test('every collection: writers stamp a valid record; viewers and the unknown ar
     assert.equal((await as('member').set(path, { ...data, _edits: { name: { by: 'Sam', at: 1 } } }, at)).ok, true, `${coll}: _edits`);
     assert.equal((await as('member').set(path, { ...data, updatedAt: 'x' }, at)).ok, false, `${coll}: updatedAt is a number`);
     assert.equal((await as('viewer').set(path, data, at)).ok, false, `${coll}: a viewer cannot write`);
-    assert.equal((await as('viewer').get(path)).ok, true, `${coll}: a viewer reads`);
+    assert.equal((await as('viewer').get(path)).ok, false, `${coll}: a viewer reads only their own space`);
     assert.equal((await as('viewer').delete(path)).ok, false, `${coll}: a viewer cannot delete`);
     assert.equal((await emu.as('u-new', {}).get(path)).ok, false, `${coll}: no role, no read`);
     assert.equal((await as('member').delete(path)).ok, true, `${coll}: a member deletes`);
@@ -151,7 +187,7 @@ test('tasks: a duration is whole minutes from 1 to 1440, or null', () => cases('
 ]));
 test('tasks: a duration changes on an update, and null clears it', async () => {
   await emu.clear();
-  const path = 'spaces/_/tasks/d', base = { ...VALID.tasks, createdAt: 1 };
+  const path = 'spaces/u-member/tasks/d', base = { ...VALID.tasks, createdAt: 1 };
   assert.equal((await as('member').set(path, { ...base, duration: 30 }, at)).ok, true, 'create with 30');
   assert.equal((await as('member').set(path, { ...base, duration: 1440, updatedAt: 2 }, at)).ok, true, 'update to 1440');
   assert.equal((await as('member').set(path, { ...base, duration: null, updatedAt: 3 }, at)).ok, true, 'update to null');
@@ -189,12 +225,13 @@ test('projects: a name, a known colour, a view; only the inbox doc is the Inbox,
   ]);
   await cases('projects', [['the Inbox', { name: 'Inbox', inbox: true, color: 'charcoal', order: 0 }, true]], 'inbox');
   await emu.clear();
-  await emu.seed('spaces/_/projects/inbox', { name: 'Inbox', inbox: true, color: 'charcoal', order: 0, view: 'list', updatedAt: 1 });
-  assert.equal((await as('member').delete('spaces/_/projects/inbox')).ok, false, 'the Inbox is never deleted');
-  assert.equal((await as('admin').delete('spaces/_/projects/inbox')).ok, false);
+  await emu.seed('spaces/u-member/projects/inbox', { name: 'Inbox', inbox: true, color: 'charcoal', order: 0, view: 'list', updatedAt: 1 });
+  await emu.seed('spaces/u-admin/projects/inbox', { name: 'Inbox', inbox: true, color: 'charcoal', order: 0, view: 'list', updatedAt: 1 });
+  assert.equal((await as('member').delete('spaces/u-member/projects/inbox')).ok, false, 'the Inbox is never deleted');
+  assert.equal((await as('admin').delete('spaces/u-admin/projects/inbox')).ok, false);
 });
 
-test('comments: text of 1 to 2000, a task and an author; the author and the task never change; only the author or an admin edits or deletes', async () => {
+test('comments: text of 1 to 2000, a task and an author; the author and the task never change; only the author edits or deletes (their own space)', async () => {
   await cases('comments', [
     ['no name', drop('name'), true],
     ['a null name', { name: null }, true],
@@ -211,11 +248,11 @@ test('comments: text of 1 to 2000, a task and an author; the author and the task
     ['an attachment field', { file: 'a.png' }, false],
   ]);
   await emu.clear();
-  const path = 'spaces/_/comments/k', base = { ...VALID.comments, createdAt: 1 };
+  const path = 'spaces/u-member/comments/k', base = { ...VALID.comments, createdAt: 1 };
   await emu.seed(path, base);
   assert.equal((await as('member').set(path, { ...base, text: 'edited', updatedAt: 2 }, at)).ok, true, 'the author edits');
   assert.equal((await emu.as('u-other', { g: { _: 'member' }, v: 1 }).set(path, { ...base, text: 'mine now', updatedAt: 2 }, at)).ok, false, 'another member cannot edit');
-  assert.equal((await as('admin').set(path, { ...base, text: 'moderated', updatedAt: 2 }, at)).ok, true, 'an admin can');
+  assert.equal((await as('admin').set(path, { ...base, text: 'moderated', updatedAt: 2 }, at)).ok, false, 'nor an admin (it is not their space)');
   assert.equal((await as('member').set(path, { ...base, taskId: 't2', updatedAt: 3 }, at)).ok, false, 'it stays on its task');
   assert.equal((await as('member').set(path, { ...base, uid: 'u-other', updatedAt: 3 }, at)).ok, false, 'it keeps its author');
   assert.equal((await as('viewer').set(path, { ...base, text: 'x', updatedAt: 4 }, at)).ok, false, 'a viewer cannot edit');
@@ -223,7 +260,7 @@ test('comments: text of 1 to 2000, a task and an author; the author and the task
   assert.equal((await as('viewer').delete(path)).ok, false, 'a viewer cannot delete');
   assert.equal((await as('member').delete(path)).ok, true, 'the author deletes');
   await emu.seed(path, base);
-  assert.equal((await as('admin').delete(path)).ok, true, 'an admin deletes');
+  assert.equal((await as('admin').delete(path)).ok, false, 'nor an admin deletes (it is not their space)');
 });
 
 test('templates: a name, a colour, a view, up to 50 sections and 300 tasks; no stray fields; viewers only read', () => cases('templates', [
@@ -283,10 +320,12 @@ test('filters: a name of 1 to 120, a query of 1 to 1000 and a known colour', () 
 test('bin entries: writers stamp them; viewers only read', async () => {
   await emu.clear();
   const entry = { id: 'a', kind: 'tasks', data: { title: 'ok' }, deletedAt: 2, updatedAt: 2 };
-  assert.equal((await as('viewer').set('spaces/_/bin/tasks:a', entry, { serverAt: true })).ok, false);
-  assert.equal((await as('member').set('spaces/_/bin/tasks:a', entry, { serverAt: true })).ok, true);
-  assert.equal((await as('viewer').get('spaces/_/bin/tasks:a')).ok, true);
-  assert.equal((await as('member').set('spaces/_/bin/tasks:b', entry)).ok, false, 'unstamped');
+  assert.equal((await as('viewer').set('spaces/u-viewer/bin/tasks:a', entry, { serverAt: true })).ok, false);
+  assert.equal((await as('member').set('spaces/u-member/bin/tasks:a', entry, { serverAt: true })).ok, true);
+  await emu.seed('spaces/u-viewer/bin/tasks:a', entry);
+  assert.equal((await as('viewer').get('spaces/u-viewer/bin/tasks:a')).ok, true);
+  assert.equal((await as('viewer').get('spaces/u-member/bin/tasks:a')).ok, false, 'not someone else’s');
+  assert.equal((await as('member').set('spaces/u-member/bin/tasks:b', entry)).ok, false, 'unstamped');
 });
 
 test('Web Push’s devices and queue are the Worker’s alone: no page reads or writes them', async () => {
@@ -309,22 +348,22 @@ test('account options: one doc per person, only theirs, only the allowed fields'
   await emu.clear();
   const mine = { profile: 'p1', updatedAt: 1 };
   for (const role of ['admin', 'member', 'viewer']) {
-    assert.equal((await as(role).set(`spaces/_/settings/u-${role}`, mine, at)).ok, true, `${role} saves their own`);
-    assert.equal((await as(role).get(`spaces/_/settings/u-${role}`)).ok, true);
+    assert.equal((await as(role).set(`spaces/u-${role}/settings/u-${role}`, mine, at)).ok, true, `${role} saves their own`);
+    assert.equal((await as(role).get(`spaces/u-${role}/settings/u-${role}`)).ok, true);
   }
-  assert.equal((await as('member').set('spaces/_/settings/u-admin', mine, at)).ok, false, 'not someone else’s doc');
-  assert.equal((await as('member').get('spaces/_/settings/u-admin')).ok, true, 'the group can read it (a list listen cannot ask for one doc)');
-  assert.equal((await emu.as('u-new', {}).get('spaces/_/settings/u-member')).ok, false, 'no role, no read');
-  assert.equal((await emu.as('u-new', {}).set('spaces/_/settings/u-new', mine, at)).ok, false, 'no role, no access');
-  assert.equal((await as('member').set('spaces/_/settings/u-member', mine)).ok, false, 'unstamped');
-  assert.equal((await as('member').set('spaces/_/settings/u-member', { ...mine, other: 1 }, at)).ok, false, 'an option the app did not list');
-  assert.equal((await as('member').set('spaces/_/settings/u-member', { profile: 7, updatedAt: 1 }, at)).ok, false, 'wrong type');
+  assert.equal((await as('member').set('spaces/u-member/settings/u-admin', mine, at)).ok, false, 'not someone else’s doc');
+  assert.equal((await as('member').get('spaces/u-admin/settings/u-admin')).ok, false, 'nobody reads another person’s options');
+  assert.equal((await emu.as('u-new', {}).get('spaces/u-member/settings/u-member')).ok, false, 'no role, no read');
+  assert.equal((await emu.as('u-new', {}).set('spaces/u-new/settings/u-new', mine, at)).ok, false, 'no role, no access');
+  assert.equal((await as('member').set('spaces/u-member/settings/u-member', mine)).ok, false, 'unstamped');
+  assert.equal((await as('member').set('spaces/u-member/settings/u-member', { ...mine, other: 1 }, at)).ok, false, 'an option the app did not list');
+  assert.equal((await as('member').set('spaces/u-member/settings/u-member', { profile: 7, updatedAt: 1 }, at)).ok, false, 'wrong type');
   // (an older version's doc still holds defaultList and showCounts, now per device: saving other options to it must go on working)
-  await emu.seed('spaces/_/settings/u-member', { defaultList: 'l1', showCounts: false, updatedAt: 1 });
-  assert.equal((await as('member').update('spaces/_/settings/u-member', { profile: 'p2', updatedAt: 2 }, at)).ok, true, 'a doc with the old options still saves');
-  assert.equal((await as('member').set('spaces/_/settings/u-member', { showCounts: 'yes', updatedAt: 3 }, at)).ok, false, 'the old option, checked as before');
-  assert.equal((await as('member').set('spaces/_/settings/u-member', { defaultList: 'x'.repeat(65), updatedAt: 3 }, at)).ok, false, 'the old option, checked as before');
-  assert.equal((await as('member').set('spaces/_/settings/u-member', { showCounts: null, profile: null, updatedAt: 4 }, at)).ok, true, 'null forgets a value');
+  await emu.seed('spaces/u-member/settings/u-member', { defaultList: 'l1', showCounts: false, updatedAt: 1 });
+  assert.equal((await as('member').update('spaces/u-member/settings/u-member', { profile: 'p2', updatedAt: 2 }, at)).ok, true, 'a doc with the old options still saves');
+  assert.equal((await as('member').set('spaces/u-member/settings/u-member', { showCounts: 'yes', updatedAt: 3 }, at)).ok, false, 'the old option, checked as before');
+  assert.equal((await as('member').set('spaces/u-member/settings/u-member', { defaultList: 'x'.repeat(65), updatedAt: 3 }, at)).ok, false, 'the old option, checked as before');
+  assert.equal((await as('member').set('spaces/u-member/settings/u-member', { showCounts: null, profile: null, updatedAt: 4 }, at)).ok, true, 'null forgets a value');
 });
 
 for (const m of mods) m.tests?.({ test, assert, emu, as });

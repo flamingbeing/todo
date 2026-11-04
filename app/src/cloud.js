@@ -4,13 +4,13 @@
 // Firestore layout (rules in firestore.app.rules):
 //   members/{uid}              { role: admin | member | viewer, v }   the role doc (source of truth; admins change it
 //                              through the Worker's /api/members/, which revokes a removed person's access)
-//   spaces/_/tasks/{id}        { title, description?, projectId, sectionId?, parentId?, order, priority, labels?, due?,
+//   spaces/{uid}/tasks/{id}    { title, description?, projectId, sectionId?, parentId?, order, priority, labels?, due?,
 //                              deadline?, done, doneAt?, … createdAt, updatedAt, serverAt, _edits }  the tasks
-//                              (_edits: who changed each field, and when) ('_' is the single group)
-//   spaces/_/projects/{id}     { name, color, parentId?, order, favorite?, view, inbox?, … }  the projects ('inbox': the Inbox)
-//   spaces/_/sections/{id}     { name, projectId, order, collapsed? }  a project's sections
-//   spaces/_/labels/{id}, spaces/_/filters/{id}  labels and saved filters
-//   spaces/_/bin/{coll:id}     { id, kind, data, deletedAt, … }       a deleted item's last version (delete to bin)
+//                              (_edits: who changed each field, and when) (each person's own space)
+//   spaces/{uid}/projects/{id} { name, color, parentId?, order, favorite?, view, inbox?, … }  the projects ('inbox': the Inbox)
+//   spaces/{uid}/sections/{id} { name, projectId, order, collapsed? }  a project's sections
+//   spaces/{uid}/labels/{id}, spaces/{uid}/filters/{id}  labels and saved filters
+//   spaces/{uid}/bin/{coll:id} { id, kind, data, deletedAt, … }       a deleted item's last version (delete to bin)
 //
 // Roles reach the rules as custom claims ({ g: { _: role }, v }), a cache of the role doc: the Worker's /api/claims
 // writes them. The auth module reads the role doc live (claims.watch) and asks for new claims whenever its v is ahead
@@ -37,7 +37,10 @@ import { taskOps, tasksGone } from './task-ops.js';
 
 export { usingEmulator } from './roles.js';
 export { lastSignedIn, keepList, keptList } from './hint.js';
-const SPACE = '_';
+// Each person has their own space, named by their uid (4 Nov 2026: one person's tasks are never another's). The old shared
+// space '_' is left as it was; the rules no longer let anyone read it.
+/** @param {{ uid: string } | null | undefined} u */
+export const spaceOf = u => u?.uid || '';
 // (the list's shared bits live in items.js, the same in a static app; named here too for the files recipe)
 export { COLL, itemText, REFUSED } from './items.js';
 
@@ -125,7 +128,7 @@ export async function start({ canReload = null }) {
     }),
     sync({
       colls: [...RECORDS, COMMENTS, TEMPLATES, SETTINGS_COLL, ...(dataModules.files ? [dataModules.files.coll] : [])], path: (/** @type {string} */ space, /** @type {string} */ coll) => ['spaces', space, coll],
-      scope: () => SPACE, device: deviceName(), wake: true,
+      scope: spaceOf, device: deviceName(), wake: true,
       // a delete writes the item's last version to the bin in the same transaction ({ id, kind, data, deletedAt }:
       // the other devices drop the item from it, and data keeps the deleted version)
       // held: a same-field clash is kept on the phone that made the save until its person chooses (never overwritten);
@@ -142,11 +145,14 @@ export async function start({ canReload = null }) {
       // the ended one, so the switch needs no reload (a reload would lose an email-link sign-in half way)
       reopen: async (/** @type {{ sdk: any }} */ { sdk: s }) => firestoreFor(s.F, s.db.app),
     }),
-    ...(dataModules.files ? [dataModules.files.engine(SPACE)] : []),
-    settings({ options: OPTIONS, collection: SETTINGS_COLL, scope: SPACE }),
+    // the files and bin recipes still take one fixed space: they need a per-person space before either is installed here
+    ...(dataModules.files ? [dataModules.files.engine('')] : []),
+    settings({ options: OPTIONS, collection: SETTINGS_COLL, scope: spaceOf }),
     ...(canReload ? [update({ register, app: 'app', sw: 'sw.js', canReload })] : []),
   ];
   const app = createApp({ config: { name: APP.name, sdk }, modules });
+  /** the signed-in person's own space ('' signed out) */
+  const space = () => spaceOf(app.auth.user());
   // the bin is on unless its option (the bin recipe's) is off: a deleted item is then not copied there
   const binOn = () => { try { return app.settings.get('binOn') !== false; } catch { return true; } };
   await app.ready;
@@ -203,12 +209,12 @@ export async function start({ canReload = null }) {
     offSettings ??= app.settings.follow();   // the account's options, heard from other devices (listening needs the role)
     // one listen per collection; each change draws everything again (changed: the tasks that moved, for the rows' flash)
     let first = true;
-    offList ??= [...RECORDS, COMMENTS, TEMPLATES].map(coll => app.sync.watch(SPACE, coll, (/** @type {any[]} */ list, /** @type {{ changed?: string[] }} */ meta) => {
+    offList ??= [...RECORDS, COMMENTS, TEMPLATES].map(coll => app.sync.watch(spaceOf(me), coll, (/** @type {any[]} */ list, /** @type {{ changed?: string[] }} */ meta) => {
       latest = { ...latest, [KEY[coll]]: list.filter(x => !x._deleted) };
       onData(latest, new Set(first || coll !== COLL ? [] : meta?.changed || []));
       if (coll === COLL) first = false;
     }));
-    if (onFiles && dataModules.files) offFiles ??= dataModules.files.watch(app, SPACE, onFiles);
+    if (onFiles && dataModules.files) offFiles ??= dataModules.files.watch(app, spaceOf(me), onFiles);
   };
   app.auth.onUser(() => { claimsStatus = 0; void show(); });
 
@@ -225,8 +231,8 @@ export async function start({ canReload = null }) {
   /** @type {Set<() => Promise<unknown>>} */
   const outHooks = new Set();
   const id = () => (crypto.randomUUID?.() || String(Date.now()) + Math.random().toString(36).slice(2)).replace(/-/g, '');
-  const { removeTask, removeProject, removeSection, put, ...ops } = taskOps({ save: (coll, record, base) => app.sync.save(coll, SPACE, record, base), id,
-    data: () => latest, drop: (coll, ids) => { void app.sync.hub.drop(SPACE, coll, ids); } });
+  const { removeTask, removeProject, removeSection, put, ...ops } = taskOps({ save: (coll, record, base) => app.sync.save(coll, space(), record, base), id,
+    data: () => latest, drop: (coll, ids) => { void app.sync.hub.drop(space(), coll, ids); } });
   /** @param {Item[]} gone @param {Promise<string>} deleting @param {((id: string) => unknown[]) | undefined} filesOf */
   const withFiles = async (gone, deleting, filesOf) => {
     const attached = filesOf ? gone.flatMap(t => filesOf(t.id)) : [];
@@ -257,7 +263,7 @@ export async function start({ canReload = null }) {
     removeSection: (s, filesOf) => withFiles(tasksGone('section', s, latest), removeSection(s), filesOf),
     // one item, live from the server: cb(item) when its copy changes, cb(null) once the server says it is gone -> stop()
     /** @param {string} itemId @param {(item: Item | null) => void} cb @returns {() => void} */
-    watchItem: (itemId, cb) => app.sync.watchDoc(['spaces', SPACE, COLL, itemId], cb),
+    watchItem: (itemId, cb) => app.sync.watchDoc(['spaces', space(), COLL, itemId], cb),
     // the tasks as last heard, a whole task saved under its own id, and whether the server's copy has arrived (a
     // restore: the backup recipe)
     items: () => latest.tasks,
@@ -265,7 +271,7 @@ export async function start({ canReload = null }) {
     put,
     serverCopyIn: () => !!app.sync.facts().confirmed,
     // the deleted items: list, restore, purge (the bin recipe)
-    bin: dataModules.bin?.api({ sdk, space: SPACE, items: () => latest.tasks, put }),
+    bin: dataModules.bin?.api({ sdk, space: space(), items: () => latest.tasks, put }),
     // admins: set someone's role, or remove them (they lose access at once; their sessions end). -> '' or the reason
     members: {
       /** @param {string} uid @param {'admin' | 'member' | 'viewer'} role */

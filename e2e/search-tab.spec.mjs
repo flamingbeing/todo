@@ -2,7 +2,7 @@
 // what matches shows as Tasks, Projects, Labels and Filters; a search left with Enter is kept as recent on this
 // device, a tap runs it again and Clear forgets them. Passes axe.
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, db, openSearch, openSettings, openTab } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, db, openSearch, openSettings, openTab, space } from './fixtures.mjs';
 
 const now = () => ({ createdAt: Date.now(), updatedAt: Date.now() });
 
@@ -11,10 +11,10 @@ test('results in groups, accents ignored, recent searches kept and cleared', asy
   await signIn(page, 'member');
   const w = uniq('zq').replace(/-/g, '');
   const t = uniq('st'), pid = uniq('p'), lid = uniq('l'), fid = uniq('f');
-  await db.put(`spaces/_/tasks/${t}`, { title: `Crème ${w} brûlée`, projectId: 'inbox', order: Date.now(), priority: 4, done: false, ...now() });
-  await db.put(`spaces/_/projects/${pid}`, { name: `Proj ${w}`, color: 'blue', parentId: null, view: 'list', order: Date.now(), ...now() });
-  await db.put(`spaces/_/labels/${lid}`, { name: `lab${w}`, color: 'red', order: Date.now(), favorite: false, ...now() });
-  await db.put(`spaces/_/filters/${fid}`, { name: `Filter ${w}`, query: 'p1', color: 'red', order: Date.now(), favorite: false, ...now() });
+  await db.put(`${space()}/tasks/${t}`, { title: `Crème ${w} brûlée`, projectId: 'inbox', order: Date.now(), priority: 4, done: false, ...now() });
+  await db.put(`${space()}/projects/${pid}`, { name: `Proj ${w}`, color: 'blue', parentId: null, view: 'list', order: Date.now(), ...now() });
+  await db.put(`${space()}/labels/${lid}`, { name: `lab${w}`, color: 'red', order: Date.now(), favorite: false, ...now() });
+  await db.put(`${space()}/filters/${fid}`, { name: `Filter ${w}`, query: 'p1', color: 'red', order: Date.now(), favorite: false, ...now() });
   await synced(page);
   await openSearch(page);
   const field = page.locator('#search-text');

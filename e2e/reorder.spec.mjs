@@ -2,15 +2,15 @@
 // above it becomes its subtask; on Today the day's own order is kept. The + button dragged between two rows opens
 // quick add for a task there; let go on its grey x and nothing opens. On Today a place at the foot shows while a row
 // is dragged: let go there, the task moves to tomorrow (its time kept), with Undo.
-import { test, expect, signIn, synced, uniq, today, db, finger, gesturesReady, openTab, steps, still, press, slide, letGo, boxOf } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, today, db, finger, gesturesReady, openTab, steps, still, press, slide, letGo, boxOf, space } from './fixtures.mjs';
 
-const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { projectId: 'inbox', priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
-const get = id => db.get(`spaces/_/tasks/${id}`);
+const put = (id, fields) => db.put(`${space()}/tasks/${id}`, { projectId: 'inbox', priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
+const get = id => db.get(`${space()}/tasks/${id}`);
 const rowIn = (host, id) => `#${host} .td-row[data-id="${id}"]`;
 /** a project of its own (no other test's rows move under the finger) with three tasks; its page open */
 const three = async (page, p) => {
   const pid = uniq(`${p}-p`), ids = [uniq(`${p}-a`), uniq(`${p}-b`), uniq(`${p}-c`)];
-  await db.put(`spaces/_/projects/${pid}`, { name: pid, color: 'blue', parentId: null, order: -1e12 - Date.now(), view: 'list', createdAt: Date.now(), updatedAt: Date.now() });
+  await db.put(`${space()}/projects/${pid}`, { name: pid, color: 'blue', parentId: null, order: -1e12 - Date.now(), view: 'list', createdAt: Date.now(), updatedAt: Date.now() });
   for (const [i, id] of ids.entries()) await put(id, { title: id, projectId: pid, order: (i + 1) * 1000 });
   await synced(page);
   await gesturesReady(page);
@@ -94,7 +94,7 @@ test('the + button dragged between two rows adds a task there; on its x nothing 
   await page.fill('#add-sheet .td-add-title', t);
   await page.press('#add-sheet .td-add-title', 'Enter');
   let made;
-  await expect.poll(async () => (made = (await db.list('spaces/_/tasks')).find(d => d.title === t))?.order, { timeout: 15_000 }).toBeDefined();
+  await expect.poll(async () => (made = (await db.list(`${space()}/tasks`)).find(d => d.title === t))?.order, { timeout: 15_000 }).toBeDefined();
   const [oa, ob] = [(await get(a))?.order, (await get(b))?.order];
   expect(made.order > oa && made.order < ob).toBe(true);
 });
@@ -130,7 +130,7 @@ test('a label page keeps its smart order: a held row does not move, the toast sa
   const page = await phone();
   await signIn(page, 'member');
   const name = uniq('own'), a = uniq('own-a'), b = uniq('own-b');
-  await db.put(`spaces/_/labels/${name}`, { name, color: 'green', favorite: true, order: -1e12 - Date.now(), updatedAt: Date.now() });
+  await db.put(`${space()}/labels/${name}`, { name, color: 'green', favorite: true, order: -1e12 - Date.now(), updatedAt: Date.now() });
   await put(a, { title: `A ${a}`, labels: [name], order: 1 });
   await put(b, { title: `B ${b}`, labels: [name], order: 2 });
   await synced(page);

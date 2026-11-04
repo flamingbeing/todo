@@ -1,9 +1,9 @@
 // Comments: the task sheet's Comments section adds a text comment (shown with its time), the author edits and deletes
 // their own, the row shows a small count, a viewer reads but cannot add, and the sheet passes axe.
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, today, db, clickOpens } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, today, db, clickOpens, space } from './fixtures.mjs';
 
-const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), due: { date: today() }, ...fields });
+const put = (id, fields) => db.put(`${space()}/tasks/${id}`, { projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), due: { date: today() }, ...fields });
 const sheet = '#task-sheet';
 
 test('add, edit and delete a comment; the row counts them', async ({ phone }) => {
@@ -44,7 +44,7 @@ test('a viewer reads comments but has no box to add one', async ({ phone }) => {
   await signIn(page, 'viewer');
   const t = uniq('read');
   await put(t, { title: t });
-  await db.put(`spaces/_/comments/${t}c`, { taskId: t, text: 'Seen already', uid: 'someone', createdAt: Date.now(), updatedAt: Date.now() });
+  await db.put(`${space()}/comments/${t}c`, { taskId: t, text: 'Seen already', uid: 'someone', createdAt: Date.now(), updatedAt: Date.now() });
   await synced(page);
   const row = page.locator('#today .td-row').filter({ hasText: t });
   await clickOpens(row.locator('.td-row-main'), page.locator(sheet));

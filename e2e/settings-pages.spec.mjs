@@ -1,7 +1,7 @@
 // The Settings pages of round 3: the menu's order and group headings, the Settings screen loaded only when it first
 // opens, the Theme cards, the App icon list, the add button's place, the Navigation menu checklist, the days off, the
 // automatic reminder, Notifications and the licences behind About.
-import { test, expect, signIn, synced, openSettings, openTab, settingsBack, uniq, db } from './fixtures.mjs';
+import { test, expect, signIn, synced, openSettings, openTab, settingsBack, uniq, db, space } from './fixtures.mjs';
 
 const menu = page => page.locator('#settings-host .ui-settings-menu-groups');
 const go = page => menu(page).locator('.ui-settings-go:visible');
@@ -94,7 +94,7 @@ test('Productivity days off, an automatic reminder on a timed task, Notification
   await page.press('#add-sheet .td-add-title', 'Enter');
   await page.keyboard.press('Escape');
   await expect.poll(async () => {
-    const all = await db.list('spaces/_/tasks');
+    const all = await db.list(`${space()}/tasks`);
     return all.find(x => x.title === t)?.reminders;
   }, { timeout: 15_000 }).toEqual([30]);
 

@@ -2,10 +2,10 @@
 // them (a back arrow and "N tasks selected", the ticked row grey), and the five-icon bottom bar sets their priority; the "…" menu's Select tasks, Select all, then Complete N with Undo
 // and Delete N (asked first) with Undo. The menu and both bars pass axe.
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, today, db, finger, fingers, line, gesturesReady, openTab, boxOf } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, today, db, finger, fingers, line, gesturesReady, openTab, boxOf, space } from './fixtures.mjs';
 
-const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
-const get = id => db.get(`spaces/_/tasks/${id}`);
+const put = (id, fields) => db.put(`${space()}/tasks/${id}`, { projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
+const get = id => db.get(`${space()}/tasks/${id}`);
 const rowIn = (host, id) => `#${host} .td-row[data-id="${id}"]`;
 
 test('hold opens the row\'s menu; Select task, a tap, and Priority for both', async ({ phone }) => {
@@ -113,7 +113,7 @@ test('two fingers dragged down over three rows select those three', async ({ pho
   // (a project of their own: tests running at once share the Today list)
   const pid = uniq('two-p'), name = uniq('Two');
   const ids = [0, 1, 2, 3].map(i => uniq(`two-${i}`));
-  await db.put(`spaces/_/projects/${pid}`, { name, color: 'blue', parentId: null, view: 'list', order: Date.now(), createdAt: Date.now(), updatedAt: Date.now() });
+  await db.put(`${space()}/projects/${pid}`, { name, color: 'blue', parentId: null, view: 'list', order: Date.now(), createdAt: Date.now(), updatedAt: Date.now() });
   for (const [i, id] of ids.entries()) await put(id, { title: id, projectId: pid, order: i + 1 });
   await synced(page);
   await gesturesReady(page);

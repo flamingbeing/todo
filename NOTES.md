@@ -4,7 +4,7 @@ Lasting decisions and how to test. Shaping decisions have their own records in [
 
 ## How to test
 
-See README, "Tests". The browser tests use one shared list (`spaces/_/tasks`), so each test uses its own made-up
+See README, "Tests". Each person has their own space (`spaces/<uid>/tasks`; the tests' `space()` names the one signed in last); each test still uses its own made-up
 accounts and task texts and checks only those; they run side by side.
 
 - A screen as a picture (iPhone size, 3x, light or dark, signed in on the emulators with made-up data, no real sign-in):
@@ -113,7 +113,7 @@ be saved. Where values live (change these only with a migration; `settings.unit.
 
 - Device values: `ctx.storage('settings')` key `device` = `{ v: 1, values: { <key>: value } }` (stored as
   `settings:settings/device` in localStorage). Kept at sign-out, wiped on an account switch or forget.
-- Account values: one sync record per person in the `settings` collection (`spaces/_/settings/<uid>`): one field per
+- Account values: one sync record per person in the `settings` collection (`spaces/<uid>/settings/<uid>`): one field per
   account option plus `profile`; `null` forgets a value. The local copy is `settings/account` = `{ uid, rec }`, used
   only while `uid` is the signed-in account.
 - Rules: only the person writes their own doc (field list in `firestore.app.rules`: add each new account option there

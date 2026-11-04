@@ -1,12 +1,12 @@
 // Row motion: a completion bursts about 30 bits from the checkbox over 2 s and the row fades away; while a row is
 // dragged its neighbours slide one row's height in 150 ms; under reduced motion neither animates.
-import { test, expect, signIn, synced, uniq, db, gesturesReady, openTab, still, press, slide, letGo, boxOf } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, db, gesturesReady, openTab, still, press, slide, letGo, boxOf, space } from './fixtures.mjs';
 
-const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { projectId: 'inbox', priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
+const put = (id, fields) => db.put(`${space()}/tasks/${id}`, { projectId: 'inbox', priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
 const rowIn = (host, id) => `#${host} .td-row[data-id="${id}"]`;
 const project = async (page, p) => {
   const pid = uniq(`${p}-p`), ids = [uniq(`${p}-a`), uniq(`${p}-b`), uniq(`${p}-c`)];
-  await db.put(`spaces/_/projects/${pid}`, { name: pid, color: 'blue', parentId: null, order: -1e12 - Date.now(), view: 'list', createdAt: Date.now(), updatedAt: Date.now() });
+  await db.put(`${space()}/projects/${pid}`, { name: pid, color: 'blue', parentId: null, order: -1e12 - Date.now(), view: 'list', createdAt: Date.now(), updatedAt: Date.now() });
   for (const [i, id] of ids.entries()) await put(id, { title: id, projectId: pid, order: (i + 1) * 1000 });
   await synced(page);
   await gesturesReady(page);

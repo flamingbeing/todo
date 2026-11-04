@@ -6,7 +6,7 @@
 // dragged to another day moves there. The "No date" count opens a sheet: two ticked and scheduled for tomorrow. Today
 // is one day; Upcoming's calendar has no strip. Week, Month and the No date sheet pass axe.
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, today, db, openTab, finger, gesturesReady, steps, still } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, today, db, openTab, finger, gesturesReady, steps, still, space } from './fixtures.mjs';
 
 const plus = (key, n) => { const d = new Date(`${key}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const stamp = () => ({ createdAt: Date.now(), updatedAt: Date.now() });
@@ -37,11 +37,11 @@ async function calendar(page, kind = '') {
 /** a made-up project with these tasks -> its name */
 async function seed(tasks) {
   const pid = uniq('cp'), name = uniq('Cal');
-  await db.put(`spaces/_/projects/${pid}`, { name, color: 'blue', parentId: null, view: 'list', order: Date.now(), ...stamp() });
-  for (const [id, f] of Object.entries(tasks)) await db.put(`spaces/_/tasks/${id}`, { title: id, projectId: pid, order: Date.now(), priority: 4, done: false, ...stamp(), ...f });
+  await db.put(`${space()}/projects/${pid}`, { name, color: 'blue', parentId: null, view: 'list', order: Date.now(), ...stamp() });
+  for (const [id, f] of Object.entries(tasks)) await db.put(`${space()}/tasks/${id}`, { title: id, projectId: pid, order: Date.now(), priority: 4, done: false, ...stamp(), ...f });
   return name;
 }
-const task = id => db.get(`spaces/_/tasks/${id}`);
+const task = id => db.get(`${space()}/tasks/${id}`);
 /** an element's box (again if it was drawn anew meanwhile) */
 async function box(loc) {
   let b = null;
@@ -118,7 +118,7 @@ test('week: blocks, all-day chips, the now line; a slot tap adds, the ring compl
   await expect(page.locator('#add-sheet .td-add-title')).toHaveValue('');
   await page.keyboard.press('Escape');
   await expect(page.locator('#add-sheet')).toBeHidden();
-  await expect.poll(async () => { const d = (await db.list('spaces/_/tasks')).find(x => x.title === added); return d && [d.due?.date, d.due?.time, d.duration]; }, { timeout: 15_000 })
+  await expect.poll(async () => { const d = (await db.list(`${space()}/tasks`)).find(x => x.title === added); return d && [d.due?.date, d.due?.time, d.duration]; }, { timeout: 15_000 })
     .toEqual([now, '11:00', 30]);
   await expect(cal.locator('.td-cv-block').filter({ hasText: added })).toBeVisible();
 
@@ -261,7 +261,7 @@ test('Today is one day; Upcoming\'s calendar is three days with no strip', async
   const page = await phone();
   await signIn(page, 'member');
   const now = today(), mine = uniq('today');
-  await db.put(`spaces/_/tasks/${mine}`, { title: mine, projectId: 'inbox', order: Date.now(), priority: 2, done: false, due: { date: now, time: '09:00' }, duration: 60, ...stamp() });
+  await db.put(`${space()}/tasks/${mine}`, { title: mine, projectId: 'inbox', order: Date.now(), priority: 2, done: false, due: { date: now, time: '09:00' }, duration: 60, ...stamp() });
   await synced(page);
   await openTab(page, 'today');
   await calendar(page);

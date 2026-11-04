@@ -98,14 +98,14 @@ try {
   await db.put(`members/${uid}`, { role: 'member', v: 1 });
   await page.waitForSelector('#list-view', { state: 'visible' });
 
-  // sample data (documents under spaces/_/...), then wait for the app to hear it
+  // sample data (the seed file's paths name spaces/_/...: they go to this person's own space, spaces/<uid>/...), then wait for the app to hear it
   const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   const fill = v => v === '{{now}}' ? Date.now() : typeof v === 'string' ? v.replace(/\{\{today(?:\+(-?\d+))?\}\}/g, (_, n) => day(Number(n || 0))).replace(/\{\{now\}\}/g, String(Date.now()))
     : Array.isArray(v) ? v.map(fill) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, fill(x)])) : v;
   const seed = JSON.parse(fs.readFileSync(path.resolve(opts.seed || path.join(ROOT, 'tools/shot-seed.json')), 'utf8'));
   for (const [p, doc] of Object.entries(seed)) {
     const f = fill(doc);
-    await db.put(p, { ...(p.includes('/tasks/') ? { done: false } : {}), createdAt: Date.now(), updatedAt: Date.now(), ...f });
+    await db.put(p.replace(/^spaces\/_\//, `spaces/${uid}/`), { ...(p.includes('/tasks/') ? { done: false } : {}), createdAt: Date.now(), updatedAt: Date.now(), ...f });
   }
   await page.waitForFunction(() => window.starter.ready === true);
   await page.waitForTimeout(800);

@@ -1,6 +1,7 @@
 # Status
 
 ## Now
+- Own lists (2026-11-04): each person's tasks, projects, labels, filters, comments, templates and options live in their own space, `spaces/<uid>/...` (sync scope = the uid); the rules let only its owner read it (any role) or change it (admin or member), admins included in "everyone else"; the old shared space `spaces/_` is left as it was and nobody reads or writes it any more. Reminders read the task from the person's own space. The files and bin recipes still take one fixed space (neither is installed): they need a per-person space before either goes in. Specs: rules `each space is its owner’s alone`, e2e `each person has their own list`.
 - Motion round 2 slice 1 (quick add): close 150 ms decelerate after a 60 ms hold toward the add button, red block on open, keyboard hide with field blurred closes it. Not yet checked against frames.
 - Motion round 2 slice 2 (tabs, calendar): tab tap is a hard cut (`data-slide="off"` on html, was rise), calendar release spring response .15 to .1 (~120 ms). Spec `tab-cut`. Not yet checked against frames.
 - Motion round 2 slice 3 (row drag in Today/Upcoming): red drop line glides 100 ms ease-out (cuts at release), neighbours no longer slide in days lists, on release the card glides to the line 200 ms decelerate then the edit applies (instant under reduced motion). Spec `row-drag-motion`. Not yet checked against frames.

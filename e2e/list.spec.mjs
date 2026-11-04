@@ -1,7 +1,7 @@
 // Sign-in, roles from the role doc, and the tasks: add, rename, delete to the bin. A "* " title is a note: no box, no
 // swipe to complete.
 import AxeBuilder from './axe.mjs';
-import { test, expect, clickOpens, signIn, add, synced, serverHas, db, uniq, today, APP, finger, gesturesReady, steps, openTab } from './fixtures.mjs';
+import { test, expect, clickOpens, signIn, add, synced, serverHas, db, uniq, today, APP, finger, gesturesReady, steps, openTab, space } from './fixtures.mjs';
 
 test('signed out: the sign-in screen, accessible', { tag: '@smoke' }, async ({ phone }) => {
   const page = await phone();
@@ -36,15 +36,35 @@ test('a member adds, edits and deletes; the delete lands in the bin', { tag: '@s
   await page.getByRole('menuitem', { name: 'Delete task' }).click();
   await expect(page.locator('#task-sheet')).toBeHidden();
   await expect(page.locator('#today')).not.toContainText(t);
-  await expect.poll(async () => (await db.list('spaces/_/bin')).some(b => b.data?.title === t + ' edited'), { timeout: 15_000 }).toBe(true);
-  await expect.poll(async () => (await db.list('spaces/_/tasks')).some(d => d.title === t + ' edited')).toBe(false);
+  await expect.poll(async () => (await db.list(`${space()}/bin`)).some(b => b.data?.title === t + ' edited'), { timeout: 15_000 }).toBe(true);
+  await expect.poll(async () => (await db.list(`${space()}/tasks`)).some(d => d.title === t + ' edited')).toBe(false);
+});
+
+test('each person has their own list: two members never see each other’s tasks', { tag: '@smoke' }, async ({ phone }) => {
+  const a = await phone(), b = await phone();
+  await signIn(a, 'member');
+  const spaceA = space(), ta = uniq('mine-a');
+  await add(a, ta);
+  await synced(a);
+  await serverHas(ta);
+  await signIn(b, 'member');
+  const tb = uniq('mine-b');
+  await add(b, tb);
+  await synced(b);
+  await serverHas(tb);
+  expect(space()).not.toBe(spaceA);
+  await expect(b.locator('#today')).toContainText(tb);
+  await expect(b.locator('#today')).not.toContainText(ta);
+  await expect(a.locator('#today')).not.toContainText(tb);
+  expect((await db.list(`${spaceA}/tasks`)).map(d => d.title)).not.toContain(tb);
 });
 
 test('a viewer reads but cannot add or edit', async ({ phone }) => {
   const t = uniq('seen');
-  await db.put(`spaces/_/tasks/${t}`, { title: t, projectId: 'inbox', due: { date: today() }, done: false, updatedAt: Date.now() });
   const page = await phone();
   await signIn(page, 'viewer');
+  // (a viewer's own space, filled from outside: they can't add to it themselves)
+  await db.put(`${space()}/tasks/${t}`, { title: t, projectId: 'inbox', due: { date: today() }, done: false, updatedAt: Date.now() });
   await expect(page.locator('#today')).toContainText(t);
   await expect(page.locator('#fab')).toBeHidden();
   await expect(page.locator('#today .td-row').filter({ hasText: t }).locator('.td-check')).toBeDisabled();
@@ -134,7 +154,7 @@ test('a title starting "* " shows no box and a swipe right does not complete it'
   const page = await phone();
   await signIn(page, 'member');
   const t = uniq('note');
-  await db.put(`spaces/_/tasks/${t}`, { title: `* ${t}`, projectId: 'inbox', order: Date.now(), priority: 4, done: false, due: { date: today() }, createdAt: Date.now(), updatedAt: Date.now() });
+  await db.put(`${space()}/tasks/${t}`, { title: `* ${t}`, projectId: 'inbox', order: Date.now(), priority: 4, done: false, due: { date: today() }, createdAt: Date.now(), updatedAt: Date.now() });
   await synced(page);
   await gesturesReady(page);
   const row = `#today .td-row[data-id="${t}"]`;
@@ -145,7 +165,7 @@ test('a title starting "* " shows no box and a swipe right does not complete it'
   expect(await AxeBuilder(page)).toEqual([]);
   await finger(page, row, steps(260, 4, 8));
   await page.waitForTimeout(600);
-  expect((await db.get(`spaces/_/tasks/${t}`))?.done).toBe(false);
+  expect((await db.get(`${space()}/tasks/${t}`))?.done).toBe(false);
   await expect(page.locator(row)).toBeVisible();
 });
 

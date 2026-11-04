@@ -17,8 +17,8 @@ import { unb64, sendPush } from './webpush.js';
 import { fromValue, toValue } from './claims.js';
 
 export const MAX_ITEMS = 200, MAX_DEVICES = 10, MAX_BODY = 300_000;
-/** the task docs the job reads (cloud.js: one shared space) */
-const TASKS = 'spaces/_/tasks';
+/** a person's task doc, which the job reads (cloud.js: each person's own space, spaces/{uid}) @param {string} uid @param {string} taskId */
+export const taskPath = (uid, taskId) => `spaces/${uid}/tasks/${taskId}`;
 export const AHEAD_MS = 8 * 24 * 3600 * 1000;
 /** a reminder later than this after its time is dropped (app/src/reminders.js LATE_MS) */
 export const LATE_MS = 15 * 60 * 1000;
@@ -171,10 +171,10 @@ export async function runDue({ store, vapid, now = Date.now(), send = sendPush, 
   }
   if (ready.length) {
     if (!spend(1)) return out;
-    const paths = [...new Set(ready.flatMap(q => [`revoked/${q.data.uid}`, `${TASKS}/${q.data.taskId}`]))];
+    const paths = [...new Set(ready.flatMap(q => [`revoked/${q.data.uid}`, taskPath(q.data.uid, q.data.taskId)]))];
     const docs = await store.batchGet(paths);
     ready = ready.filter(q => {
-      if (!docs.get(`revoked/${q.data.uid}`) && stillDue(q.data, docs.get(`${TASKS}/${q.data.taskId}`))) return true;
+      if (!docs.get(`revoked/${q.data.uid}`) && stillDue(q.data, docs.get(taskPath(q.data.uid, q.data.taskId)))) return true;
       del.push(`pushQueue/${q.id}`); out.dropped++;
       return false;
     });

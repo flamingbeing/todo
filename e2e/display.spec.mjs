@@ -2,7 +2,7 @@
 // device: they hold after a reload, another list keeps its own, and another device sees the list as it was. The
 // sheet passes axe. Deadline groups and sorts too.
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, db, openTab, today } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, db, openTab, today, space, signInAgain } from './fixtures.mjs';
 
 const now = () => ({ createdAt: Date.now(), updatedAt: Date.now() });
 
@@ -25,10 +25,10 @@ const choose = async (page, sheet, row, value) => {
 
 test('grouping by priority, by name descending, done tasks shown: kept per list, on this device only', async ({ phone }) => {
   const page = await phone();
-  await signIn(page, 'member');
+  const { email } = await signIn(page, 'member');
   const pid = uniq('dp'), name = uniq('Disp'), u = uniq('x');
-  await db.put(`spaces/_/projects/${pid}`, { name, color: 'blue', parentId: null, view: 'list', order: Date.now(), ...now() });
-  const task = (title, priority, order, done = false) => db.put(`spaces/_/tasks/${uniq('t')}`, { title, projectId: pid, order, priority, done, ...(done ? { doneAt: Date.now() } : {}), ...now() });
+  await db.put(`${space()}/projects/${pid}`, { name, color: 'blue', parentId: null, view: 'list', order: Date.now(), ...now() });
+  const task = (title, priority, order, done = false) => db.put(`${space()}/tasks/${uniq('t')}`, { title, projectId: pid, order, priority, done, ...(done ? { doneAt: Date.now() } : {}), ...now() });
   await task(`B ${u}`, 1, 1);
   await task(`A ${u}`, 3, 2);
   await task(`C ${u}`, 1, 3);
@@ -73,9 +73,9 @@ test('grouping by priority, by name descending, done tasks shown: kept per list,
   await expect(today.getByRole('button', { name: /^Sorting/ })).toContainText('Manual');
   await page.keyboard.press('Escape');
 
-  // another device: the list as it was
+  // another device of the same person: the list as it was
   const other = await phone();
-  await signIn(other, 'member');
+  await signInAgain(other, email);
   await synced(other);
   await openProject(other, name);
   await expect(other.locator('#project .td-title')).toHaveText([`B ${u}`, `A ${u}`, `C ${u}`]);
@@ -125,8 +125,8 @@ test('grouping and sorting by deadline: Overdue, each day, No deadline; nearest 
   await signIn(page, 'member');
   const pid = uniq('dl'), name = uniq('Dead'), u = uniq('x');
   const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return today(d); };
-  await db.put(`spaces/_/projects/${pid}`, { name, color: 'red', parentId: null, view: 'list', order: Date.now(), ...now() });
-  const task = (title, order, deadline) => db.put(`spaces/_/tasks/${uniq('t')}`, { title, projectId: pid, order, priority: 4, done: false, ...(deadline ? { deadline } : {}), ...now() });
+  await db.put(`${space()}/projects/${pid}`, { name, color: 'red', parentId: null, view: 'list', order: Date.now(), ...now() });
+  const task = (title, order, deadline) => db.put(`${space()}/tasks/${uniq('t')}`, { title, projectId: pid, order, priority: 4, done: false, ...(deadline ? { deadline } : {}), ...now() });
   await task(`A ${u}`, 1, day(5));
   await task(`B ${u}`, 2);
   await task(`C ${u}`, 3, day(-3));
