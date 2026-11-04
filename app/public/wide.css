@@ -8,10 +8,10 @@
     --td-page-bg: light-dark(#fff, #1f1f1f);
     --td-hair: light-dark(#dddddb, #3c3c3c);
     --td-side-sel: light-dark(#ffefe5, #472524);
-    --td-side-sel-text: light-dark(#dc4c3e, #f0776f);
+    --td-side-sel-text: light-dark(#c3392c, #f0776f);
     --td-hover: light-dark(#f2efed, #363636);
     --td-menu-bg: light-dark(#fff, #272727);
-    --td-muted: #808080;
+    --td-muted: light-dark(#6b6b6b, #999);
     --side-bg: var(--td-side-bg);
   }
   body { background: var(--td-page-bg); }
@@ -34,7 +34,7 @@
   .td-side-me .td-side-chev { flex: none; width: 14px; height: 14px; color: var(--td-text-2); }
 
   .td-side-add { display: flex; align-items: center; gap: 6px; height: 34px; margin: 0 12px; padding: 0 5px; border: 0; border-radius: 6px;
-    background: none; color: var(--td-fill); font: inherit; font-size: 14px; font-weight: 700; text-align: start; cursor: pointer; }
+    background: none; color: var(--td-side-sel-text); font: inherit; font-size: 14px; font-weight: 700; text-align: start; cursor: pointer; }
   .td-side-add[hidden] { display: none; }
   .td-side-add:hover { background: var(--td-hover); }
   .td-side-plus { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--td-fill); color: #fff; }

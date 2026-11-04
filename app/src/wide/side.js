@@ -155,13 +155,14 @@ function me(ctx) {
   if (!made) return;
   const u = ctx.user(), who = String(u?.name ?? '').trim().split('@')[0];
   const face = el('span', 'td-side-face');
+  face.setAttribute('aria-hidden', 'true');
   if (u?.photo) face.append(Object.assign(document.createElement('img'), { src: u.photo, alt: '', referrerPolicy: 'no-referrer' }));
   else if (who) face.textContent = who.charAt(0).toUpperCase();
   else face.append(icon(MORE.user));
   const chev = icon(ICONS.chevronDown);
   chev.classList.add('td-side-chev');
   made.me.replaceChildren(face, el('span', 'td-side-name', who || 'Signed out'), chev);
-  made.me.setAttribute('aria-label', `${who || 'Signed out'}: account menu`);
+  made.me.title = 'Account menu';
 }
 
 /** lights the row of the page on top @param {Ctx} ctx */
