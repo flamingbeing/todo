@@ -208,7 +208,8 @@ export async function start({ canReload = null }) {
     if (n !== seq) return;
     if (role && t.token !== tokenSeen && !t.stale) return;   // a new token Firestore hasn't seen yet: onIdTokenChanged calls back
     const user = { uid: me.uid, email: me.email, name: me.name || u.displayName || '', photo: u.photoURL || '' };
-    if (!role) { stopList(); setHint(false); onState({ phase: 'no-access', user, role: '' }); return; }
+    myRole = role;
+    if (!role) { stopList(); setHint(false); void askAccess(user); onState({ phase: 'no-access', user, role: '' }); return; }
     setHint(true);
     onState({ phase: 'ready', user, role });
     offSettings ??= app.settings.follow();   // the account's options, heard from other devices (listening needs the role)
@@ -228,6 +229,18 @@ export async function start({ canReload = null }) {
   /** @param {string} uid */
   const bringShared = uid => import('./move-shared.js').then(m => m.bringShared({ app, uid, sdk, data: () => latest,
     write: (/** @type {string} */ coll, /** @type {Record<string, unknown>} */ rec) => ops.writeRecord(coll, rec, undefined), listening: () => listening }), () => {});
+
+  // Access requests (requests/{uid}): a person signed in without a role asks once per page load; admins see the list.
+  let myRole = '', asked = '';
+  /** @param {{ uid: string, name: string, email: string }} user */
+  const askAccess = async user => {
+    if (asked === user.uid) return;
+    asked = user.uid;
+    try {
+      const { F, db } = await sdk();
+      await F.setDoc(F.doc(db, 'requests', user.uid), { name: (user.name || '').slice(0, 100), email: (user.email || '').slice(0, 200), at: Date.now() });
+    } catch { asked = ''; }
+  };
 
   /** @param {string} method @param {string} uid @param {unknown} [body] @returns {Promise<string>} */
   const membersCall = async (method, uid, body) => {
@@ -289,6 +302,28 @@ export async function start({ canReload = null }) {
       setRole: (uid, role) => membersCall('PUT', uid, { role }),
       /** @param {string} uid */
       remove: uid => membersCall('DELETE', uid),
+      // whether this person may let others in
+      admin: () => myRole === 'admin',
+      // the people asking for access, newest first, live -> stop
+      /** @param {(list: { uid: string, name: string, email: string, at: number }[]) => void} fn */
+      requests: fn => {
+        let off = () => {}, stopped = false;
+        void sdk().then(({ F, db }) => {
+          if (stopped) return;
+          off = F.onSnapshot(F.collection(db, 'requests'), (/** @type {any} */ snap) => fn(snap.docs
+            .map((/** @type {any} */ d) => ({ uid: d.id, ...d.data() })).sort((/** @type {any} */ a, /** @type {any} */ b) => b.at - a.at)), () => fn([]));
+        });
+        return () => { stopped = true; off(); };
+      },
+      // let someone in (as a member) and clear their request -> '' or the reason
+      /** @param {string} uid */
+      approve: async uid => {
+        const why = await membersCall('PUT', uid, { role: 'member' });
+        if (!why) await sdk().then(({ F, db }) => F.deleteDoc(F.doc(db, 'requests', uid))).catch(() => {});
+        return why;
+      },
+      /** @param {string} uid */
+      decline: uid => sdk().then(({ F, db }) => F.deleteDoc(F.doc(db, 'requests', uid))).then(() => '', () => 'Offline: try again.'),
     },
     idToken: async () => (await fa.currentUser?.getIdToken().catch(() => '')) || undefined,
     // parts that must act while the person is still signed in (Web Push's unsubscribe) -> remove
