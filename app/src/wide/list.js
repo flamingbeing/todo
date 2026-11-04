@@ -7,6 +7,7 @@
 //   a project's crumbs      "My Projects /" (and its parents) over its title
 //   inline "Add task"       at the end of Today's day, of the Inbox's and a project's tasks outside sections (each
 //                           section already has one): quick add for that place
+//   the Display button      reads "Display", or "Display: n" while n of the list's choices are not its own
 // The hover actions on a row are wide/hover.js's. Back under 840 px everything added here goes (and the phone's
 // lists are as they were).
 import { icon } from '@core/ui';
@@ -15,6 +16,8 @@ import { dayKey } from '../dates.js';
 import { addRow } from '../ui/row.js';
 import { el } from '../screens/pick.js';
 import { LIST_PAGES, addPreset, crumbs } from './list-parts.js';
+import { changedCount } from './table-parts.js';
+import { cleanDisplay } from '../tasks.js';
 
 /** @typedef {import('../screens/views.js').Ctx} Ctx */
 
@@ -59,6 +62,24 @@ export function startList(ctx) {
     if (into) new MutationObserver(() => { if (big.matches) adds(ctx, h); if (h === 'project') sync(); }).observe(into, { childList: true });
   }
   sync();
+
+  // the Display button's words (views.js keeps its list in data-view)
+  const btn = $('display-btn');
+  if (btn) {
+    const words = el('span', 'td-display-words');
+    const put = () => {
+      const on = big.matches, v = btn.dataset.view;
+      const n = on && v ? changedCount(ctx.display(v), cleanDisplay({}, v)) : 0;
+      words.textContent = n ? `Display: ${n}` : 'Display';
+      if (on && !words.isConnected) btn.append(words);
+      if (!on) words.remove();
+      btn.setAttribute('aria-label', words.textContent);
+    };
+    new MutationObserver(put).observe(btn, { attributes: true, attributeFilter: ['class', 'data-view', 'hidden'] });
+    ctx.app.settings.watch('display', put);
+    big.addEventListener('change', put);
+    put();
+  }
 }
 
 /** @type {('today' | 'inbox' | 'project')[]} */
@@ -68,7 +89,7 @@ const HOSTS = ['today', 'inbox', 'project'];
 function adds(ctx, h) {
   const into = document.getElementById(h);
   if (!into) return;
-  const plain = ctx.canWrite() && !into.classList.contains('td-board') && !into.dataset.grouped && into.dataset.sorted !== 'cal';
+  const plain = ctx.canWrite() && !into.classList.contains('td-board') && !into.dataset.grouped && into.dataset.sorted !== 'cal' && !into.querySelector(':scope > .td-table-box');
   const have = into.querySelector(':scope > .td-wide-add, :scope > .td-group > .td-wide-add');
   if (!plain) { have?.remove(); return; }
   if (have) return;

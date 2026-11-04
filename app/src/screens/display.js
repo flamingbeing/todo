@@ -16,6 +16,7 @@ import { cleanDisplay, plainDisplay } from '../tasks.js';
 import { byOrder } from '../order.js';
 import { columnCount } from '../cal.js';
 import { el, pickOne } from './pick.js';
+import { drawnLayout } from '../wide/table-parts.js';
 
 /** @typedef {import('./views.js').Ctx} Ctx */
 /** @typedef {import('../tasks.js').Display} Display */
@@ -32,6 +33,8 @@ const SVG = 'http://www.w3.org/2000/svg';
  * @param {import('../items.js').Project | null} project  a project's own page (for its layout)
  */
 export function openDisplay(ctx, view, project) {
+  // (840 px and up: a small card under the button, wide/display-pop.js)
+  if (matchMedia('(min-width: 840px)').matches) { void import('../wide/display-pop.js').then(m => m.openPop(ctx, view, project, document.getElementById('display-btn'))); return; }
   const sheet = /** @type {HTMLDialogElement} */ (document.getElementById('display-sheet'));
   const body = /** @type {HTMLElement} */ (sheet.querySelector('[data-fill]'));
   const settings = ctx.app.settings;
@@ -97,7 +100,7 @@ export function openDisplay(ctx, view, project) {
     const parts = [];
     // the layouts: a project's List and Board are its own (synced); a Calendar, and any list's, is this device's
     const now = project ? ctx.data().projects.find(p => p.id === project.id) ?? project : null;
-    const cal = d.layout === 'calendar', shown = cal ? 'calendar' : d.layout || now?.view || 'list';
+    const cal = d.layout === 'calendar', shown = cal ? 'calendar' : drawnLayout(d.layout, false) || now?.view || 'list';   // (a Table, chosen at 840 px and up, is the list's own here)
     const card = el('div', 'td-card td-layout-card');
     const tiles = el('div', 'td-layouts');
     tiles.setAttribute('role', 'radiogroup');
