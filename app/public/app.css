@@ -490,7 +490,6 @@ div.td-chip { gap: 0; padding: 0; cursor: default; }
 /* the app's icon beside its name in the side bar */
 .ui-sidebar-name { display: flex; align-items: center; gap: .5rem; }
 .app-mark { flex: none; border-radius: 22%; }
-#signed-out { min-height: 1px; }   /* (the kit's sign-in screen is fixed, so the section itself needs a box to count as shown) */
 #signed-out, #no-access, #not-set-up, #account { padding-inline: 16px; }
 @media (min-width: 600px) { .toasts { bottom: 16px; } }
 
