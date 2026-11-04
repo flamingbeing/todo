@@ -33,10 +33,10 @@
   .td-side-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .td-side-me .td-side-chev { flex: none; width: 14px; height: 14px; color: var(--td-text-2); }
 
-  .td-side-add { display: flex; align-items: center; gap: 6px; height: 34px; margin: 0 12px; padding: 0 5px; border: 0; border-radius: 6px;
+  #side .td-side-add { display: flex; align-items: center; justify-content: flex-start; gap: 6px; height: 34px; margin: 0 12px; padding: 0 5px; border: 0; border-radius: 6px;
     background: none; color: var(--td-side-sel-text); font: inherit; font-size: 14px; font-weight: 700; text-align: start; cursor: pointer; }
-  .td-side-add[hidden] { display: none; }
-  .td-side-add:hover { background: var(--td-hover); }
+  #side .td-side-add[hidden] { display: none; }
+  #side .td-side-add:hover { background: var(--td-hover); }
   .td-side-plus { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--td-fill); color: #fff; }
   .td-side-plus .ui-icon { width: 16px; height: 16px; stroke-width: 2.5; }
 
@@ -75,6 +75,6 @@
   .td-side-hint { margin-inline-start: auto; padding-inline-start: 16px; color: var(--td-muted); font-size: 12px; }
 
   /* quick add: a card in the middle, not a side panel */
-  #add-sheet.td-sheet { inset: 0; width: 550px; max-width: calc(100% - 32px); height: auto; max-height: none; margin: 18vh auto auto;
+  #add-sheet.td-sheet { inset: 0 0 auto; width: 550px; max-width: calc(100% - 32px); height: fit-content; min-height: 0; max-height: none; margin: 18vh auto auto;
     border-radius: 10px; box-shadow: 0 12px 40px rgb(0 0 0 / .25); }
 }
