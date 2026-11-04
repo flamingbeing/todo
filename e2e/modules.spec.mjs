@@ -1,6 +1,6 @@
 // The 1.0 engine features the starter shows: sign-out keeps this device's data, forget wipes it, refused saves wait
 // in a list, the task sheet follows its task live (watchDoc), the list marks what changed, and "Check for updates".
-import { test, expect, clickOpens, signIn, signInAgain, add, synced, serverHas, uniq, db, itemIdOf, today, APP, openSettings, openToday } from './fixtures.mjs';
+import { test, expect, clickOpens, signIn, signInAgain, add, synced, serverHas, uniq, db, itemIdOf, today, APP, openSettings, openToday, space } from './fixtures.mjs';
 
 const kept = page => page.evaluate(async () => {
   let n = 0;
@@ -70,7 +70,7 @@ test('a save the server refuses waits in a list until retried or discarded', asy
   // a task the rules no longer accept as it is (written elsewhere with no priority): completing it here is refused, the
   // page goes on, and the copy waits in the refused list
   const t = uniq('refused');
-  await db.put(`spaces/_/tasks/${t}`, { title: t, projectId: 'inbox', order: Date.now(), done: false, createdAt: Date.now(), updatedAt: Date.now(), due: { date: today() } });
+  await db.put(`${space()}/tasks/${t}`, { title: t, projectId: 'inbox', order: Date.now(), done: false, createdAt: Date.now(), updatedAt: Date.now(), due: { date: today() } });
   await page.getByRole('checkbox', { name: `Complete: ${t}` }).click();
   await expect(page.locator('#refused li')).toHaveCount(1, { timeout: 15_000 });
   await page.click('#refused li button.discard');
@@ -94,11 +94,11 @@ test('the task sheet follows its task: a change elsewhere shows, a delete elsewh
   await expect.poll(() => b.evaluate(t => window.changedSeen.some(x => x.includes(t)), t)).toBe(true);
   await clickOpens(b.locator('#today .td-row-main').filter({ hasText: t }), b.locator('#task-sheet'));
   const itemId = await itemIdOf(t);
-  const doc = await db.get(`spaces/_/tasks/${itemId}`);
+  const doc = await db.get(`${space()}/tasks/${itemId}`);
   const noNulls = JSON.parse(JSON.stringify(doc, (k, v) => v === null ? undefined : v));   // (the admin helper can't write null)
-  await db.put(`spaces/_/tasks/${itemId}`, { ...noNulls, title: t + '-2', updatedAt: Date.now() });
+  await db.put(`${space()}/tasks/${itemId}`, { ...noNulls, title: t + '-2', updatedAt: Date.now() });
   await expect(b.locator('#task-sheet .td-task-title')).toHaveValue(t + '-2');
-  await db.del(`spaces/_/tasks/${itemId}`);
+  await db.del(`${space()}/tasks/${itemId}`);
   await expect(b.locator('#task-sheet')).not.toBeVisible();
   await expect(b.locator('.toast').last()).toContainText('deleted on another device');
 });

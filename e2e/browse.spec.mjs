@@ -2,7 +2,7 @@
 // Filters & Labels, Reporting, Templates; Completed last); Settings > Navigation menu hides rows and turns counts on (this
 // device). "My Projects" folds and stays folded after a reload; its last row opens Manage projects. Axe, light and dark.
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, db, openTab, openSettings, settingsBack } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, db, openTab, openSettings, settingsBack, space } from './fixtures.mjs';
 
 const now = () => ({ createdAt: Date.now(), updatedAt: Date.now() });
 const places = page => page.locator('#browse .td-browse-card').first().locator('.td-browse-label');
@@ -11,7 +11,7 @@ test('the top card order, with tabs on and off the bar; a hidden row; counts', a
   const page = await phone();
   await signIn(page, 'member');
   const t = uniq('inbox-task');
-  await db.put(`spaces/_/tasks/${t}`, { title: t, projectId: 'inbox', order: Date.now(), priority: 4, done: false, ...now() });
+  await db.put(`${space()}/tasks/${t}`, { title: t, projectId: 'inbox', order: Date.now(), priority: 4, done: false, ...now() });
   await synced(page);
   await openTab(page, 'browse');
   await expect(places(page)).toHaveText(['Search', 'Filters & Labels', 'Reporting', 'Templates', 'Completed'])   // (Search starts off the bar);
@@ -41,7 +41,7 @@ test('My Projects folds and stays folded; Manage projects opens; axe light and d
   const page = await phone();
   await signIn(page, 'member');
   const name = uniq('Proj'), pid = uniq('p');
-  await db.put(`spaces/_/projects/${pid}`, { name, color: 'blue', parentId: null, view: 'list', order: Date.now(), ...now() });
+  await db.put(`${space()}/projects/${pid}`, { name, color: 'blue', parentId: null, view: 'list', order: Date.now(), ...now() });
   await synced(page);
   await openTab(page, 'browse');
   const fold = page.locator('#browse .td-browse-fold');

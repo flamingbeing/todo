@@ -2,9 +2,9 @@
 // x 16, the title starts at 48, the add button is 68 (the reference's rounded square), and a title-only row is 52. The task
 // sheet: a 44 pt head with 28 pt round buttons, the ring 22 at x 19, the title and row text at x 56, the date row 48.5, then one sideways row of 35 pt pills 8 apart from x 16.
 // Light and dark keep the same sizes.
-import { test, expect, signIn, synced, uniq, today, db, clickOpens } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, today, db, clickOpens, space } from './fixtures.mjs';
 
-const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
+const put = (id, fields) => db.put(`${space()}/tasks/${id}`, { projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
 
 for (const scheme of ['light', 'dark']) {
   test(`row, checkbox, title and add button sizes (${scheme})`, async ({ phone }) => {
@@ -45,8 +45,8 @@ for (const scheme of ['light', 'dark']) {
     await signIn(page, 'member');
     const pid = uniq('p'), sid = uniq('s'), t = uniq('trip');
     const stamp = { createdAt: Date.now(), updatedAt: Date.now() };
-    await db.put(`spaces/_/projects/${pid}`, { name: 'Weekend trip away', color: 'orange', parentId: null, view: 'list', order: Date.now(), ...stamp });
-    await db.put(`spaces/_/sections/${sid}`, { name: 'On the day itself', projectId: pid, order: 1, collapsed: false, ...stamp });
+    await db.put(`${space()}/projects/${pid}`, { name: 'Weekend trip away', color: 'orange', parentId: null, view: 'list', order: Date.now(), ...stamp });
+    await db.put(`${space()}/sections/${sid}`, { name: 'On the day itself', projectId: pid, order: 1, collapsed: false, ...stamp });
     await put(t, { title: t, projectId: pid, sectionId: sid, due: { date: today(), time: '07:30', rrule: 'FREQ=DAILY', string: 'every day' }, duration: 30 });
     await synced(page);
     const row = page.locator('#today .td-row').filter({ hasText: t });

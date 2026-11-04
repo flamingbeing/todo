@@ -2,11 +2,11 @@
 // target and "in 3 days" in purple (red once past), "No deadline" clears it, and quick add reads {words} and has
 // "…" > Deadline. The sheets pass axe.
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, today, db, clickOpens } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, today, db, clickOpens, space } from './fixtures.mjs';
 
 const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return today(d); };
-const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
-const deadlineOf = async id => (await db.get(`spaces/_/tasks/${id}`))?.deadline ?? null;
+const put = (id, fields) => db.put(`${space()}/tasks/${id}`, { projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
+const deadlineOf = async id => (await db.get(`${space()}/tasks/${id}`))?.deadline ?? null;
 const sheet = '#schedule-sheet';
 
 test('the sheet\'s Deadline row sets a day only; the row shows it; No deadline clears it', async ({ phone }) => {
@@ -71,7 +71,7 @@ test('quick add: {words} make the deadline, the "…" menu has Deadline, the tas
   await expect(chip).toHaveAttribute('aria-label', 'Deadline: in 4 days');
   expect(await AxeBuilder(page)).toEqual([]);
   await page.press(name, 'Enter');
-  await expect.poll(async () => (await db.list('spaces/_/tasks')).find(d => d.title === t)?.deadline, { timeout: 15_000 }).toBe(day(4));
+  await expect.poll(async () => (await db.list(`${space()}/tasks`)).find(d => d.title === t)?.deadline, { timeout: 15_000 }).toBe(day(4));
   // the menu
   const t2 = uniq('form');
   await page.fill(name, t2);
@@ -86,5 +86,5 @@ test('quick add: {words} make the deadline, the "…" menu has Deadline, the tas
   await chip.locator('xpath=following-sibling::button').click();
   await expect(chip).toBeHidden();
   await page.press(name, 'Enter');
-  await expect.poll(async () => { const d = (await db.list('spaces/_/tasks')).find(x => x.title === t2); return d ? (d.deadline ?? null) : 'missing'; }, { timeout: 15_000 }).toBe(null);
+  await expect.poll(async () => { const d = (await db.list(`${space()}/tasks`)).find(x => x.title === t2); return d ? (d.deadline ?? null) : 'missing'; }, { timeout: 15_000 }).toBe(null);
 });

@@ -2,11 +2,11 @@
 // day scrolls the list to it, and the + adds for that day; a task dragged onto a day of the strip
 // moves to that day. Passes axe.
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, today, db, openTab, finger, gesturesReady, steps, still, boxOf } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, today, db, openTab, finger, gesturesReady, steps, still, boxOf, space } from './fixtures.mjs';
 
 const plus = (key, n) => { const d = new Date(`${key}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const weekOf = key => plus(key, -((new Date(`${key}T12:00:00Z`).getUTCDay() + 6) % 7));   // (weeks start on Monday)
-const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { title: id, projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
+const put = (id, fields) => db.put(`${space()}/tasks/${id}`, { title: id, projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
 
 test('a swipe to next week, a tap scrolls to the day (the + adds there), the month opens in place, a task dragged onto a day', async ({ phone }) => {
   const page = await phone();
@@ -48,7 +48,7 @@ test('a swipe to next week, a tap scrolls to the day (the + adds there), the mon
   await expect(page.locator('#add-sheet .td-add-title')).toHaveValue('');
   await page.keyboard.press('Escape');
   await expect(page.locator('#add-sheet')).toBeHidden();
-  await expect.poll(async () => (await db.list('spaces/_/tasks')).find(d => d.title === added)?.due?.date, { timeout: 15_000 }).toBe(there);
+  await expect.poll(async () => (await db.list(`${space()}/tasks`)).find(d => d.title === added)?.due?.date, { timeout: 15_000 }).toBe(there);
 
   // a task held and dragged onto a day of the strip moves to it
   // (the list is drawn anew as the added task and other tests' tasks arrive: let it settle, and again if it was redrawn)
@@ -64,7 +64,7 @@ test('a swipe to next week, a tap scrolls to the day (the + adds there), the mon
   const cell = await boxOf(page, `#upcoming-strip .td-wday[data-day="${drop}"]`);
   const dx = Math.round(cell.x + cell.width / 2 - (row.x + row.width / 2)), dy = Math.round(cell.y + cell.height / 2 - (row.y + row.height / 2));
   await finger(page, `#upcoming .td-row[data-id="${far}"]`, steps(dx, dy, 12), { hold: 650, wait: 80 });
-  await expect.poll(async () => (await db.get(`spaces/_/tasks/${far}`))?.due?.date, { timeout: 15_000 }).toBe(drop);
+  await expect.poll(async () => (await db.get(`${space()}/tasks/${far}`))?.due?.date, { timeout: 15_000 }).toBe(drop);
 
   // the month: a scroller of weeks (a year and more) opens in place (no sheet); a day picked there closes it and picks it
   await strip.locator('.td-month').click();

@@ -4,13 +4,13 @@
 // Firestore layout (rules in firestore.app.rules):
 //   members/{uid}              { role: admin | member | viewer, v }   the role doc (source of truth; admins change it
 //                              through the Worker's /api/members/, which revokes a removed person's access)
-//   spaces/_/tasks/{id}        { title, description?, projectId, sectionId?, parentId?, order, priority, labels?, due?,
+//   spaces/{uid}/tasks/{id}    { title, description?, projectId, sectionId?, parentId?, order, priority, labels?, due?,
 //                              deadline?, done, doneAt?, … createdAt, updatedAt, serverAt, _edits }  the tasks
-//                              (_edits: who changed each field, and when) ('_' is the single group)
-//   spaces/_/projects/{id}     { name, color, parentId?, order, favorite?, view, inbox?, … }  the projects ('inbox': the Inbox)
-//   spaces/_/sections/{id}     { name, projectId, order, collapsed? }  a project's sections
-//   spaces/_/labels/{id}, spaces/_/filters/{id}  labels and saved filters
-//   spaces/_/bin/{coll:id}     { id, kind, data, deletedAt, … }       a deleted item's last version (delete to bin)
+//                              (_edits: who changed each field, and when)
+//   spaces/{uid}/projects/{id} { name, color, parentId?, order, favorite?, view, inbox?, … }  the projects ('inbox': the Inbox)
+//   spaces/{uid}/sections/{id} { name, projectId, order, collapsed? }  a project's sections
+//   spaces/{uid}/labels/{id}, spaces/{uid}/filters/{id}  labels and saved filters
+//   spaces/{uid}/bin/{coll:id} { id, kind, data, deletedAt, … }       a deleted item's last version (delete to bin)
 //
 // Roles reach the rules as custom claims ({ g: { _: role }, v }), a cache of the role doc: the Worker's /api/claims
 // writes them. The auth module reads the role doc live (claims.watch) and asks for new claims whenever its v is ahead
@@ -37,7 +37,9 @@ import { taskOps, tasksGone } from './task-ops.js';
 
 export { usingEmulator } from './roles.js';
 export { lastSignedIn, keepList, keptList } from './hint.js';
-const SPACE = '_';
+// one space per person, by uid (decision 0015)
+/** @param {{ uid: string } | null | undefined} u */
+export const spaceOf = u => u?.uid || '';
 // (the list's shared bits live in items.js, the same in a static app; named here too for the files recipe)
 export { COLL, itemText, REFUSED } from './items.js';
 
@@ -125,7 +127,7 @@ export async function start({ canReload = null }) {
     }),
     sync({
       colls: [...RECORDS, COMMENTS, TEMPLATES, SETTINGS_COLL, ...(dataModules.files ? [dataModules.files.coll] : [])], path: (/** @type {string} */ space, /** @type {string} */ coll) => ['spaces', space, coll],
-      scope: () => SPACE, device: deviceName(), wake: true,
+      scope: spaceOf, device: deviceName(), wake: true,
       // a delete writes the item's last version to the bin in the same transaction ({ id, kind, data, deletedAt }:
       // the other devices drop the item from it, and data keeps the deleted version)
       // held: a same-field clash is kept on the phone that made the save until its person chooses (never overwritten);
@@ -142,11 +144,20 @@ export async function start({ canReload = null }) {
       // the ended one, so the switch needs no reload (a reload would lose an email-link sign-in half way)
       reopen: async (/** @type {{ sdk: any }} */ { sdk: s }) => firestoreFor(s.F, s.db.app),
     }),
-    ...(dataModules.files ? [dataModules.files.engine(SPACE)] : []),
-    settings({ options: OPTIONS, collection: SETTINGS_COLL, scope: SPACE }),
+    // files/bin recipes: not per-person yet (0015)
+    ...(dataModules.files ? [dataModules.files.engine('')] : []),
+    settings({ options: OPTIONS, collection: SETTINGS_COLL, scope: spaceOf }),
     ...(canReload ? [update({ register, app: 'app', sw: 'sw.js', canReload })] : []),
   ];
   const app = createApp({ config: { name: APP.name, sdk }, modules });
+  const space = () => spaceOf(app.auth.user());
+  /** the space heard from: saves go only there, so one account's change never lands in the next one's */
+  let listening = '';
+  /** @param {string} coll @param {Record<string, unknown>} record @param {unknown} base */
+  const saveOwn = (coll, record, base) => {
+    const s = space();
+    return s && s === listening ? app.sync.save(coll, s, record, base) : Promise.reject(new Error('Signed out: not saved.'));
+  };
   // the bin is on unless its option (the bin recipe's) is off: a deleted item is then not copied there
   const binOn = () => { try { return app.settings.get('binOn') !== false; } catch { return true; } };
   await app.ready;
@@ -179,7 +190,7 @@ export async function start({ canReload = null }) {
     try { claims = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); } catch { /* none */ }
     return { token, claims, stale: true };
   };
-  const stopList = () => { latest = { tasks: [], projects: [], sections: [], labels: [], filters: [], comments: [] }; offList?.forEach(f => f()); offList = null; offFiles?.(); offFiles = null; offSettings?.(); offSettings = null; };
+  const stopList = () => { listening = ''; latest = { tasks: [], projects: [], sections: [], labels: [], filters: [], comments: [] }; offList?.forEach(f => f()); offList = null; offFiles?.(); offFiles = null; offSettings?.(); offSettings = null; };
   // the token as it is now decides what the page shows (after sign-in, and after every claims ask); the newest call wins
   show = async () => {
     if (!hooks) return;
@@ -203,14 +214,20 @@ export async function start({ canReload = null }) {
     offSettings ??= app.settings.follow();   // the account's options, heard from other devices (listening needs the role)
     // one listen per collection; each change draws everything again (changed: the tasks that moved, for the rows' flash)
     let first = true;
-    offList ??= [...RECORDS, COMMENTS, TEMPLATES].map(coll => app.sync.watch(SPACE, coll, (/** @type {any[]} */ list, /** @type {{ changed?: string[] }} */ meta) => {
+    if (!offList) listening = me.uid;
+    offList ??= [...RECORDS, COMMENTS, TEMPLATES].map(coll => app.sync.watch(spaceOf(me), coll, (/** @type {any[]} */ list, /** @type {{ changed?: string[] }} */ meta) => {
       latest = { ...latest, [KEY[coll]]: list.filter(x => !x._deleted) };
       onData(latest, new Set(first || coll !== COLL ? [] : meta?.changed || []));
       if (coll === COLL) first = false;
     }));
-    if (onFiles && dataModules.files) offFiles ??= dataModules.files.watch(app, SPACE, onFiles);
+    if (onFiles && dataModules.files) offFiles ??= dataModules.files.watch(app, spaceOf(me), onFiles);
+    if (role === 'admin') void bringShared(me.uid);
   };
   app.auth.onUser(() => { claimsStatus = 0; void show(); });
+
+  /** @param {string} uid */
+  const bringShared = uid => import('./move-shared.js').then(m => m.bringShared({ app, uid, sdk, data: () => latest,
+    write: (/** @type {string} */ coll, /** @type {Record<string, unknown>} */ rec) => ops.writeRecord(coll, rec, undefined), listening: () => listening }), () => {});
 
   /** @param {string} method @param {string} uid @param {unknown} [body] @returns {Promise<string>} */
   const membersCall = async (method, uid, body) => {
@@ -225,8 +242,8 @@ export async function start({ canReload = null }) {
   /** @type {Set<() => Promise<unknown>>} */
   const outHooks = new Set();
   const id = () => (crypto.randomUUID?.() || String(Date.now()) + Math.random().toString(36).slice(2)).replace(/-/g, '');
-  const { removeTask, removeProject, removeSection, put, ...ops } = taskOps({ save: (coll, record, base) => app.sync.save(coll, SPACE, record, base), id,
-    data: () => latest, drop: (coll, ids) => { void app.sync.hub.drop(SPACE, coll, ids); } });
+  const { removeTask, removeProject, removeSection, put, ...ops } = taskOps({ save: saveOwn, id,
+    data: () => latest, drop: (coll, ids) => { void app.sync.hub.drop(space(), coll, ids); } });
   /** @param {Item[]} gone @param {Promise<string>} deleting @param {((id: string) => unknown[]) | undefined} filesOf */
   const withFiles = async (gone, deleting, filesOf) => {
     const attached = filesOf ? gone.flatMap(t => filesOf(t.id)) : [];
@@ -257,7 +274,7 @@ export async function start({ canReload = null }) {
     removeSection: (s, filesOf) => withFiles(tasksGone('section', s, latest), removeSection(s), filesOf),
     // one item, live from the server: cb(item) when its copy changes, cb(null) once the server says it is gone -> stop()
     /** @param {string} itemId @param {(item: Item | null) => void} cb @returns {() => void} */
-    watchItem: (itemId, cb) => app.sync.watchDoc(['spaces', SPACE, COLL, itemId], cb),
+    watchItem: (itemId, cb) => app.sync.watchDoc(['spaces', space(), COLL, itemId], cb),
     // the tasks as last heard, a whole task saved under its own id, and whether the server's copy has arrived (a
     // restore: the backup recipe)
     items: () => latest.tasks,
@@ -265,7 +282,7 @@ export async function start({ canReload = null }) {
     put,
     serverCopyIn: () => !!app.sync.facts().confirmed,
     // the deleted items: list, restore, purge (the bin recipe)
-    bin: dataModules.bin?.api({ sdk, space: SPACE, items: () => latest.tasks, put }),
+    bin: dataModules.bin?.api({ sdk, space: space(), items: () => latest.tasks, put }),
     // admins: set someone's role, or remove them (they lose access at once; their sessions end). -> '' or the reason
     members: {
       /** @param {string} uid @param {'admin' | 'member' | 'viewer'} role */

@@ -2,10 +2,10 @@
 // says, in red, what is wrong and where); Add saves it and opens its page, one list per comma part headed by that
 // part; a favourite shows in Browse. The sheet and the page pass axe. Deadline words find tasks by their deadline.
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, today, db, openTab } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, today, db, openTab, space } from './fixtures.mjs';
 
 const now = () => ({ createdAt: Date.now(), updatedAt: Date.now() });
-const task = (id, fields) => db.put(`spaces/_/tasks/${id}`, { title: id, projectId: 'inbox', order: Date.now(), priority: 4, done: false, ...now(), ...fields });
+const task = (id, fields) => db.put(`${space()}/tasks/${id}`, { title: id, projectId: 'inbox', order: Date.now(), priority: 4, done: false, ...now(), ...fields });
 const word = p => uniq(p).replace(/-/g, '_');
 
 async function newFilter(page, name, query, { favorite = false } = {}) {
@@ -24,8 +24,8 @@ test('"today & p1" and "(#Work | @errand) & !no date": the live count, an error,
   const page = await phone();
   await signIn(page, 'member');
   const proj = word('Work'), lab = word('errand'), pid = uniq('p'), lid = uniq('l');
-  await db.put(`spaces/_/projects/${pid}`, { name: proj, color: 'blue', parentId: null, view: 'list', order: Date.now(), ...now() });
-  await db.put(`spaces/_/labels/${lid}`, { name: lab, color: 'green', order: Date.now(), favorite: false, ...now() });
+  await db.put(`${space()}/projects/${pid}`, { name: proj, color: 'blue', parentId: null, view: 'list', order: Date.now(), ...now() });
+  await db.put(`${space()}/labels/${lid}`, { name: lab, color: 'green', order: Date.now(), favorite: false, ...now() });
   const urgent = uniq('urgent'), work = uniq('work'), errand = uniq('errand'), undated = uniq('undated');
   await task(urgent, { priority: 1, due: { date: today() } });
   await task(work, { projectId: pid, due: { date: today() } });
@@ -60,7 +60,7 @@ test('a comma makes a list per part; a favourite shows in Browse', async ({ phon
   const page = await phone();
   await signIn(page, 'member');
   const lab = word('home'), lid = uniq('l'), a = uniq('ov'), b = uniq('lab');
-  await db.put(`spaces/_/labels/${lid}`, { name: lab, color: 'red', order: Date.now(), favorite: false, ...now() });
+  await db.put(`${space()}/labels/${lid}`, { name: lab, color: 'red', order: Date.now(), favorite: false, ...now() });
   await task(a, { labels: [lid], priority: 2 });
   await task(b, { labels: [lid], priority: 3 });
   await synced(page);
@@ -72,7 +72,7 @@ test('a comma makes a list per part; a favourite shows in Browse', async ({ phon
   await expect(page.locator('#place .td-group-title')).toHaveText([`@${lab} & p2`, `@${lab} & p3`]);
   await expect(page.locator('#place .td-group').nth(0).locator('.td-row')).toHaveAttribute('data-id', a);
   await expect(page.locator('#place .td-group').nth(1).locator('.td-row')).toHaveAttribute('data-id', b);
-  await expect.poll(async () => (await db.list('spaces/_/filters')).find(f => f.name === name)?.favorite).toBe(true);
+  await expect.poll(async () => (await db.list(`${space()}/filters`)).find(f => f.name === name)?.favorite).toBe(true);
   await openTab(page, 'browse');
   await page.locator('#browse').getByRole('button', { name: new RegExp(`^${name}`) }).click();
   await expect(page.locator('#place-title')).toHaveText(name);
@@ -82,7 +82,7 @@ test('deadline words: "deadline before:", "!no deadline" and a project find the 
   const page = await phone();
   await signIn(page, 'member');
   const proj = word('Due'), pid = uniq('p');
-  await db.put(`spaces/_/projects/${pid}`, { name: proj, color: 'red', parentId: null, view: 'list', order: Date.now(), ...now() });
+  await db.put(`${space()}/projects/${pid}`, { name: proj, color: 'red', parentId: null, view: 'list', order: Date.now(), ...now() });
   const soon = uniq('soon'), later = uniq('later'), none = uniq('none');
   const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return today(d); };
   await task(soon, { projectId: pid, deadline: day(1) });
@@ -107,9 +107,9 @@ test('Filters & Labels: counts, a bad query marked, Manage rows, a group folds a
   const page = await phone();
   await signIn(page, 'member');
   const lab = word('lonely'), lid = uniq('l'), fname = word('Bad'), fid = uniq('f'), cname = word('Counted'), cid = uniq('f'), t = uniq('ct');
-  await db.put(`spaces/_/labels/${lid}`, { name: lab, color: 'green', order: Date.now(), favorite: false, ...now() });
-  await db.put(`spaces/_/filters/${fid}`, { name: fname, query: 'today &', color: 'red', order: Date.now(), favorite: false, ...now() });
-  await db.put(`spaces/_/filters/${cid}`, { name: cname, query: `search: ${t}`, color: 'blue', order: Date.now() + 1, favorite: false, ...now() });
+  await db.put(`${space()}/labels/${lid}`, { name: lab, color: 'green', order: Date.now(), favorite: false, ...now() });
+  await db.put(`${space()}/filters/${fid}`, { name: fname, query: 'today &', color: 'red', order: Date.now(), favorite: false, ...now() });
+  await db.put(`${space()}/filters/${cid}`, { name: cname, query: `search: ${t}`, color: 'blue', order: Date.now() + 1, favorite: false, ...now() });
   await task(t, { title: t });
   await synced(page);
   await openTab(page, 'browse');

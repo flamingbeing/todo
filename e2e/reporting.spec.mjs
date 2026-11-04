@@ -1,14 +1,14 @@
 // Reporting (Browse > Reporting): what was added, completed and commented, by day, newest first ("3 Nov · Today"); the
 // funnel in the bar shows one kind; the chart button opens Productivity. Axe, light and dark.
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, db, openTab } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, db, openTab, space } from './fixtures.mjs';
 
 test('a completion under Today, the kind filter, the Productivity link', async ({ phone }) => {
   const page = await phone();
   await signIn(page, 'member');
   const t = uniq('rep-done');
   // created 1 s back, not 60: parallel tests add rows to the same space and a minute of them can page the "added" row out
-  await db.put(`spaces/_/tasks/${t}`, { title: t, projectId: 'inbox', order: Date.now(), priority: 4, done: true, doneAt: Date.now(), createdAt: Date.now() - 1000, updatedAt: Date.now() });
+  await db.put(`${space()}/tasks/${t}`, { title: t, projectId: 'inbox', order: Date.now(), priority: 4, done: true, doneAt: Date.now(), createdAt: Date.now() - 1000, updatedAt: Date.now() });
   await synced(page);
   await openTab(page, 'browse');
   await page.locator('#browse').getByRole('button', { name: 'Reporting' }).click();

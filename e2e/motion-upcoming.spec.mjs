@@ -1,8 +1,8 @@
 // Upcoming motion: the selected-day circle cross-fades in 60 ms, the month caret flips at once, the Overdue head scrolls
 // away (day heads pin), and the calendar settles in under 200 ms after the finger lets go.
-import { test, expect, signIn, synced, uniq, today, db, openTab, gesturesReady } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, today, db, openTab, gesturesReady, space } from './fixtures.mjs';
 
-const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { title: id, projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
+const put = (id, fields) => db.put(`${space()}/tasks/${id}`, { title: id, projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
 
 test('day circle fades in 60 ms, caret turns in 100 ms, Overdue head not sticky, calendar settles fast', async ({ phone }) => {
   const page = await phone();

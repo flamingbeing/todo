@@ -2,7 +2,7 @@
 // swipe way set (the default), a mostly-sideways swipe on a card runs it (right completes, with Undo; left opens the
 // scheduler), and the board still pages from a column gap. With both set to None, a swipe on a card pages the board. Real touches (CDP),
 // so the browser's own panning and touch-action rules take part.
-import { test, expect, signIn, synced, uniq, db, openTab, openSettings, gesturesReady, fingers, line, boxOf } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, db, openTab, openSettings, gesturesReady, fingers, line, boxOf, space } from './fixtures.mjs';
 
 const now = () => ({ createdAt: Date.now(), updatedAt: Date.now() });
 
@@ -11,10 +11,10 @@ async function board(page, pre) {
   await signIn(page, 'member');
   if (pre) await pre(page);
   const pid = uniq('bp'), name = uniq('Board'), s1 = uniq('s1'), s2 = uniq('s2'), a = uniq('card-a'), b = uniq('card-b');
-  await db.put(`spaces/_/projects/${pid}`, { name, color: 'blue', parentId: null, view: 'board', order: Date.now(), ...now() });
-  await db.put(`spaces/_/sections/${s1}`, { name: 'Doing', projectId: pid, order: 1, collapsed: false, ...now() });
-  await db.put(`spaces/_/sections/${s2}`, { name: 'Later', projectId: pid, order: 2, collapsed: false, ...now() });
-  const task = (id, sectionId, order) => db.put(`spaces/_/tasks/${id}`, { title: id, projectId: pid, sectionId, order, priority: 4, done: false, ...now() });
+  await db.put(`${space()}/projects/${pid}`, { name, color: 'blue', parentId: null, view: 'board', order: Date.now(), ...now() });
+  await db.put(`${space()}/sections/${s1}`, { name: 'Doing', projectId: pid, order: 1, collapsed: false, ...now() });
+  await db.put(`${space()}/sections/${s2}`, { name: 'Later', projectId: pid, order: 2, collapsed: false, ...now() });
+  const task = (id, sectionId, order) => db.put(`${space()}/tasks/${id}`, { title: id, projectId: pid, sectionId, order, priority: 4, done: false, ...now() });
   await task(a, s1, 1);
   await task(b, s2, 1);
   await synced(page);
@@ -56,7 +56,7 @@ test('swipes set to None: a sideways swipe on a card pages the board', async ({ 
   const [x, y] = await centre(page, card(a));
   await fingers(page, [line(x + 120, y, -300, 0, 12)]);
   await expect.poll(() => scrollLeft(page), { timeout: 5000 }).toBeGreaterThan(100);
-  expect((await db.get(`spaces/_/tasks/${a}`))?.done).toBe(false);
+  expect((await db.get(`${space()}/tasks/${a}`))?.done).toBe(false);
 });
 
 test('by default: right completes with Undo, left opens the scheduler, a column gap still pages', async ({ phone }) => {
@@ -70,7 +70,7 @@ test('by default: right completes with Undo, left opens the scheduler, a column 
   await expect(page.locator('#schedule-sheet')).toBeVisible();
   expect(await scrollLeft(page)).toBe(0);
   await page.locator('#schedule-sheet .td-sched-row').filter({ hasText: 'Tomorrow' }).click();
-  await expect.poll(async () => !!(await db.get(`spaces/_/tasks/${a}`))?.due?.date, { timeout: 15_000 }).toBe(true);
+  await expect.poll(async () => !!(await db.get(`${space()}/tasks/${a}`))?.due?.date, { timeout: 15_000 }).toBe(true);
   await expect(page.locator('#schedule-sheet')).toBeHidden();
   await settled(page);
 
@@ -91,8 +91,8 @@ test('by default: right completes with Undo, left opens the scheduler, a column 
   // right: done, with Undo
   [x, y] = await centre(page, card(a));
   await fingers(page, [line(x - 100, y, 260, 0, 12)]);
-  await expect.poll(async () => (await db.get(`spaces/_/tasks/${a}`))?.done, { timeout: 15_000 }).toBe(true);
-  expect((await db.get(`spaces/_/tasks/${b}`))?.done).toBe(false);
+  await expect.poll(async () => (await db.get(`${space()}/tasks/${a}`))?.done, { timeout: 15_000 }).toBe(true);
+  expect((await db.get(`${space()}/tasks/${b}`))?.done).toBe(false);
   await page.locator('.toast').last().getByRole('button', { name: 'Undo' }).click();
-  await expect.poll(async () => (await db.get(`spaces/_/tasks/${a}`))?.done, { timeout: 15_000 }).toBe(false);
+  await expect.poll(async () => (await db.get(`${space()}/tasks/${a}`))?.done, { timeout: 15_000 }).toBe(false);
 });

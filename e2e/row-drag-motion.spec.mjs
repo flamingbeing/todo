@@ -1,7 +1,7 @@
 // Row drag between days (Today/Upcoming): the red line glides 100 ms ease-out, rows do not shift, the card glides ~200 ms to the line on release; reduced motion: instant.
-import { test, expect, signIn, synced, uniq, today, db, openTab, gesturesReady, still, press, slide, letGo } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, today, db, openTab, gesturesReady, still, press, slide, letGo, space } from './fixtures.mjs';
 
-const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { title: id, projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
+const put = (id, fields) => db.put(`${space()}/tasks/${id}`, { title: id, projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
 const setup = async (page) => {
   await signIn(page, 'member');
   const ids = [uniq('da'), uniq('db'), uniq('dc')];

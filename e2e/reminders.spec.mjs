@@ -1,9 +1,9 @@
 // Reminders: the task sheet's Reminders pill opens the Reminders sheet (needs a date), the option is off by default and asks for
 // permission only when turned on in Settings, and a due reminder shows a notification.
 import AxeBuilder from './axe.mjs';
-import { test, expect, signIn, synced, uniq, today, db, clickOpens, openSettings } from './fixtures.mjs';
+import { test, expect, signIn, synced, uniq, today, db, clickOpens, openSettings, space } from './fixtures.mjs';
 
-const put = (id, fields) => db.put(`spaces/_/tasks/${id}`, { projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
+const put = (id, fields) => db.put(`${space()}/tasks/${id}`, { projectId: 'inbox', order: Date.now(), priority: 4, done: false, createdAt: Date.now(), updatedAt: Date.now(), ...fields });
 const sheet = '#task-sheet';
 
 test('tick reminders in the task sheet; they are saved on the task', async ({ phone }) => {
@@ -36,7 +36,7 @@ test('tick reminders in the task sheet; they are saved on the task', async ({ ph
   await expect(row).toHaveAttribute('aria-label', 'Reminders: 30 minutes');
   expect(await AxeBuilder(page)).toEqual([]);
   await synced(page);
-  expect((await db.get(`spaces/_/tasks/${t}`)).reminders).toEqual([30]);
+  expect((await db.get(`${space()}/tasks/${t}`)).reminders).toEqual([30]);
 });
 
 test('Settings has Reminders, off by default; a refused permission leaves it off', async ({ phone }) => {
