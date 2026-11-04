@@ -6,7 +6,7 @@
 //                              through the Worker's /api/members/, which revokes a removed person's access)
 //   spaces/{uid}/tasks/{id}    { title, description?, projectId, sectionId?, parentId?, order, priority, labels?, due?,
 //                              deadline?, done, doneAt?, … createdAt, updatedAt, serverAt, _edits }  the tasks
-//                              (_edits: who changed each field, and when) (each person's own space)
+//                              (_edits: who changed each field, and when)
 //   spaces/{uid}/projects/{id} { name, color, parentId?, order, favorite?, view, inbox?, … }  the projects ('inbox': the Inbox)
 //   spaces/{uid}/sections/{id} { name, projectId, order, collapsed? }  a project's sections
 //   spaces/{uid}/labels/{id}, spaces/{uid}/filters/{id}  labels and saved filters
@@ -37,8 +37,7 @@ import { taskOps, tasksGone } from './task-ops.js';
 
 export { usingEmulator } from './roles.js';
 export { lastSignedIn, keepList, keptList } from './hint.js';
-// Each person has their own space, named by their uid (4 Nov 2026: one person's tasks are never another's). The old shared
-// space '_' is left as it was; the rules no longer let anyone read it.
+// one space per person, by uid (decision 0015)
 /** @param {{ uid: string } | null | undefined} u */
 export const spaceOf = u => u?.uid || '';
 // (the list's shared bits live in items.js, the same in a static app; named here too for the files recipe)
@@ -145,16 +144,14 @@ export async function start({ canReload = null }) {
       // the ended one, so the switch needs no reload (a reload would lose an email-link sign-in half way)
       reopen: async (/** @type {{ sdk: any }} */ { sdk: s }) => firestoreFor(s.F, s.db.app),
     }),
-    // the files and bin recipes still take one fixed space: they need a per-person space before either is installed here
+    // files/bin recipes: not per-person yet (0015)
     ...(dataModules.files ? [dataModules.files.engine('')] : []),
     settings({ options: OPTIONS, collection: SETTINGS_COLL, scope: spaceOf }),
     ...(canReload ? [update({ register, app: 'app', sw: 'sw.js', canReload })] : []),
   ];
   const app = createApp({ config: { name: APP.name, sdk }, modules });
-  /** the signed-in person's own space ('' signed out) */
   const space = () => spaceOf(app.auth.user());
-  /** the space the lists are heard from ('' none): a save goes there only while it is still the signed-in person's, so a
-   * change started on one account never lands in the next one's space */
+  /** the space heard from: saves go only there, so one account's change never lands in the next one's */
   let listening = '';
   /** @param {string} coll @param {Record<string, unknown>} record @param {unknown} base */
   const saveOwn = (coll, record, base) => {
@@ -228,25 +225,9 @@ export async function start({ canReload = null }) {
   };
   app.auth.onUser(() => { claimsStatus = 0; void show(); });
 
-  // An admin's first sign-in on this device: the old shared space copied into their own, once (move-shared.js)
-  let bringing = false;
   /** @param {string} uid */
-  const bringShared = async uid => {
-    const key = `${APP.name}:moved-shared:${uid}`;
-    try { if (localStorage.getItem(key)) return; } catch { /* no storage: try anyway */ }
-    if (bringing) return;
-    bringing = true;
-    try {
-      for (let i = 0; i < 60 && !app.sync.facts().confirmed; i++) await new Promise(r => setTimeout(r, 500));
-      if (!app.sync.facts().confirmed || listening !== uid) return;
-      const [{ moveShared }, { F, db }] = await Promise.all([import('./move-shared.js'), sdk()]);
-      const n = await moveShared({
-        list: async coll => (await F.getDocs(F.collection(db, 'spaces', '_', coll))).docs.map((/** @type {any} */ d) => ({ id: d.id, data: d.data() })),
-        data: () => latest, write: (coll, rec) => ops.writeRecord(coll, rec, undefined), still: () => listening === uid,
-      });
-      if (n >= 0) try { localStorage.setItem(key, '1'); } catch { /* tried again next time */ }
-    } catch { /* tried again at the next start */ } finally { bringing = false; }
-  };
+  const bringShared = uid => import('./move-shared.js').then(m => m.bringShared({ app, uid, sdk, data: () => latest,
+    write: (/** @type {string} */ coll, /** @type {Record<string, unknown>} */ rec) => ops.writeRecord(coll, rec, undefined), listening: () => listening }), () => {});
 
   /** @param {string} method @param {string} uid @param {unknown} [body] @returns {Promise<string>} */
   const membersCall = async (method, uid, body) => {

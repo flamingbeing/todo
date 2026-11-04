@@ -90,6 +90,7 @@ const SHELL = [
   'src/screens/task-sheet.js',
   'src/screens/templates.js',
   'src/screens/tone.js',
+  'src/screens/view-types.js',
   'src/screens/views.js',
   'src/search.js',
   'src/settings-rows.js',
