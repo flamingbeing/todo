@@ -76,7 +76,7 @@ test('a settings file: exported, imported on another account, bad keys dropped',
   await openCounts(a);
   await count(a).check();
   await open(a, 'Settings file');
-  const [download] = await Promise.all([a.waitForEvent('download'), a.getByRole('button', { name: 'Export' }).click()]);
+  const [download] = await Promise.all([a.waitForEvent('download'), a.getByRole('button', { name: 'Export', exact: true }).click()]);
   const file = JSON.parse(await (await import('node:fs/promises')).readFile(await download.path(), 'utf8'));
   expect(file.kind).toBe('core-settings');
   expect(file.settings).toEqual({});             // the device options stay behind
