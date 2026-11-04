@@ -6,6 +6,7 @@
 // priorities flip back (the API's 4 is the top one: theirs = 5 - ours); orders become 0..n among the siblings; labels go by
 // name (a name the account already has is skipped); a repeating task sends its own words ("every 3 days") so the repeat
 // survives, any other due sends the day, or the day and time as a floating 'YYYY-MM-DDTHH:MM:00'.
+import { APP } from './config.js';
 import { INBOX } from './items.js';
 import { isColor } from './colors.js';
 import { isDay, isTime } from './dates.js';
@@ -201,7 +202,7 @@ export function readAnswer(sent, answer, mapping, failed) {
 const INTERNAL = new Set(['_edits', 'serverAt', '_deleted']);
 
 /** the file name of a backup, from the local day @param {string} day YYYY-MM-DD */
-export const backupName = day => `todo-backup-${day}.json`;
+export const backupName = day => `${APP.name}-backup-${day}.json`;
 
 /**
  * Everything the person has as one JSON text: projects, sections, labels, filters, tasks (open and finished), comments and
@@ -213,7 +214,7 @@ export function backupJson(data, { day, now = Date.now() }) {
   const clean = list => (Array.isArray(list) ? list : []).filter(r => r && typeof r === 'object' && !r._deleted)
     .map(r => Object.fromEntries(Object.entries(r).filter(([k]) => !INTERNAL.has(k))));
   return JSON.stringify({
-    app: 'todo', kind: 'backup', day, savedAt: now,
+    app: APP.name, kind: 'backup', day, savedAt: now,
     projects: clean(data.projects), sections: clean(data.sections), labels: clean(data.labels), filters: clean(data.filters),
     tasks: clean(data.tasks), comments: clean(data.comments), templates: clean(data.templates),
   }, null, 2);
