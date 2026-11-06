@@ -37,7 +37,9 @@ test('a swipe to next week, a tap scrolls to the day (the + adds there), the mon
   await strip.locator(`.td-wday[data-day="${there}"]`).click();
   await expect(strip.locator(`.td-wday[data-day="${there}"]`)).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator(`#upcoming .td-day[data-day="${there}"] .td-group-head`)).toBeInViewport();
-  await expect(page.locator(`#upcoming .td-day[data-day="${now}"] .td-group-head`)).not.toBeInViewport();
+  // (today's head is gone from sight: nothing of it shows below the top bar. A sliver of the page's own top, behind the
+  // bar, can still count as "in the viewport" when the days between are few, as on a Friday, so the bar is the line.)
+  await expect.poll(() => page.evaluate(d => document.querySelector(`#upcoming .td-day[data-day="${d}"] .td-group-head`).getBoundingClientRect().bottom <= document.querySelector('.ui-bar').getBoundingClientRect().bottom, now)).toBe(true);
 
   // the + adds for the day in sight, not today
   const added = uniq('plus');
