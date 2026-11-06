@@ -11,6 +11,7 @@
 //   spaces/{uid}/sections/{id} { name, projectId, order, collapsed? }  a project's sections
 //   spaces/{uid}/labels/{id}, spaces/{uid}/filters/{id}  labels and saved filters
 //   spaces/{uid}/bin/{coll:id} { id, kind, data, deletedAt, … }       a deleted item's last version (delete to bin)
+// One space per person, by uid (decision 0015; roles.js spaceOf).
 //
 // Roles reach the rules as custom claims ({ g: { _: role }, v }), a cache of the role doc: the Worker's /api/claims
 // writes them. The auth module reads the role doc live (claims.watch) and asks for new claims whenever its v is ahead
@@ -28,19 +29,16 @@ import { update } from '@core/update';
 import { settings } from '@core/settings';
 import * as register from 'app-update/register.js';
 import { firebaseConfig, APP } from './config.js';
-import { emulator, configured, roleOf, needsClaims } from './roles.js';
+import { emulator, configured, roleOf, needsClaims, personal, spaceOf } from './roles.js';
 import { setHint } from './hint.js';
 import { OPTIONS, SETTINGS_COLL } from './options.js';
 import { dataModules } from './data-modules.js';
 import { COLL, RECORDS, PROJECTS, SECTIONS, LABELS, FILTERS, COMMENTS, TEMPLATES } from './items.js';
 import { taskOps, tasksGone } from './task-ops.js';
 
-export { usingEmulator } from './roles.js';
+export { usingEmulator, spaceOf } from './roles.js';
 export { lastSignedIn, keepList, keptList } from './hint.js';
-// one space per person, by uid (decision 0015)
-/** @param {{ uid: string } | null | undefined} u */
-export const spaceOf = u => u?.uid || '';
-// (the list's shared bits live in items.js, the same in a static app; named here too for the files recipe)
+// (the list's shared bits live in items.js, the same in a local-only app; named here too for the files recipe)
 export { COLL, itemText, REFUSED } from './items.js';
 
 /** @typedef {import('./items.js').Item} Item */
@@ -144,19 +142,18 @@ export async function start({ canReload = null }) {
       // the ended one, so the switch needs no reload (a reload would lose an email-link sign-in half way)
       reopen: async (/** @type {{ sdk: any }} */ { sdk: s }) => firestoreFor(s.F, s.db.app),
     }),
-    // files/bin recipes: not per-person yet (0015)
-    ...(dataModules.files ? [dataModules.files.engine('')] : []),
+    ...(dataModules.files ? [dataModules.files.engine(spaceOf)] : []),
     settings({ options: OPTIONS, collection: SETTINGS_COLL, scope: spaceOf }),
     ...(canReload ? [update({ register, app: 'app', sw: 'sw.js', canReload })] : []),
   ];
   const app = createApp({ config: { name: APP.name, sdk }, modules });
-  const space = () => spaceOf(app.auth.user());
-  /** the space heard from: saves go only there, so one account's change never lands in the next one's */
+  // the space saves go to: the person's own while listened to, so a save never lands in the next account's ('' = refused)
   let listening = '';
+  const here = () => { const s = spaceOf(app.auth.user()); return s && (!personal || s === listening) ? s : ''; };
   /** @param {string} coll @param {Record<string, unknown>} record @param {unknown} base */
-  const saveOwn = (coll, record, base) => {
-    const s = space();
-    return s && s === listening ? app.sync.save(coll, s, record, base) : Promise.reject(new Error('Signed out: not saved.'));
+  const saveHere = (coll, record, base) => {
+    const s = here();
+    return s ? app.sync.save(coll, s, record, base) : Promise.reject(new Error('Signed out: not saved.'));
   };
   // the bin is on unless its option (the bin recipe's) is off: a deleted item is then not copied there
   const binOn = () => { try { return app.settings.get('binOn') !== false; } catch { return true; } };
@@ -174,6 +171,8 @@ export async function start({ canReload = null }) {
   /** @type {import('./items.js').Data} everything as last heard (data()) */
   let latest = { tasks: [], projects: [], sections: [], labels: [], filters: [], comments: [] };
   const KEY = /** @type {Record<string, keyof import('./items.js').Data>} */ ({ [COLL]: 'tasks', [PROJECTS]: 'projects', [SECTIONS]: 'sections', [LABELS]: 'labels', [FILTERS]: 'filters', [COMMENTS]: 'comments', [TEMPLATES]: 'templates' });
+  /** @type {Set<(items: Item[]) => void>} */
+  const itemHooks = new Set();
   let seq = 0;
   // the token Firestore has been told about: its own token listener (added when the SDK started, so before this one)
   // runs in the same notification and restarts its connection with the new token. A list listen sent before that goes
@@ -212,16 +211,18 @@ export async function start({ canReload = null }) {
     if (!role) { stopList(); setHint(false); void askAccess(user); onState({ phase: 'no-access', user, role: '' }); return; }
     setHint(true);
     onState({ phase: 'ready', user, role });
+    const space = spaceOf(me);
+    if (listening && listening !== space) stopList();   // another account's space was open: its listens end first
     offSettings ??= app.settings.follow();   // the account's options, heard from other devices (listening needs the role)
     // one listen per collection; each change draws everything again (changed: the tasks that moved, for the rows' flash)
     let first = true;
-    if (!offList) listening = me.uid;
-    offList ??= [...RECORDS, COMMENTS, TEMPLATES].map(coll => app.sync.watch(spaceOf(me), coll, (/** @type {any[]} */ list, /** @type {{ changed?: string[] }} */ meta) => {
+    if (!offList) listening = space;
+    offList ??= [...RECORDS, COMMENTS, TEMPLATES].map(coll => app.sync.watch(space, coll, (/** @type {any[]} */ list, /** @type {{ changed?: string[] }} */ meta) => {
       latest = { ...latest, [KEY[coll]]: list.filter(x => !x._deleted) };
       onData(latest, new Set(first || coll !== COLL ? [] : meta?.changed || []));
-      if (coll === COLL) first = false;
+      if (coll === COLL) { for (const fn of itemHooks) fn(latest.tasks); first = false; }
     }));
-    if (onFiles && dataModules.files) offFiles ??= dataModules.files.watch(app, spaceOf(me), onFiles);
+    if (onFiles && dataModules.files) offFiles ??= dataModules.files.watch(app, space, onFiles);
     if (role === 'admin') void bringShared(me.uid);
   };
   app.auth.onUser(() => { claimsStatus = 0; void show(); });
@@ -255,8 +256,8 @@ export async function start({ canReload = null }) {
   /** @type {Set<() => Promise<unknown>>} */
   const outHooks = new Set();
   const id = () => (crypto.randomUUID?.() || String(Date.now()) + Math.random().toString(36).slice(2)).replace(/-/g, '');
-  const { removeTask, removeProject, removeSection, put, ...ops } = taskOps({ save: saveOwn, id,
-    data: () => latest, drop: (coll, ids) => { void app.sync.hub.drop(space(), coll, ids); } });
+  const { removeTask, removeProject, removeSection, put, ...ops } = taskOps({ save: saveHere, id,
+    data: () => latest, drop: (coll, ids) => { const s = here(); if (s) void app.sync.hub.drop(s, coll, ids); } });
   /** @param {Item[]} gone @param {Promise<string>} deleting @param {((id: string) => unknown[]) | undefined} filesOf */
   const withFiles = async (gone, deleting, filesOf) => {
     const attached = filesOf ? gone.flatMap(t => filesOf(t.id)) : [];
@@ -287,7 +288,7 @@ export async function start({ canReload = null }) {
     removeSection: (s, filesOf) => withFiles(tasksGone('section', s, latest), removeSection(s), filesOf),
     // one item, live from the server: cb(item) when its copy changes, cb(null) once the server says it is gone -> stop()
     /** @param {string} itemId @param {(item: Item | null) => void} cb @returns {() => void} */
-    watchItem: (itemId, cb) => app.sync.watchDoc(['spaces', space(), COLL, itemId], cb),
+    watchItem: (itemId, cb) => { const s = spaceOf(app.auth.user()); return s ? app.sync.watchDoc(['spaces', s, COLL, itemId], cb) : () => {}; },
     // the tasks as last heard, a whole task saved under its own id, and whether the server's copy has arrived (a
     // restore: the backup recipe)
     items: () => latest.tasks,
@@ -295,7 +296,7 @@ export async function start({ canReload = null }) {
     put,
     serverCopyIn: () => !!app.sync.facts().confirmed,
     // the deleted items: list, restore, purge (the bin recipe)
-    bin: dataModules.bin?.api({ sdk, space: space(), items: () => latest.tasks, put }),
+    bin: dataModules.bin?.api({ sdk, space: here, items: () => latest.tasks, put }),
     // admins: set someone's role, or remove them (they lose access at once; their sessions end). -> '' or the reason
     members: {
       /** @param {string} uid @param {'admin' | 'member' | 'viewer'} role */
@@ -326,7 +327,8 @@ export async function start({ canReload = null }) {
       decline: uid => sdk().then(({ F, db }) => F.deleteDoc(F.doc(db, 'requests', uid))).then(() => '', () => 'Offline: try again.'),
     },
     idToken: async () => (await fa.currentUser?.getIdToken().catch(() => '')) || undefined,
-    // parts that must act while the person is still signed in (Web Push's unsubscribe) -> remove
+    /** @param {(items: Item[]) => void} fn */
+    onItems: fn => { itemHooks.add(fn); return () => { itemHooks.delete(fn); }; },
     /** @param {() => Promise<unknown>} fn */
     onSignOut: fn => { outHooks.add(fn); return () => { outHooks.delete(fn); }; },
     // Sign-out keeps this device's copy and unsent saves. -> how many are still unsent (they send at the next sign-in)

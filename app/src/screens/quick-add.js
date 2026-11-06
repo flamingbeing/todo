@@ -482,18 +482,12 @@ export function openQuickAdd(ctx, start, hold = null) {
   if (!sheet.open) { lazy.loaded('morph')?.aim(sheet); sheet.showModal(); void lazy.need('morph').catch(() => {}); }
   if (hold) hold.handTo(title); else title.focus();
   title.setSelectionRange(title.value.length, title.value.length);
-  // Back on a phone first hides the keyboard (the page never hears that Back), so the sheet goes with it: the keyboard
-  // went while the caret is still in the sheet's words (a chip or picker moves focus first) at the same width (not a
-  // turn of the phone) = Back or the keyboard's own hide key. The draft keeps what was typed.
-  const width = innerWidth;
-  const onKeyboard = (/** @type {Event} */ e) => {
-    if (/** @type {CustomEvent} */ (e).detail?.open !== false || !sheet.open || innerWidth !== width) return;
-    const at = document.activeElement;
-    // Android blurs the field as the keyboard hides (focus lands on body/null), so that closes too; a chip, picker or menu keeps it
-    const idle = !at || at === document.body || at === sheet;
-    if (idle || (at instanceof HTMLTextAreaElement && form.contains(at))) { lazy.loaded('morph')?.aim(sheet); sheet.close(); }
-  };
-  document.documentElement.addEventListener('ui-keyboard', onKeyboard);
+  // Back on a phone first hides the keyboard (the page never hears that Back), so the sheet goes with it: the kit closes a
+  // dialog marked data-keyboard-close (index.html) when the keyboard goes while the caret is in the sheet's words (or nowhere;
+  // a chip or picker holding the focus keeps it, and so does turning the phone). The draft keeps what was typed; the close
+  // gets the same motion as any other.
+  const onKeyboardClose = () => lazy.loaded('morph')?.aim(sheet);
+  sheet.addEventListener('ui-keyboard-close', onKeyboardClose);
   // TEMPORARY diagnostic (remove after the Today gap is fixed): if the card floats clear of the keyboard, print the numbers
   setTimeout(() => {
     const vv = window.visualViewport, r = sheet.getBoundingClientRect(), cs = getComputedStyle(sheet), root = document.documentElement;
@@ -504,7 +498,7 @@ export function openQuickAdd(ctx, start, hold = null) {
     box.textContent = `kb-debug gap=${gap} inner=${innerHeight} vv=${vv && Math.round(vv.height)}/${vv && Math.round(vv.offsetTop)} lift=${root.style.getPropertyValue('--ui-keyboard-h')} cls=${root.className}\nsheet bottom=${Math.round(r.bottom)} cssBottom=${cs.bottom} margin=${cs.margin} translate=${cs.translate} dock=${root.dataset.tabbar || ''} page=${document.querySelector('.ui-page')?.getBoundingClientRect().height}`;
     document.body.append(box); setTimeout(() => box.remove(), 15000);
   }, 700);
-  const unwatch = () => document.documentElement.removeEventListener('ui-keyboard', onKeyboard);
+  const unwatch = () => sheet.removeEventListener('ui-keyboard-close', onKeyboardClose);
   const onClose = () => { unwatch(); list.hidden = true; try { draft.stop(); } catch { /* storage blocked */ } };
   sheet.addEventListener('close', onClose, { once: true });
   closeLast = () => { unwatch(); sheet.removeEventListener('close', onClose); try { draft.stop(); } catch { /* as above */ } };

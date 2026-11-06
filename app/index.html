@@ -25,10 +25,10 @@
     "@core/auth": "https://core.anawj.com/sync/1.5.5/auth.js",
     "@core/sync": "https://core.anawj.com/sync/1.5.5/sync.js",
     "@core/update": "https://core.anawj.com/sync/1.5.5/update.js",
-    "@core/ui": "https://core.anawj.com/ui/1.0.0-rc.108/ui/index.js",
-    "@core/theme": "https://core.anawj.com/ui/1.0.0-rc.108/theme/index.js",
-    "@core/settings": "https://core.anawj.com/ui/1.0.0-rc.108/settings/index.js",
-    "app-update/register.js": "https://core.anawj.com/ui/1.0.0-rc.108/update/register.js",
+    "@core/ui": "https://core.anawj.com/ui/1.0.0-rc.109/ui/index.js",
+    "@core/theme": "https://core.anawj.com/ui/1.0.0-rc.109/theme/index.js",
+    "@core/settings": "https://core.anawj.com/ui/1.0.0-rc.109/settings/index.js",
+    "app-update/register.js": "https://core.anawj.com/ui/1.0.0-rc.109/update/register.js",
     "firebase/app": "./vendor/firebase/12.19.0/firebase-app.js",
     "firebase/auth": "./vendor/firebase/12.19.0/firebase-auth.js",
     "firebase/firestore": "./vendor/firebase/12.19.0/firebase-firestore.js",
@@ -37,15 +37,15 @@
   }
 }
   </script>
-  <script src="https://core.anawj.com/ui/1.0.0-rc.108/theme/early.js"></script>
+  <script src="https://core.anawj.com/ui/1.0.0-rc.109/theme/early.js"></script>
   <link rel="modulepreload" href="https://core.anawj.com/sync/1.5.5/app.js" data-module>
   <link rel="modulepreload" href="https://core.anawj.com/sync/1.5.5/auth.js" data-module>
   <link rel="modulepreload" href="https://core.anawj.com/sync/1.5.5/sync.js" data-module>
   <link rel="modulepreload" href="https://core.anawj.com/sync/1.5.5/update.js" data-module>
-  <link rel="modulepreload" href="https://core.anawj.com/ui/1.0.0-rc.108/ui/index.js" data-module>
-  <link rel="modulepreload" href="https://core.anawj.com/ui/1.0.0-rc.108/theme/index.js" data-module>
-  <link rel="modulepreload" href="https://core.anawj.com/ui/1.0.0-rc.108/settings/index.js" data-module>
-  <link rel="modulepreload" href="https://core.anawj.com/ui/1.0.0-rc.108/update/register.js" data-module>
+  <link rel="modulepreload" href="https://core.anawj.com/ui/1.0.0-rc.109/ui/index.js" data-module>
+  <link rel="modulepreload" href="https://core.anawj.com/ui/1.0.0-rc.109/theme/index.js" data-module>
+  <link rel="modulepreload" href="https://core.anawj.com/ui/1.0.0-rc.109/settings/index.js" data-module>
+  <link rel="modulepreload" href="https://core.anawj.com/ui/1.0.0-rc.109/update/register.js" data-module>
   <link rel="modulepreload" href="./vendor/firebase/12.19.0/firebase-app.js" data-module>
   <link rel="modulepreload" href="./vendor/firebase/12.19.0/firebase-auth.js" data-module>
   <link rel="modulepreload" href="./vendor/firebase/12.19.0/firebase-firestore.js" data-module>
@@ -54,11 +54,11 @@
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="stylesheet" href="https://design.flamingbeing.com/v1/tokens.css">
-  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.108/theme/theme.css">
-  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.108/ui/ui.css">
-  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.108/theme/glass.css">
-  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.108/ui/gestures.css">
-  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.108/ui/shell/shell.css">
+  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.109/theme/theme.css">
+  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.109/ui/ui.css">
+  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.109/theme/glass.css">
+  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.109/ui/gestures.css">
+  <link rel="stylesheet" href="https://core.anawj.com/ui/1.0.0-rc.109/ui/shell/shell.css">
   <link rel="stylesheet" href="app.css">
   <link rel="stylesheet" href="wide.css" media="(min-width: 840px)">
   <script type="module" src="src/app.js"></script>
@@ -76,9 +76,9 @@
       <!-- Browse's top (the person and the Settings gear) sits in the bar's row while Browse is shown (screens/browse.js) -->
       <div class="td-bar-browse" id="browse-top" hidden></div>
       <span class="ui-bar-side ui-bar-end">
-        <!-- cloud{ the sync button (app-ui's syncButton): the state as a cloud icon, a tap syncs now -->
+        <!-- sync{ the sync button (app-ui's syncButton): the state as a cloud icon, a tap syncs now -->
         <button type="button" id="sync-btn" aria-label="Connecting…" title="Connecting…"></button>
-        <!-- }cloud -->
+        <!-- }sync -->
         <button type="button" class="td-bar-btn" id="display-btn" aria-label="Display" hidden><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 8h10"/><path d="M7 12h10"/><path d="M7 16h6"/></svg></button>
         <button type="button" class="td-bar-btn" id="section-done" aria-label="Add section" hidden disabled><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg></button>
         <button type="button" class="td-bar-btn" id="more-btn" aria-label="More" aria-haspopup="menu" hidden><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="5" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="19" r="1.4" fill="currentColor"/></svg></button>
@@ -97,11 +97,10 @@
     <main class="ui-screens">
       <section class="ui-screen" id="today-page" aria-labelledby="today-title">
         <h1 class="ui-large-title" id="today-title">Today</h1>
-        <!-- cloud{ the sync chip: a static app's list is never unsent -->
+        <!-- sync{ the sync chip: a local-only app's list is never unsent -->
         <p class="status-line"><span id="sync-chip"></span></p>
-        <!-- }cloud -->
-        <!-- cloud{ sign-in, access and set-up: a static app has none (tools/flavour.mjs) -->
-        <div id="signed-out" hidden></div>
+        <!-- }sync -->
+        <!-- sync{ sign-in, access and set-up: a local-only app has none (tools/flavour.mjs) -->
         <div id="no-access" hidden>
           <p>Access requested. Once the app's owner lets you in, your list opens here by itself.</p>
           <p class="small">Account id: <code id="uid"></code></p>
@@ -109,7 +108,7 @@
         <div id="not-set-up" hidden>
           <p>This app isn't connected to its Firebase project yet (see README, "Fill").</p>
         </div>
-        <!-- }cloud -->
+        <!-- }sync -->
         <div id="list-view" hidden>
           <div id="conflict-sheet"></div>
           <div id="refused-list"></div>
@@ -197,16 +196,20 @@
       <section class="ui-screen td-grouped" id="settings-page" aria-labelledby="settings-title" hidden>
         <button type="button" class="ui-back">Browse</button>
         <h1 class="ui-large-title" id="settings-title">Settings</h1>
-        <!-- cloud{ -->
+        <!-- sync{ -->
         <div id="account" class="status-line">
           <span id="who"></span>
           <button id="sign-out" type="button" hidden>Sign out</button>
           <p id="sign-out-msg" class="error" role="alert"></p>
         </div>
-        <!-- }cloud -->
+        <!-- }sync -->
         <div id="settings-host"></div>
       </section>
     </main>
+    <!-- sync{ the signed-out page (app-ui signInScreen) covers the whole page, so it sits outside the tab pages:
+         signing out from any tab, Settings too, shows it at once -->
+    <div id="signed-out" hidden></div>
+    <!-- }sync -->
 
     <nav class="ui-tabbar td-tabbar" aria-label="Sections">
       <button type="button" class="ui-tab" data-tab-page="#inbox-page" data-tab-id="inbox" data-tab-motion="cut"><span class="ui-tab-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></span>Inbox</button>
@@ -228,7 +231,7 @@
   <dialog class="ui-sheet td-sheet" data-release-motion="settle" id="edit-task-sheet" data-detents="large" data-wide="panel" aria-label="Edit task">
     <div class="td-sheet-body" data-fill></div>
   </dialog>
-  <dialog class="ui-sheet td-sheet" data-release-motion="settle" id="add-sheet" data-wide="panel" aria-label="Add task">
+  <dialog class="ui-sheet td-sheet" data-release-motion="settle" id="add-sheet" data-keyboard-close data-wide="panel" aria-label="Add task">
     <div class="td-sheet-body" data-fill></div>
   </dialog>
   <dialog class="ui-sheet td-sheet" data-release-motion="settle" id="project-sheet" data-detents="large" data-wide="panel" aria-label="Project">

@@ -1,6 +1,5 @@
-// The app's writes, the same for both data sides: cloud.js and a static app's local.js each pass in how one record is
-// saved (the sync engine's save, queued and sent in the cloud app). Each resolves to '' when every save is stored or
-// queued, or to the reason when one was refused at once (app-sync rejects then; the copy waits in the refused list).
+// The app's writes, the same for both data sides: cloud.js and a local-only app's local.js each pass in how one record is
+// saved. Each resolves to '' when every save is stored or queued, or to the reason when one was refused at once.
 // A tick, move or delete takes a task's subtasks along; a project's delete takes its sub-projects, sections and tasks.
 import { COLL, PROJECTS, SECTIONS, LABELS, FILTERS, INBOX } from './items.js';
 import { cleanFields, cleanColor, cleanDue, projectCascade, sectionCascade, projectOf } from './tasks.js';

@@ -2,11 +2,11 @@
 
 Made from [app-starter](https://github.com/flamingbeing/app-starter), a template for small offline-first web apps that
 are safe from day one. Replace this first paragraph with what the app is once it is filled.
-<!-- static{
-> **A static app** ("Pick a starter"): no sign-in and no Firebase; the list stays on this device (IndexedDB,
-> `app/src/local.js`). The parts below on sign-in, roles, rules, the emulators and Firebase are the cloud app's:
-> `node tools/add.mjs cloud --project <firebase-project-id>` makes this app the cloud app.
-}static -->
+<!-- local-only{
+> **A local-only app** ("Pick a starter"): no sign-in and no Firebase; the list stays on this device (IndexedDB,
+> `app/src/local.js`). The parts below on sign-in, roles, rules, the emulators and Firebase are the offline-first app's:
+> `node tools/add.mjs sync --project <firebase-project-id>` makes this app the offline-first app.
+}local-only -->
 
 ## What you get
 
@@ -62,23 +62,37 @@ are safe from day one. Replace this first paragraph with what the app is once it
 
 ## Pick a starter
 
-One template, two flavours, with the same Worker, PWA, offline start, kit, tests and CI
-([decision 0013](docs/decisions/0013-static-flavour.md)):
+Two templates in one repo, with the same Worker, PWA, offline start, kit, tests and CI
+([decision 0013](docs/decisions/0013-static-flavour.md); the names: [decision 0016](docs/decisions/0016-offline-first-and-local-only.md)).
+Both run on Cloudflare; they differ in where the data lives:
 
-- **Cloud** (the template as it is): Google sign-in, roles, Firestore sync between devices, rules. For data that is
-  shared, or must outlive a lost phone.
-- **Static** (`fill.mjs ... --static`, no Firebase project): no sign-in; the list stays on the device in IndexedDB
-  (app-sync's local store), works offline and installs, and other open tabs follow along. For one person's tool on
-  one device, or a first version.
+- **Offline-first** (the template as it is): Google sign-in, roles, and the sync engine (app-sync) keeping Firestore
+  in step between devices, with rules. For data that is shared, or must outlive a lost phone.
+- **Local-only** (`fill.mjs ... --local-only`, no Firebase project): no sign-in; the list stays on the device in
+  IndexedDB (app-sync's local store), works offline and installs, and other open tabs follow along. For one person's
+  tool on one device, or a first version.
 
-A static app is the template rendered by `tools/flavour.mjs` from `flavours/static.json`: the cloud-only files go,
-lines between `cloud{` and `}cloud` marks go, and `flavours/static/` puts in its own files (`app/src/local.js`,
-`local-store.js`, its `app.js`, `options.js`, e2e spec and Playwright config). `.starter.json` records `"flavour":
-"static"`, and `update-from-starter.mjs` renders both template commits the same way, so the app takes only the changes
-to what it has. `node tools/add.mjs cloud --project <firebase-project-id>` later makes it the cloud app: the cloud
-files come in, the static files it never changed go (changed ones stay and are listed), and fill sets the project;
-then the steps under "Fill". The device's list is not uploaded. In the template, a cloud-only line in a shared file
-goes inside marks; the `static` jobs in Full checks fill a scratch copy as a static app and run its whole suite.
+An offline-first app's data is in one shared space (`spaces/_/...`) that everyone with a role works in. A **personal app**
+(`fill.mjs ... --space person`) gives each person their own space instead (`spaces/<uid>/...`): only its owner reads or
+changes it, with their role (admins can't read anyone else's), and nobody can use the shared one
+([decision 0015](docs/decisions/0015-one-space-per-person.md)). `APP.space` in `src/config.js` records it; the sync
+scope (`roles.js` `spaceOf`) and the rules' `inSpace` line (`mine(g, roles)` in place of `can(g, roles)`, written by
+`tools/modules.mjs`) follow it, and the files and bin recipes go with it (the files Worker takes only your own uid, never `_`). Choose it before the app has data: a switch
+leaves the old space's data where it is.
+
+The local-only template is the offline-first one rendered by `tools/flavour.mjs` from `flavours/local-only.json`: the
+sync-only files go, lines between `sync{` and `}sync` marks go, and `flavours/local-only/` puts in its own files
+(`app/src/local.js`, `local-store.js`, its `app.js`, `options.js`, e2e spec and Playwright config). `.starter.json`
+records `"flavour": "local-only"`, and the template update (`update-from-starter.mjs`) renders both template commits
+the same way, so the app takes only the changes to what it has. `node tools/add.mjs sync --project
+<firebase-project-id>` later makes it the offline-first app: the offline-first files come in, the local-only files it
+never changed go (changed ones stay and are listed), and fill sets the project; then the steps under "Fill". The
+device's list is not uploaded. In the template, a sync-only line in a shared file goes inside marks; the `local-only`
+jobs in Full checks fill a scratch copy as a local-only app and run its whole suite.
+
+The old names still work: `--static` and `--on-device` are `--local-only`; `add.mjs cloud` and `add.mjs synced` are
+`add.mjs sync`; an app whose `.starter.json` says `"flavour": "static"` (or `"on-device"`) is a local-only app; old
+`cloud{`/`static{` marks read as `sync{`/`local-only{`.
 
 ## Start an app
 
@@ -98,14 +112,22 @@ goes inside marks; the `static` jobs in Full checks fill a scratch copy as a sta
 
 ```bash
 node tools/fill.mjs --name <name> --host <app.example.org> --kit homedesign|nuhs|ntf --project <firebase-project-id> \
-  [--title "<Title>"] [--web-config sdkconfig.json] [--commit <template sha>]
-node tools/fill.mjs --name <name> --host <app.example.org> --kit homedesign|nuhs|ntf --static   # a static app (above)
+  [--title "<Title>"] [--space shared|person] [--web-config sdkconfig.json] [--commit <template sha>]
+node tools/fill.mjs --name <name> --host <app.example.org> --kit homedesign|nuhs|ntf --local-only   # a local-only app (above)
 ```
 
 It replaces the template's values (kept in `.starter.json`) in every text file, writes `app/src/config.js` (with the web
 app's `apiKey` and `appId` from `firebase apps:sdkconfig WEB` output) and sets `wrangler.jsonc`'s `FIREBASE_PROJECT`.
 Running it again changes nothing; `--check` exits 1 when a run would change something. The emulator project becomes
 `demo-<name>`; tests never touch the live project.
+
+**Link preview** (the card WhatsApp, iMessage and others show for a shared link): `app/index.html`'s `og:` tags (fill
+sets the name and address; write the app's own one-line `description` and `og:description`) and
+`app/public/icons/og.png`, 1200x630, the icon and name: run `PW_CHROMIUM=/opt/pw-browsers/chromium node tools/og-image.mjs`
+after a change of icon or name (the picture records the name and address it was drawn for, and
+`tools/test/og-image.test.mjs` fails on one drawn for another app). `tools/update-from-starter.mjs` never replaces an
+app's own picture; when it brings the template's in, it says to draw the app's. Chat apps cache a preview for days, so
+an old link may keep its old card.
 
 Then: the Worker secrets `SA_EMAIL` and `SA_KEY` (a service account that may manage Auth users and write Firestore),
 the repo secrets for the deploy (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`), the repo variables for the rules
@@ -128,6 +150,7 @@ node --test 'worker/test/*.test.mjs' 'app/test/*.unit.test.mjs' 'tools/test/*.te
 npm run typecheck # app/src under strict, against the pinned app-sync's .d.ts (tsconfig.json)
 npm run rules     # rules in the Firestore emulator (needs Java and .devkit/)
 npm run e2e       # browser tests (emulators and the e2e server start by themselves)
+# port 8080 taken? start the emulators elsewhere and set FIRESTORE_EMULATOR_HOST=127.0.0.1:8181 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9199 (the specs open /app/?emulator=8181:9199)
 npm run vite      # Vite build into dist/ (core, Firebase and register.js stay external), its SHELL and stamp
 APP_DIR=dist npm run e2e   # the same browser tests on that build
 node tools/modules.mjs --check && node tools/vendor-firebase.mjs --check   # modules.json's places and Firebase (no network)
@@ -163,8 +186,8 @@ modules.json the app's modules, named once (README, "Modules")
 tools/      fill.mjs, modules.mjs (everything made from modules.json), sw-files.mjs (sw.js's file list), vendor-firebase.mjs (+ firebase.lock.json), stamp-versions.mjs
             (deploy stamp for sw.js), vite-check.mjs (the Vite build check; vite.config.mjs at the root),
             vite-outside-package.mjs (the same for the outside-package fixture), dev-setup.sh (a fresh machine ready
-            to test), update-from-starter.mjs (brings newer template commits in; app-sync bumps), add.mjs (modules)
-recipes/    one JSON file per optional module (files, search, backup, bin, share-in) and the files each brings (README, "Modules")
+            to test), update-from-starter.mjs (the template update; app-sync bumps), add.mjs (modules)
+recipes/    one JSON file per optional module (files, search, backup, bin, share-in, push) and the files each brings (README, "Modules")
 docs/       decisions
 ```
 
@@ -194,11 +217,11 @@ node tools/add.mjs <owner/repo>@<tag|sha>:recipes/<module>.json   # a recipe fro
 node tools/add.mjs --remove search                 # takes it out again; a file the app changed is kept and listed
 ```
 
-The template ships four recipes: `files` (`@core/files`, the Worker route, rules and R2 binding; needs the bucket made
+The template ships these recipes: `files` (`@core/files`, the Worker route, rules and R2 binding; needs the bucket made
 once), `search` (`@core/search`, operators `field:`, `"phrase"`, `-leave-out`, `OR`, with `insertOperator` and
 `usesOperators` for a "?" list, and `snippetOf` for the matched passage under a row) and `backup` (`@core/backup`, a
 Settings page that saves the items as `.json.gz`, CSV or Excel and restores by adding only what is missing, with a
-dry-run line first; SheetJS loads only for Excel) and `bin` (Settings > Bin: the items deleted in the last 30 days, with Restore and Delete forever; the cloud app only) and `share-in` (Android share target: text and links shared to the installed app land in a chooser, a new item or added to an item's notes; the `shareIn` option is off by default and, while off, a share says so and keeps nothing; Android only). A recipe (`recipes/search.json`; its fields are listed at the top of `tools/add.mjs`)
+dry-run line first; SheetJS loads only for Excel) and `bin` (Settings > Bin: the items deleted in the last 30 days, with Restore and Delete forever; the offline-first app only) and `share-in` (Android share target: text and links shared to the installed app land in a chooser, a new item or added to an item's notes; the `shareIn` option is off by default and, while off, a share says so and keeps nothing; Android only) and `push` (Web Push: a notification when a task is due, even with the app closed; the page sends what to notify, a once-a-minute Worker job sends it with VAPID and aes128gcm on Web Crypto after checking the task still says so; the `pushOn` option is off by default and nothing loads while off; the offline-first app only; `node tools/push-keys.mjs` makes the keys once, the private half straight to the Worker secret `VAPID_PRIVATE_KEY`). A recipe (`recipes/search.json`; its fields are listed at the top of `tools/add.mjs`)
 names the module's `modules` entries, vendored folders, files, tsconfig `include`, style sheets, CSS custom properties,
 owner steps (printed as NEEDS-YOU lines) and notes.
 
@@ -216,19 +239,21 @@ A recipe adds entries to registries, not code to the app's files:
 - the marks `// add: options` (`options.js`) and `// add: service worker handlers` (`sw.js`) take a recipe's option and fetch
   handler; the manifest's entry goes after `"display"`;
 - `worker/modules.js`: one import and one route (`{ match(url), handle(request, env, ctx) }`) per module, which
-  `worker/sites.js` asks in turn after its own routes;
+  `worker/sites.js` asks in turn after its own routes, and a module's cron job in `SCHEDULED` (`(env, ctx) => Promise`,
+  after `// add: worker jobs`), which `sites.js` `scheduled()` runs on every tick of the cron trigger the recipe adds to
+  `wrangler.jsonc` (after `// add: triggers`; push's runs once a minute);
 - `app/rules/<module>.rules`: written into the generated block of `app/firestore.app.rules`, then built into
   `app/firestore.rules`; its emulator cases are `app/test/rules/<module>.mjs`;
 - `app/public/css/<module>.css`: linked from `index.html` (`data-module`), never appended to `app.css`.
 
-`wrangler.jsonc` bindings (files' R2 bucket) and the e2e server's stand-ins stay inserts after an `add:` mark. Every
+`wrangler.jsonc` bindings (files' R2 bucket), its cron trigger (push) and the e2e server's stand-ins stay inserts after an `add:` mark. Every
 edit is idempotent; re-adding from a newer source merges three-way into files the app changed. Afterwards
 `tools/modules.mjs` runs, and `.starter.json` `"modules"` records where each module came from. Full checks' `full`
-and `full-vite` jobs add both recipes to a scratch copy and run the whole suite on it; the lean app is tested on its own.
+and `full-vite` jobs add the recipes (files, search, backup, bin, push) to a scratch copy and run the whole suite on it; the lean app is tested on its own.
 
 ## Update from the template
 
-`node tools/update-from-starter.mjs --dry-run`, then without `--dry-run`: a three-way merge per file from the template
+The template update: `node tools/update-from-starter.mjs --dry-run`, then without `--dry-run`: a three-way merge per file from the template
 commit in `.starter.json` (the app's values swapped in first; generated files regenerated), never a history rewrite.
 `--sync <x.y.z>` bumps app-sync alone; `--behind <n>` fails when the app is more than n commits behind. Details and
 the rest of the list: [new-app checklist](docs/new-app-checklist.md), "Staying current with the template".
@@ -244,7 +269,7 @@ For an app already made from this template (or on the one-object `createApp` of 
    `app/src/cloud.js`, as this starter does; the app reads `app.auth`, `app.sync`, `app.update`. Sign-out now keeps
    the phone's copy and unsent saves; another account signing in wipes them, and "forget this device" is the only
    other wipe. Stored formats are unchanged, so phones keep what they hold.
-3. **Layout:** static files into `app/public/` (the Worker looks there on a miss, so nothing else moves); code in
+3. **Layout:** local-only files into `app/public/` (the Worker looks there on a miss, so nothing else moves); code in
    `app/src/`.
 4. **Offline list:** copy `tools/sw-files.mjs`, replace the hand-written SHELL in `sw.js` by running it, and add its
    `--check` to CI.

@@ -1,19 +1,22 @@
 // The app's rules in the Firestore emulator: the rules kit's shared cases plus the app's own.
 //   firebase emulators:exec --only firestore --project demo-todo "node --test app/test/rules.test.mjs"
 // (from the repo root, after setup-tools or with .devkit/ copied from app-devkit)
-import { test } from 'node:test';
+// The rules are tested with the inSpace line the app's APP.space (src/config.js) gives them, as tools/modules.mjs writes it.
+import { test as nodeTest } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { suite } from '../../.devkit/rules/suite.mjs';
+import { spaceRules, spaceOfConfig } from '../../tools/modules.mjs';
 
 // The optional modules' cases (app/test/rules/<module>.mjs, written by tools/add.mjs): each exports `collections`
-// (more rows for the shared cases) and `tests({ test, assert, emu, as })`.
+// (more rows for the shared cases) and `tests({ test, assert, emu, as, space })` (space(role): the space that role's
+// test account works in, '_' or its own uid).
 const dir = new URL('./rules/', import.meta.url);
 const mods = existsSync(dir)
   ? await Promise.all(readdirSync(dir).filter(f => f.endsWith('.mjs')).sort().map(f => import(new URL(f, dir).href)))
   : [];
 
-// one valid record of each of the app's collections (the shared cases write, read and list it)
+// one valid record of each of the app's collections (the kit's cases and the app's own write, read and list it)
 const VALID = {
   tasks: { title: 'Buy milk', projectId: 'inbox', order: 1, priority: 4, done: false, updatedAt: 1 },
   projects: { name: 'Work', color: 'blue', order: 1, view: 'list', updatedAt: 1 },
@@ -24,18 +27,26 @@ const VALID = {
   filters: { name: 'Urgent', query: 'p1 & today', color: 'red', order: 1, updatedAt: 1 },
 };
 
+const ROLES = ['admin', 'member', 'viewer'];
+// The app is personal (APP.space 'person'): each person's rows live in their own space, spaces/{uid}/… The kit's cases
+// (app-devkit 1.18) run each row with each role in its own space, refuse anyone else's (admins included) and the
+// no-role, signed-out, ended-access, revoked and unstamped cases; the app's own cases follow.
+const ROWS = Object.entries(VALID).map(([coll, data]) => ({
+  path: `spaces/{uid}/${coll}/x1`, read: ROLES, write: ['admin', 'member'], stamp: 'strict', list: { roles: ROLES },
+  data: coll === 'comments' ? uid => ({ ...data, uid }) : data,
+}));
+
 const emu = suite({
   project: 'demo-todo',
-  rules: readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8'),
-  roles: ['admin', 'member', 'viewer'],
-  collections: [
-    // (the app's spaces are each one person's own, spaces/{uid}/…: the kit's cases put every role on one path, so the
-    // spaces' cases are the app's own below, 'each space is its owner's alone')
-    ...mods.flatMap(m => m.collections ?? []),
-  ],
+  rules: spaceRules(readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8'), spaceOfConfig(readFileSync(new URL('../src/config.js', import.meta.url), 'utf8'))),
+  roles: ROLES,
+  collections: [...ROWS, ...mods.flatMap(m => m.collections ?? [])],
 });
 
 const as = role => emu.as(`u-${role}`, { g: { _: role }, v: 1 });
+const test = nodeTest;
+/** the space a role's test account (u-<role>) works in */
+const space = role => `u-${role}`;
 
 test('people read their own role doc, not others’; nobody writes or deletes one from a page (the Worker does)', async () => {
   await emu.clear();
@@ -349,22 +360,6 @@ test('bin entries: writers stamp them; viewers only read', async () => {
   assert.equal((await as('member').set('spaces/u-member/bin/tasks:b', entry)).ok, false, 'unstamped');
 });
 
-test('Web Push’s devices and queue are the Worker’s alone: no page reads or writes them', async () => {
-  await emu.clear();
-  await emu.seed('pushSubs/u-member/devices/d1', { endpoint: 'https://web.push.apple.com/x', p256dh: 'p', auth: 'a', createdAt: 1 });
-  await emu.seed('pushDevices/d1', { uid: 'u-member' });
-  await emu.seed('pushQueue/u-member_1', { uid: 'u-member', key: 'k', at: 1, title: 't', body: 'b', taskId: 'x' });
-  for (const role of ['admin', 'member', 'viewer']) {
-    assert.equal((await as(role).get('pushSubs/u-member/devices/d1')).ok, false, `${role} reads a device`);
-    assert.equal((await as(role).set(`pushSubs/u-${role}/devices/d2`, { endpoint: 'https://x', p256dh: 'p', auth: 'a', createdAt: 1 })).ok, false, `${role} writes a device`);
-    assert.equal((await as(role).get('pushDevices/d1')).ok, false, `${role} reads a device owner`);
-    assert.equal((await as(role).set('pushDevices/d2', { uid: `u-${role}` })).ok, false, `${role} writes a device owner`);
-    assert.equal((await as(role).get('pushQueue/u-member_1')).ok, false, `${role} reads the queue`);
-    assert.equal((await as(role).set(`pushQueue/u-${role}_2`, { uid: `u-${role}`, key: 'k', at: 1, title: 't', body: 'b', taskId: 'x' })).ok, false, `${role} writes the queue`);
-    assert.equal((await as(role).delete('pushQueue/u-member_1')).ok, false, `${role} deletes from the queue`);
-  }
-});
-
 test('account options: one doc per person, only theirs, only the allowed fields', async () => {
   await emu.clear();
   const mine = { profile: 'p1', updatedAt: 1 };
@@ -387,4 +382,4 @@ test('account options: one doc per person, only theirs, only the allowed fields'
   assert.equal((await as('member').set('spaces/u-member/settings/u-member', { showCounts: null, profile: null, updatedAt: 4 }, at)).ok, true, 'null forgets a value');
 });
 
-for (const m of mods) m.tests?.({ test, assert, emu, as });
+for (const m of mods) m.tests?.({ test, assert, emu, as, space });

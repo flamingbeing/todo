@@ -1,6 +1,11 @@
-// cloud.js's pure parts, with no imports Node can't resolve (app/test/cloud.unit.test.mjs runs them): the emulator
-// switch, whether the app is set up, roles from the token's claims, and plain words for errors.
-import { firebaseConfig } from './config.js';
+// cloud.js's pure parts, with no imports Node can't resolve (app/test/cloud.unit.test.mjs runs them).
+import { firebaseConfig, APP } from './config.js';
+
+// Whose a space is (APP.space): 'shared' = one space '_' for all; 'person' = their own, by uid ('' signed out).
+/** @param {boolean} personal @returns {(u: { uid: string } | null | undefined) => string} */
+export const scopeFor = personal => u => personal ? u?.uid || '' : '_';
+export const personal = /** @type {{ space?: string }} */ (APP).space === 'person';
+export const spaceOf = scopeFor(personal);
 
 // ?emulator on localhost (tests): the local emulators and a demo- project
 /** @returns {{ fs: number, auth: number } | null} */

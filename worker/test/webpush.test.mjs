@@ -45,7 +45,7 @@ async function vapidPair() {
   const kp = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
   const jwk = await crypto.subtle.exportKey('jwk', kp.privateKey);
   const pub = new Uint8Array(await crypto.subtle.exportKey('raw', kp.publicKey));
-  return { kp, vapid: { publicKey: b64(pub), privateKey: jwk.d, subject: 'https://todo.example.test' } };
+  return { kp, vapid: { publicKey: b64(pub), privateKey: jwk.d, subject: 'https://push.example.test' } };
 }
 
 test('the VAPID header: vapid t=<ES256 JWT for the push service origin>, k=<public key>', async () => {
@@ -56,7 +56,7 @@ test('the VAPID header: vapid t=<ES256 JWT for the push service origin>, k=<publ
   assert.equal(m[4], vapid.publicKey);
   assert.deepEqual(JSON.parse(new TextDecoder().decode(unb64(m[1]))), { typ: 'JWT', alg: 'ES256' });
   const c = JSON.parse(new TextDecoder().decode(unb64(m[2])));
-  assert.deepEqual(c, { aud: 'https://web.push.apple.com', exp: 1_700_000_000 + 12 * 3600, sub: 'https://todo.example.test' });
+  assert.deepEqual(c, { aud: 'https://web.push.apple.com', exp: 1_700_000_000 + 12 * 3600, sub: 'https://push.example.test' });
   const sig = unb64(m[3]);
   assert.equal(sig.length, 64);
   assert.equal(await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, kp.publicKey, sig, new TextEncoder().encode(`${m[1]}.${m[2]}`)), true);

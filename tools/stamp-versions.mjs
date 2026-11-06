@@ -15,7 +15,7 @@ const sha = buf => crypto.createHash('sha256').update(buf).digest('hex');
 const STAMP = /-(\d{4}-\d{2}-\d{2}-)?[0-9a-f]{8}$/;
 // only an exact-version address on core.anawj.com never changes; any other cross-site file (e.g. design.anawj.com/v1/)
 // may change under the same address, so it gets a new hash every deploy and the phones fetch it again
-const PINNED = /^https:\/\/core\.anawj\.com\/[a-z0-9-]+\/\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?\//;   // a pre-release too (ui/1.0.0-rc.108/)
+const PINNED = /^https:\/\/core\.anawj\.com\/[a-z0-9-]+\/\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?\//;   // a pre-release too (ui/1.0.0-rc.109/)
 const sgtDay = t => new Date(new Date(t).getTime() + 8 * 3600 * 1000).toISOString().slice(0, 10);
 const inDir = (dir, rel) => { const f = path.join(dir, rel); return fs.existsSync(f) ? f : path.join(dir, 'public', rel); };
 const lastChange = dir => { try { return execFileSync('git', ['log', '-1', '--format=%cI', '--', '.'], { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || null; } catch (e) { return null; } };

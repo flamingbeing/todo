@@ -74,11 +74,11 @@ test('resolveSource: a bare name is the template\'s recipe at the app\'s commit,
 for (const [module, gone, grep] of [
   ['search', ['app/public/search/index.js', 'app/src/screens/list-search.js', 'e2e/search.spec.mjs', 'app/public/vendor/minisearch'], /@core\/search|search\.css|list-search|listSearch/],
   ['backup', ['app/public/backup/index.js', 'app/src/screens/backup-settings.js', 'e2e/backup.spec.mjs', 'app/public/vendor/xlsx'], /@core\/backup|backupSettings/],
-  // cloud{ the bin module needs the cloud (its data side and rules; a static app has no recipes/bin)
+  // sync{ the bin module needs the offline-first app (its data side and rules; a local-only app has no recipes/bin)
   ['bin', ['app/src/bin.js', 'app/src/bin-data.js', 'app/src/screens/bin-settings.js', 'app/rules/bin.rules'], /binSettings|binData/],
-  // the files module too (a static app has no recipes/files)
+  // the files module too (a local-only app has no recipes/files)
   ['files', ['app/public/files/index.js', 'app/src/files-data.js', 'worker/files.js', 'app/public/vendor/exifr', 'e2e/memory-bucket.mjs'], /@core\/files|memoryBucket|filesData/],
-  // }cloud
+  // }sync
 ]) {
   test(`${module}: add brings it in, --remove leaves the lean app with no trace of it; a second add changes nothing`, () => {
     const dir = copyRepo();
@@ -97,7 +97,7 @@ for (const [module, gone, grep] of [
       const back = tree(dir);
       assert.deepEqual(Object.keys(back).sort(), Object.keys(lean).sort());
       for (const rel of Object.keys(lean)) if (rel !== '.starter.json') assert.ok(back[rel].equals(lean[rel]), rel);
-      for (const rel of ['app/index.html', 'app/src/modules.js', 'tsconfig.json', 'vite.config.mjs'])
+      for (const rel of ['app/index.html', 'app/src/modules.js', 'tsconfig.json', 'vite.config.mjs', 'worker/modules.js', 'wrangler.jsonc', 'app/src/options.js'])
         assert.doesNotMatch(read(dir, rel), grep, rel);
       assert.equal(JSON.parse(read(dir, '.starter.json')).modules, undefined);
     } finally { fs.rmSync(dir, { recursive: true, force: true }); }

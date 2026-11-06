@@ -1,5 +1,5 @@
 // tools/sw-files.mjs on made-up app folders and a made-up app-sync and app-ui. node --test tools/test/sw-files.test.mjs
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -10,8 +10,11 @@ import { shellFiles, writeShell } from '../sw-files.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const CORE = 'https://core.anawj.com/sync/1.2.3/';
 const SW = `const VERSION = 'app-v1';\nconst SHELL = [\n  './',\n];\nconst MANIFEST = {};\n`;
+const made = [];   // temp folders, removed when the file's tests end (a leftover fills a RAM-backed /tmp)
+after(() => { for (const d of made) fs.rmSync(d, { recursive: true, force: true }); });
 function tree(files) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sw-files-'));
+  made.push(dir);
   for (const [f, body] of Object.entries(files)) {
     fs.mkdirSync(path.dirname(path.join(dir, f)), { recursive: true });
     fs.writeFileSync(path.join(dir, f), body);
@@ -34,7 +37,7 @@ const engine = () => tree({
 test('lists the page, its own files (public/ as served at the root) and the files each core entry loads', () => {
   const sync = engine();
   const dir = tree({
-    'index.html': page({ '@core/app': CORE + 'app.js', '@core/sync': CORE + 'sync.js', 'reg': 'https://core.anawj.com/ui/1.0.0-rc.108/update/register.js', 'firebase/app': './vendor/fb/firebase-app.js' }),
+    'index.html': page({ '@core/app': CORE + 'app.js', '@core/sync': CORE + 'sync.js', 'reg': 'https://core.anawj.com/ui/1.0.0-rc.109/update/register.js', 'firebase/app': './vendor/fb/firebase-app.js' }),
     'src/app.js': '', 'src/config.js': '',
     'public/sw.js': SW, 'public/app.css': '', 'public/icons/icon.svg': '', 'public/vendor/fb/firebase-app.js': '',
     'test/x.unit.test.mjs': '', 'firestore.rules': '', 'firestore.app.rules': '', 'firebase.json': '', 'src/globals.d.ts': '', '.hidden': '', 'firestore-debug.log': '',
@@ -42,7 +45,7 @@ test('lists the page, its own files (public/ as served at the root) and the file
   assert.deepEqual(shellFiles({ dir, sync }), [
     './', 'app.css', 'icons/icon.svg', 'src/app.js', 'src/config.js', 'vendor/fb/firebase-app.js',
     CORE + 'app.js', CORE + 'src/runner.js', CORE + 'src/shared.js', CORE + 'sync.js', CORE + 'src/module-sync.js',
-    'https://core.anawj.com/ui/1.0.0-rc.108/update/register.js',
+    'https://core.anawj.com/ui/1.0.0-rc.109/update/register.js',
   ]);
 });
 
@@ -83,6 +86,17 @@ test('app-ui: the import map entries, and the style sheets and scripts the page 
   ]);
   const old = tree({ 'index.html': page({ '@core/ui': 'https://core.anawj.com/ui/0.9.0/ui/index.js' }), 'sw.js': SW });
   assert.throws(() => shellFiles({ dir: old, sync: engine(), ui }), /app-ui 0\.9\.0.*1\.0\.0-rc\.11/);
+});
+
+test('app-ui: a style sheet a module links beside it at run time is listed; a lazy script beside it is not', () => {
+  const UI = 'https://core.anawj.com/ui/1.0.0-rc.11/';
+  const ui = tree({
+    'package.json': JSON.stringify({ name: 'app-ui', version: '1.0.0-rc.11' }),
+    'ui/vault/index.js': "// new URL('./old.css', import.meta.url) in a comment\nexport const css = () => new URL('./vault.css', import.meta.url).href;\nconst lazy = new URL('./sheet.js', import.meta.url);\n",
+    'ui/vault/vault.css': '', 'ui/vault/sheet.js': '',
+  });
+  const dir = tree({ 'index.html': page({ '@core/ui/vault': UI + 'ui/vault/index.js' }), 'sw.js': SW });
+  assert.deepEqual(shellFiles({ dir, sync: engine(), ui }), ['./', UI + 'ui/vault/index.js', UI + 'ui/vault/vault.css']);
 });
 
 test('writes the list into sw.js, and --check fails until it is written', () => {

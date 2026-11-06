@@ -1,8 +1,8 @@
-// worker/push.js with an in-memory store and a fake sender. Run: node --test 'worker/test/*.test.mjs'
+// worker/push.js (the push recipe, with todo's tasks) with an in-memory store and a fake sender. Run: node --test 'worker/test/*.test.mjs'
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { handlePush, runDue, cleanItems, cleanSubscription, stillDue, sha256, firestoreStore, MAX_ITEMS, PER_RUN, LEASE_MS } from '../push.js';
-import { b64 } from '../webpush.js';
+import { handlePush, runDue, cleanItems, cleanSubscription, stillDue, sha256, firestoreStore, MAX_ITEMS, PER_RUN, PAGE, LEASE_MS } from '../push.js';
+import { itemPath } from '../../app/src/push/push-items.js';
 
 const NOW = Date.UTC(2026, 10, 5, 3, 0, 0);
 const P256DH = 'BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4';
@@ -16,18 +16,20 @@ function memory() {
   return { docs,
     devices: async uid => under(`pushSubs/${uid}/devices/`),
     queueOf: async uid => under('pushQueue/').filter(d => d.data.uid === uid),
-    dueItems: async (until, limit) => under('pushQueue/').filter(d => d.data.at <= until).sort((a, b) => a.data.at - b.data.at).slice(0, limit),
+    dueItems: async (until, limit, after) => under('pushQueue/').filter(d => d.data.at <= until)
+      .sort((a, b) => a.data.at - b.data.at || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+      .filter(d => !after || d.data.at > after.at || (d.data.at === after.at && d.id > after.id)).slice(0, limit),
     batchGet: async paths => new Map(paths.map(p => [p, docs.get(p) ?? null])),
     write: async ({ set = [], del = [] }) => { for (const [p, d] of set) docs.set(p, d); for (const p of del) docs.delete(p); } };
 }
 const verify = async t => { if (t === 'bad') throw new Error('bad'); return { sub: t, g: { _: 'member' } }; };
 const call = (store, route, body, { token = 'u1', method = 'POST', extra = {}, revoked = null, verifyFn = verify } = {}) =>
-  handlePush(new Request(`https://todo.test/api/push/${route}`, { method, headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra }, body: method === 'POST' ? JSON.stringify(body) : undefined }),
-    { store, verify: verifyFn, revoked, origin: 'https://todo.test', now: () => NOW });
-const item = (n, over = {}) => ({ key: `t${n}|0|${n}`, at: NOW + (n + 1) * 60000, title: `Task ${n}`, body: 'Due now', taskId: `t${n}`, date: '2026-11-05', time: '14:00', lead: 0, ...over });
-/** the task doc an item was made from (what the job reads) */
-const taskOf = (it, over = {}) => ({ id: it.taskId, title: it.title, done: false, due: { date: it.date, time: it.time }, reminders: [it.lead], ...over });
-const seedTask = (s, it, over, uid = 'u1') => s.docs.set(`spaces/${uid}/tasks/${it.taskId}`, taskOf(it, over));
+  handlePush(new Request(`https://app.test/api/push/${route}`, { method, headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra }, body: method === 'POST' ? JSON.stringify(body) : undefined }),
+    { store, verify: verifyFn, revoked, origin: 'https://app.test', now: () => NOW });
+const item = (n, over = {}) => ({ key: `t${n}|0|${NOW + (n + 1) * 60000}`, at: NOW + (n + 1) * 60000, title: `Task ${n}`, body: 'Due now, 2:00 PM', itemId: `t${n}`, stamp: '2026-11-05|14:00|0', ...over });
+/** the item doc a notification was made from (what the job reads) */
+const itemOf = (it, over = {}) => ({ id: it.itemId, title: it.title, projectId: 'inbox', done: false, due: { date: '2026-11-05', time: '14:00' }, reminders: [0], ...over });
+const seedItem = (s, it, over, uid = 'u1') => s.docs.set(itemPath(it.itemId, uid), itemOf(it, over));
 
 test('only a signed-in person with a role, from the app’s own origin, by POST', async () => {
   const s = memory();
@@ -50,7 +52,8 @@ test('subscribe keeps a device under the person, once per endpoint; bad or forei
   assert.deepEqual([...s.docs.keys()].sort(), [`pushDevices/${id}`, `pushSubs/u1/devices/${id}`]);
   assert.deepEqual(s.docs.get(`pushSubs/u1/devices/${id}`), { endpoint: sub(1).endpoint, p256dh: P256DH, auth: AUTH, createdAt: NOW });
   for (const bad of [null, {}, sub(2, 'evil.example.com'), { endpoint: 'http://web.push.apple.com/x', keys: sub().keys }, { endpoint: sub().endpoint, keys: { p256dh: 'AAAA', auth: AUTH } },
-    { endpoint: sub().endpoint, keys: { p256dh: P256DH, auth: 'AAAA' } }, { endpoint: 'https://web.push.apple.com.evil.test/x', keys: sub().keys }]) {
+    { endpoint: sub().endpoint, keys: { p256dh: P256DH, auth: 'AAAA' } }, { endpoint: 'https://web.push.apple.com.evil.test/x', keys: sub().keys },
+    sub(4, 'firestore.googleapis.com'), sub(5, 'fcm.googleapis.com.evil.test')]) {
     assert.equal((await call(s, 'subscribe', { subscription: bad })).status, 400, JSON.stringify(bad));
   }
   assert.equal(cleanSubscription(sub(3, 'fcm.googleapis.com'))?.endpoint, 'https://fcm.googleapis.com/3');
@@ -113,14 +116,14 @@ test('schedule replaces the person’s queue: new in, changed updated, missing o
 test('schedule checks sizes and times: malformed is refused, out of range or about to be sent is skipped', async () => {
   const s = memory();
   const bad = [{ items: 'x' }, { items: [{ ...item(1), title: 'x'.repeat(201) }] }, { items: [{ ...item(1), body: 'x'.repeat(301) }] }, { items: [{ ...item(1), at: 'soon' }] },
-    { items: [{ ...item(1), key: '' }] }, { items: [{ ...item(1), taskId: 5 }] }, { items: [{ ...item(1), taskId: 'a/b' }] }, { items: [{ ...item(1), date: 'tomorrow' }] },
-    { items: [{ ...item(1), time: '2pm' }] }, { items: [{ ...item(1), lead: 1.5 }] }, { items: [{ ...item(1), lead: undefined }] },
+    { items: [{ ...item(1), key: '' }] }, { items: [{ ...item(1), itemId: 5 }] }, { items: [{ ...item(1), itemId: 'a/b' }] }, { items: [{ ...item(1), itemId: '' }] }, { items: [{ ...item(1), itemId: '..' }] }, { items: [{ ...item(1), itemId: '__x__' }] },
+    { items: [{ ...item(1), stamp: '' }] }, { items: [{ ...item(1), stamp: 'x'.repeat(201) }] }, { items: [{ ...item(1), stamp: undefined }] },
     { items: Array.from({ length: MAX_ITEMS + 1 }, (_, i) => item(i + 1)) }, { items: [null] }];
   for (const b of bad) assert.equal((await call(s, 'schedule', b)).status, 400, JSON.stringify(b).slice(0, 80));
   assert.equal((await call(s, 'schedule', { items: Array.from({ length: MAX_ITEMS }, (_, i) => item(i + 1)) })).status, 200);
   assert.equal((await s.queueOf('u1')).length, MAX_ITEMS);
-  assert.deepEqual(cleanItems([item(1, { at: NOW - 3600000 }), item(2, { at: NOW + 9 * 86400000 }), item(3), item(4, { at: NOW + 20000 }), item(5, { at: NOW + 31000 })], NOW).map(i => i.taskId), ['t5', 't3']);
-  const big = await handlePush(new Request('https://todo.test/api/push/schedule', { method: 'POST', headers: { Authorization: 'Bearer u1' }, body: 'x'.repeat(300_001) }), { store: s, verify, now: () => NOW });
+  assert.deepEqual(cleanItems([item(1, { at: NOW - 3600000 }), item(2, { at: NOW + 9 * 86400000 }), item(3), item(4, { at: NOW + 20000 }), item(5, { at: NOW + 31000 })], NOW).map(i => i.itemId), ['t5', 't3']);
+  const big = await handlePush(new Request('https://app.test/api/push/schedule', { method: 'POST', headers: { Authorization: 'Bearer u1' }, body: 'x'.repeat(300_001) }), { store: s, verify, now: () => NOW });
   assert.equal(big.status, 413);
 });
 
@@ -129,13 +132,13 @@ async function setup(devices = 1) {
   for (let n = 1; n <= devices; n++) await call(s, 'subscribe', { subscription: sub(n) });
   return s;
 }
-const vapid = { publicKey: 'k', privateKey: 'p', subject: 'https://todo.test' };
+const vapid = { publicKey: 'k', privateKey: 'p', subject: 'https://app.test' };
 const sender = (status = 201, log = []) => async o => { log.push(o); return new Response(null, { status: typeof status === 'function' ? status(o) : status }); };
-/** a due item with its task, straight in the queue (schedule refuses what is about to be sent) */
-const queue = (s, n, over = {}, task = {}) => {
+/** a due notification with its item, straight in the queue (schedule refuses what is about to be sent) */
+const queue = (s, n, over = {}, doc = {}) => {
   const it = item(n, { at: NOW - 1000, key: `k${n}`, ...over });
   s.docs.set(`pushQueue/u1_${n}`, { uid: 'u1', ...it });
-  if (task !== null) seedTask(s, it, task);
+  if (doc !== null) seedItem(s, it, doc);
   return it;
 };
 const ids = async s => (await s.queueOf('u1')).map(d => d.id).sort();
@@ -147,14 +150,14 @@ test('the job sends what is due to each device; a sent item stays as a tombstone
   const log = [];
   const r = await run(s, { send: sender(201, log) });
   assert.deepEqual(r, { sent: 4, dropped: 0, gone: 0, retry: 0, deferred: 0 });
-  assert.deepEqual(log[0].payload, { title: 'Task 1', body: 'Due now', taskId: 't1', tag: 'k1' });
+  assert.deepEqual(log[0].payload, { title: 'Task 1', body: 'Due now, 2:00 PM', itemId: 't1', tag: 'k1' });
   assert.equal(log[0].subscription.keys.auth, AUTH);
   const q = Object.fromEntries((await s.queueOf('u1')).map(d => [d.data.key, d.data]));
   assert.equal(q.k1.sentAt, NOW); assert.equal(q.k2.sentAt, NOW); assert.equal(q.k3.sentAt, undefined);
   assert.deepEqual(await run(s), { sent: 0, dropped: 0, gone: 0, retry: 0, deferred: 0 }, 'sent ones are not sent again');
 });
 
-test('a sent reminder cannot be queued again by a later schedule, and goes once too late to matter', async () => {
+test('a sent notification cannot be queued again by a later schedule, and goes once too late to matter', async () => {
   const s = await setup();
   const it = queue(s, 1);
   await run(s);
@@ -167,7 +170,7 @@ test('a sent reminder cannot be queued again by a later schedule, and goes once 
   assert.ok(!(await ids(s)).includes('u1_1'), 'the job forgets it');
 });
 
-test('the job drops a reminder more than 15 minutes late, unsent', async () => {
+test('the job drops a notification more than 15 minutes late, unsent', async () => {
   const s = await setup();
   queue(s, 1, { at: NOW - 16 * 60000 }); queue(s, 2, { at: NOW - 14 * 60000 });
   const log = [];
@@ -218,22 +221,22 @@ test('a run in progress holds its items: a second run does not send them too', a
   assert.equal(second.sent, 0);
 });
 
-test('the job drops the reminders of a removed person, and of a task that is done, deleted, moved, without that reminder or not in their own space', async () => {
+test('the job drops the notifications of a removed person, and of an item that is done, deleted, gone or moved', async () => {
   const s = await setup();
   queue(s, 1, {}, { done: true });
-  queue(s, 2, {}, null);                                  // the task is gone
+  queue(s, 2, {}, null);                                  // the item is gone
   queue(s, 3, {}, { _deleted: true });
-  queue(s, 4, {}, { due: { date: '2026-11-06', time: '14:00' } });   // moved a day
-  queue(s, 5, {}, { due: { date: '2026-11-05', time: '15:00' } });   // moved an hour
-  queue(s, 6, {}, { reminders: [30] });                    // this lead was taken off
-  queue(s, 7);                                             // still right
-  queue(s, 8, { time: '' }, { due: { date: '2026-11-05' } });   // a day with no time stays right
-  seedTask(s, queue(s, 9, {}, null), {}, '_');               // only in the old shared space: not this person's task
-  seedTask(s, queue(s, 10, {}, null), {}, 'u2');             // in someone else's space
+  queue(s, 4, {}, { due: { date: '2026-11-06', time: '14:00' } }); // moved a day
+  queue(s, 5, {}, { due: { date: '2026-11-05', time: '15:00' } }); // moved an hour
+  queue(s, 6, {}, { due: { date: '2026-11-05' } });      // its time taken off
+  queue(s, 7);                                            // still right
+  queue(s, 8, {}, { title: 'Renamed' });                  // a new title does not stop it (the stamp is the due time and reminders)
+  queue(s, 9, {}, { reminders: [0, 30] });                // a reminder added: the queued one is stale, the page queues the new set
+  queue(s, 10, {}, { projectId: 'work' });                // another project does not matter
   const log = [];
-  assert.deepEqual(await run(s, { send: sender(201, log) }), { sent: 2, dropped: 8, gone: 0, retry: 0, deferred: 0 });
-  assert.deepEqual(log.map(l => l.payload.taskId).sort(), ['t7', 't8']);
-  assert.deepEqual(await ids(s), ['u1_7', 'u1_8']);
+  assert.deepEqual(await run(s, { send: sender(201, log) }), { sent: 3, dropped: 7, gone: 0, retry: 0, deferred: 0 });
+  assert.deepEqual(log.map(l => l.payload.itemId).sort(), ['t10', 't7', 't8']);
+  assert.deepEqual(await ids(s), ['u1_10', 'u1_7', 'u1_8']);
   // a removed person
   const r = await setup();
   queue(r, 1);
@@ -242,7 +245,8 @@ test('the job drops the reminders of a removed person, and of a task that is don
   assert.equal((await run(r, { send: sender(201, none) })).dropped, 1);
   assert.equal(none.length, 0);
   assert.deepEqual(await ids(r), []);
-  assert.equal(stillDue({ date: 'd', time: '', lead: 0 }, { due: { date: 'd' }, reminders: [0, 5] }), true);
+  assert.equal(stillDue({ stamp: '2026-11-05|14:00|0' }, itemOf({ itemId: 'a', title: 'A' })), true);
+  assert.equal(stillDue({ stamp: '' }, itemOf({ itemId: 'a', title: 'A' })), false, 'an empty stamp never matches');
 });
 
 test('the job counts its outgoing requests and stops short of the budget; what did not fit is freed for the next minute', async () => {
@@ -260,6 +264,16 @@ test('the job counts its outgoing requests and stops short of the budget; what d
   const next = await runDue({ store: s, vapid, now: NOW + 1000, send: sender(), budget: 45 });
   assert.equal(next.deferred, 0);
   assert.equal(next.sent / 2, PER_RUN - r.sent / 2);
+});
+
+test('a busy minute: unsent items behind a page of sent ones (tombstones) are still found and sent, not left to go late', async () => {
+  const s = await setup(1);
+  // more sent ones than a page, all due before the unsent ones
+  for (let n = 1; n <= PAGE + 5; n++) { queue(s, n, { at: NOW - 60000 + n }); }
+  for (const [p, d] of [...s.docs]) if (p.startsWith('pushQueue/')) s.docs.set(p, { ...d, sentAt: NOW - 30000 });
+  for (let n = 100; n < 103; n++) queue(s, n, { at: NOW - 1000 + n });
+  const r = await run(s, { send: sender(201) });
+  assert.deepEqual(r, { sent: 3, dropped: 0, gone: 0, retry: 0, deferred: 0 });
 });
 
 test('a failing device lookup leaves the item for later; the run goes on', async () => {
