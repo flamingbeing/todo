@@ -59,7 +59,7 @@ export function wirePush(app, o = {}) {
     const queued = items(list, now());
     const k = JSON.stringify(queued);
     if (k === sent) return;
-    if (await post('schedule', { items: queued })) sent = k;
+    if (await post('schedule', { items: queued }) && active) sent = k;
   }
   const later = (/** @type {number} */ ms) => { if (timer) clearTimeout(timer); timer = setTimeout(() => void schedule(), ms); };
   /** drop this device at the Worker and in the browser (does not change `want`) */

@@ -11,7 +11,7 @@
 //   spaces/{uid}/sections/{id} { name, projectId, order, collapsed? }  a project's sections
 //   spaces/{uid}/labels/{id}, spaces/{uid}/filters/{id}  labels and saved filters
 //   spaces/{uid}/bin/{coll:id} { id, kind, data, deletedAt, … }       a deleted item's last version (delete to bin)
-// One space per person, by uid (APP.space 'person' in config.js, decision 0015; roles.js spaceOf; the rules let only its owner in).
+// One space per person, by uid (decision 0015; roles.js spaceOf).
 //
 // Roles reach the rules as custom claims ({ g: { _: role }, v }), a cache of the role doc: the Worker's /api/claims
 // writes them. The auth module reads the role doc live (claims.watch) and asks for new claims whenever its v is ahead
@@ -147,8 +147,7 @@ export async function start({ canReload = null }) {
     ...(canReload ? [update({ register, app: 'app', sw: 'sw.js', canReload })] : []),
   ];
   const app = createApp({ config: { name: APP.name, sdk }, modules });
-  // the space saves go to: the signed-in person's own, and only while the page listens to it, so a save started on one
-  // account never lands in the next one's ('' = none: the save is refused)
+  // the space saves go to: the person's own while listened to, so a save never lands in the next account's ('' = refused)
   let listening = '';
   const here = () => { const s = spaceOf(app.auth.user()); return s && (!personal || s === listening) ? s : ''; };
   /** @param {string} coll @param {Record<string, unknown>} record @param {unknown} base */
@@ -172,7 +171,6 @@ export async function start({ canReload = null }) {
   /** @type {import('./items.js').Data} everything as last heard (data()) */
   let latest = { tasks: [], projects: [], sections: [], labels: [], filters: [], comments: [] };
   const KEY = /** @type {Record<string, keyof import('./items.js').Data>} */ ({ [COLL]: 'tasks', [PROJECTS]: 'projects', [SECTIONS]: 'sections', [LABELS]: 'labels', [FILTERS]: 'filters', [COMMENTS]: 'comments', [TEMPLATES]: 'templates' });
-  // the parts that follow the tasks (onItems), e.g. the push recipe
   /** @type {Set<(items: Item[]) => void>} */
   const itemHooks = new Set();
   let seq = 0;
@@ -328,12 +326,9 @@ export async function start({ canReload = null }) {
       /** @param {string} uid */
       decline: uid => sdk().then(({ F, db }) => F.deleteDoc(F.doc(db, 'requests', uid))).then(() => '', () => 'Offline: try again.'),
     },
-    // the signed-in person's ID token, for the Worker's routes (undefined when signed out)
     idToken: async () => (await fa.currentUser?.getIdToken().catch(() => '')) || undefined,
-    // fn(tasks) whenever the tasks change -> remove
     /** @param {(items: Item[]) => void} fn */
     onItems: fn => { itemHooks.add(fn); return () => { itemHooks.delete(fn); }; },
-    // fn() just before signing out (awaited, a few seconds at most) -> remove
     /** @param {() => Promise<unknown>} fn */
     onSignOut: fn => { outHooks.add(fn); return () => { outHooks.delete(fn); }; },
     // Sign-out keeps this device's copy and unsent saves. -> how many are still unsent (they send at the next sign-in)
