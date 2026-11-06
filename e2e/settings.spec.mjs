@@ -60,10 +60,11 @@ test('the device value survives sign-out and a reload', async ({ phone }) => {
   await big(a).check();
   await openSettings(a, 'Account');
   await a.click('#sign-out');
-  await expect(a.locator('#signed-out')).toBeVisible();
+  await expect(a.locator('#signed-out')).toBeVisible();   // (at once, on Settings too: the screen covers every tab)
   await a.reload({ waitUntil: 'domcontentloaded' });
   await expect(a.locator('#signed-out')).toBeVisible();
   await a.evaluate(e => window.starter.signInAs(e), email);
+  await openToday(a);   // (signed back in on the tab left open: Settings)
   await expect(a.locator('#list-view')).toBeVisible();
   await expect(a.locator('.ui-screens')).toHaveClass(/big/);
 });

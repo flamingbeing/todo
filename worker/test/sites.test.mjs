@@ -1,18 +1,19 @@
 // worker/sites.js with a stand-in for the static assets. Run: node --test 'worker/test/*.test.mjs'
 import test from 'node:test';
 import assert from 'node:assert/strict';
-// cloud{ roles and members (a static app has neither: tools/flavour.mjs)
+// sync{ roles and members (a local-only app has neither: tools/flavour.mjs)
 import worker, { settledClaims } from '../sites.js';
 import { handleClaims } from '../claims.js';
 import { loadClaims } from '../members.js';
-// }cloud
-/* static{
+// }sync
+/* local-only{
 import worker from '../sites.js';
-}static */
+}local-only */
 import { SITES } from '../routes.js';
+import { SCHEDULED } from '../modules.js';
 
 const HOST = Object.keys(SITES)[0];
-const FILES = { '/app/index.html': '<h1>hi</h1>', '/app/public/sw.js': '//', '/app/public/app.css': 'css', '/app/src/app.js': 'js', '/app/list/index.html': 'list', '/app/public/kit/index.html': 'kit' };
+const FILES = { '/app/index.html': '<h1>hi</h1>', '/app/public/sw.js': '//', '/app/public/app.css': 'css', '/app/src/app.js': 'js', '/app/list/index.html': 'list', '/app/public/kit/index.html': 'kit', '/app/public/icons/og.png': 'png' };
 const env = { FIREBASE_PROJECT: 'demo-x', ASSETS: { fetch: async req => {
   const p = new URL(req.url).pathname;
   return p in FILES ? new Response(FILES[p], { status: 200 }) : new Response('', { status: 404 });
@@ -29,7 +30,36 @@ test('serves the app at the root, noindex, with the security headers', async () 
   assert.match(r.headers.get('Content-Security-Policy-Report-Only') || r.headers.get('Content-Security-Policy'), /frame-ancestors 'none'/);
 });
 
-// cloud{
+test('the cron tick runs every job in modules.js SCHEDULED, each on its own: one that throws does not stop the others', async () => {
+  const ran = [], waits = [];
+  const jobs = [async () => { ran.push('a'); }, () => { throw new Error('boom'); }, async e => { ran.push(e.FIREBASE_PROJECT); }];
+  const theirs = SCHEDULED.splice(0);   // (a recipe's own jobs are its tests')
+  SCHEDULED.push(...jobs);
+  const err = console.error;
+  console.error = () => {};
+  try {
+    await worker.scheduled({ cron: '* * * * *' }, env, { waitUntil: p => { waits.push(p); } });
+    await Promise.all(waits);
+  } finally { SCHEDULED.splice(0, SCHEDULED.length, ...theirs); console.error = err; }
+  assert.equal(waits.length, 3);
+  assert.deepEqual(ran.sort(), ['a', 'demo-x']);
+});
+
+// a chat app's link-preview fetcher (WhatsApp, Telegram) reads the page's og tags and fetches og:image, signed out and
+// with its own user agent: both answer like any visit (the sign-in is the page's, never the Worker's)
+test('link-preview bots get the page and its picture', async () => {
+  for (const ua of ['WhatsApp/2.23.20.0 A', 'TelegramBot (like TwitterBot)', 'facebookexternalhit/1.1']) {
+    for (const method of ['GET', 'HEAD']) {
+      const page = await get(`https://${HOST}/`, { method, headers: { 'User-Agent': ua } });
+      assert.equal(page.status, 200, `${ua} ${method} /`);
+      const pic = await get(`https://${HOST}/icons/og.png`, { method, headers: { 'User-Agent': ua } });
+      assert.equal(pic.status, 200, `${ua} ${method} /icons/og.png`);
+      assert.equal(pic.headers.get('Location'), null);   // no redirect: some fetchers don't follow one for og:image
+    }
+  }
+});
+
+// sync{
 test('the sign-in helper pages may be framed by this address (Firebase auth iframe), nothing else may', async () => {
   const fetched = globalThis.fetch;
   globalThis.fetch = async () => new Response('<html>helper</html>', { status: 200 });
@@ -53,7 +83,7 @@ test('the sign-in helper pages get no script policy (their inline script would b
   } finally { globalThis.fetch = fetched; }
 });
 
-// }cloud
+// }sync
 
 test('/api/csp takes CSP reports (both formats), logs one short line each without query strings, answers 204', async () => {
   const logged = [], log = console.log;
@@ -109,7 +139,7 @@ test('only GET and HEAD for files', async () => {
   assert.equal((await get(`https://${HOST}/`, { method: 'POST' })).status, 405);
 });
 
-// cloud{
+// sync{
 test('/api/claims: 503 until the service account is set, 405 on GET', async () => {
   assert.equal((await get(`https://${HOST}/api/claims`, { method: 'POST' })).status, 503);
   assert.equal((await get(`https://${HOST}/api/claims`)).status, 405);
@@ -156,4 +186,4 @@ test('/api/claims: of two asks at once, the one that read the doc before it exis
   assert.equal((await a).status, 200);
   assert.equal(written.at(-1)?.g?._, 'member');
 });
-// }cloud
+// }sync

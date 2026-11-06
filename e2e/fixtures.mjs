@@ -5,16 +5,21 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-// cloud{ the emulators (a static app has none: tools/flavour.mjs)
+// sync{ the emulators (a local-only app has none: tools/flavour.mjs)
 import { fsAdmin } from '../.devkit/playwright/helpers.mjs';
 
 export const db = fsAdmin('demo-todo');
-export const APP = '/app/?emulator';
-// }cloud
-/* static{
+// The emulators' ports when not the usual 8080/9099 (a machine where 8080 is taken): E2E_EMULATOR="<firestore>:<auth>",
+// else the ports in FIRESTORE_EMULATOR_HOST / FIREBASE_AUTH_EMULATOR_HOST; app-sync's ?emulator=<fs>:<auth> reads them
+const port = host => host?.match(/:(\d+)$/)?.[1];
+const ports = process.env.E2E_EMULATOR || (port(process.env.FIRESTORE_EMULATOR_HOST) || port(process.env.FIREBASE_AUTH_EMULATOR_HOST)
+  ? `${port(process.env.FIRESTORE_EMULATOR_HOST) || 8080}:${port(process.env.FIREBASE_AUTH_EMULATOR_HOST) || 9099}` : '');
+export const APP = ports ? `/app/?emulator=${ports}` : '/app/?emulator';
+// }sync
+/* local-only{
 // ?test: no service worker unless ?sw is given too (app.js)
 export const APP = '/app/?test';
-}static */
+}local-only */
 /** today as the browser sees it: YYYY-MM-DD, local time (the tests' browser has this machine's time zone) */
 export const today = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 export const uniq = (p = 't') => `${p}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
@@ -190,7 +195,7 @@ async function check(made) {
   }
 }
 
-// cloud{ sign-in and the server's copy
+// sync{ sign-in and the server's copy
 // Each person's tasks live in their own space, spaces/{uid} (cloud.js): space() is the one of the person this test signed in
 // last (each test runs in one worker at a time, so the module's value is the running test's). Before any sign-in it throws.
 let signedIn = '';
@@ -223,16 +228,16 @@ export async function signInAgain(page, email) {
   await expect.poll(() => page.evaluate(() => window.starter.ready)).toBe(true);
 }
 
-// }cloud
-/* static{
-// A static app has no sign-in: the step a cloud app's tests sign in with only opens the list. -> {}
+// }sync
+/* local-only{
+// A local-only app has no sign-in: the step an offline-first app's tests sign in with only opens the list. -> {}
 export async function signIn(page, role = 'member', { path = APP } = {}) {
   await page.goto(path, { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#list-view')).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.starter.ready)).toBe(true);
   return {};
 }
-}static */
+}local-only */
 
 // Add a task for today with the + button's quick add (the sheet stays open for the next one: Escape closes it)
 export async function add(page, text) {
@@ -312,7 +317,7 @@ export const synced = async page => {
   // (the page says so itself: a bundled page's files have other names)
   await page.waitForFunction(() => window.starter.warm === true, null, { timeout: 15_000 });
 };
-// cloud{
+// sync{
 export const serverHas = text => expect.poll(async () => (await db.list(`${space()}/tasks`)).some(d => d.title === text), { timeout: 15_000 }).toBe(true);
 // The id of the shared task with this title (db.list leaves document ids out).
 export async function itemIdOf(text) {
@@ -326,7 +331,7 @@ export async function itemIdOf(text) {
     if (!(token = j.nextPageToken || '')) return undefined;
   }
 }
-// }cloud
+// }sync
 
 // A finger on an element (pointer events, as a touch screen sends them): down at its middle (or at `at`, from its
 // top left), held `hold` ms, moved by each [dx, dy] in turn (a frame apart, the last one ending `wait` ms before the

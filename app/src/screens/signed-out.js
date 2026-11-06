@@ -1,4 +1,5 @@
-// The signed-out screen (#signed-out): the kit's full-screen sign-in, with "Forget this device".
+// The signed-out screen (#signed-out): the kit's sign-in screen (icon, name, one line, "Continue with Google",
+// and "Forget this device" while this phone keeps a copy).
 import { signInScreen } from '@core/ui';
 import { $, sectionScreen } from '../dom.js';
 import { APP } from '../config.js';
@@ -9,7 +10,7 @@ import { APP } from '../config.js';
  */
 export function signedOutScreen(app, { onForget }) {
   signInScreen($('signed-out'), {
-    name: APP.title, tagline: 'Your tasks, on all your devices.', icon: 'icons/icon.svg', accent: '#dc4c3e', auth: app.auth, onForget,
+    name: APP.title, tagline: 'Your tasks, on all your devices.', icon: 'icons/icon.svg', accent: APP.accent, auth: app.auth, onForget,
   });
   return sectionScreen('signed-out');
 }

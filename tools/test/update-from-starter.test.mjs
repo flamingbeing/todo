@@ -1,5 +1,5 @@
 // tools/update-from-starter.mjs on a scratch template repo and an app made from it. node --test tools/test/update-from-starter.test.mjs
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -32,9 +32,12 @@ function commit(dir, files, msg) {
 }
 const swap = text => text.replaceAll('app.example.com', APP.host).replaceAll('starter-app', APP.name);
 
+const made = [];   // temp folders, removed when the file's tests end (a leftover fills a RAM-backed /tmp)
+after(() => { for (const d of made) fs.rmSync(d, { recursive: true, force: true }); });
 // a template with one commit, and an app made from it (the template's files with the app's values)
 function setup() {
   const tpl = fs.mkdtempSync(path.join(os.tmpdir(), 'tpl-'));
+  made.push(tpl);
   run(tpl, 'init', '-q', '-b', 'main');
   const files = {
     '.starter.json': JSON.stringify({ template: 'x/app-starter', version: '0.2.0', commit: '', app: TPL_APP }, null, 2),
@@ -51,6 +54,7 @@ function setup() {
   };
   const base = commit(tpl, files, 'base');
   const app = fs.mkdtempSync(path.join(os.tmpdir(), 'app-'));
+  made.push(app);
   for (const [rel, v] of Object.entries(files)) writeAll(app, { [rel]: typeof v === 'string' ? swap(v) : v });
   writeAll(app, {
     '.starter.json': JSON.stringify({ template: 'x/app-starter', version: '0.2.0', commit: base.slice(0, 7), app: APP }, null, 2) + '\n',
@@ -95,6 +99,25 @@ test('brings in the template\'s changes with the app\'s values, merging with the
   assert.deepEqual(syncVersions(read('app/index.html'), read('package.json')), { map: ['1.3.11'], dep: '1.3.11' });
   assert.equal(JSON.parse(read('.starter.json')).commit, to.slice(0, 7));
   assert.deepEqual(JSON.parse(read('.starter.json')).app, APP);
+});
+
+test('the link-preview picture: a new one comes in with a NEXT to draw it; the app\'s own is never replaced', () => {
+  const { tpl, app } = setup();
+  const OG = 'app/public/icons/og.png';
+  commit(tpl, { [OG]: Buffer.from([9, 1]) }, 'og picture');
+  const said = [];
+  let r = update({ dir: app, from: tpl, install: false, checkLatest: false, log: l => said.push(l) });
+  assert.deepEqual(fs.readFileSync(path.join(app, OG)), Buffer.from([9, 1]), 'added');
+  assert.match(said.join('\n'), /NEXT: app\/public\/icons\/og\.png .*og-image\.mjs/);
+  // the app draws its own; the template's changes again: kept, no conflict, no NEXT
+  fs.writeFileSync(path.join(app, OG), Buffer.from([7, 7]));
+  commit(tpl, { [OG]: Buffer.from([9, 2]) }, 'og picture redrawn');
+  said.length = 0;
+  r = update({ dir: app, from: tpl, install: false, checkLatest: false, log: l => said.push(l) });
+  assert.deepEqual(fs.readFileSync(path.join(app, OG)), Buffer.from([7, 7]), 'the app\'s own kept');
+  assert.deepEqual(r.conflicts, []);
+  assert.deepEqual(r.changes.filter(c => c.path === OG).map(c => c.action), ['kept']);
+  assert.doesNotMatch(said.join('\n'), /NEXT: app\/public\/icons\/og/);
 });
 
 test('a file the template moved into a module\'s recipe stays in the app that has it, and the module is recorded', () => {
@@ -202,12 +225,12 @@ test('--sync moves the lock to the new tag with npm install of that tag', () => 
 
 test('--sync refreshes the e2e core fixtures: the pinned version\'s folder, then the download', () => {
   const { app } = setup();
-  writeAll(app, { 'e2e/fixtures/core/sync/1.3.10/app.js': 'old\n', 'e2e/fixtures/core/update/0.2.0/register.js': 'update\n', 'tools/refresh-core-fixtures.sh': '#!/bin/sh\n' });
+  writeAll(app, { 'e2e/fixtures/core/sync/1.3.10/app.js': 'old\n', 'e2e/fixtures/core/other/1.0.0/x.js': 'update\n', 'tools/refresh-core-fixtures.sh': '#!/bin/sh\n' });
   const calls = [];
   bumpSyncIn(app, '1.4.0', { log: () => {}, exec: (cmd, args) => { calls.push([cmd, ...args]); } });
   assert.ok(fs.existsSync(path.join(app, 'e2e/fixtures/core/sync/1.4.0/app.js')));
   assert.ok(!fs.existsSync(path.join(app, 'e2e/fixtures/core/sync/1.3.10')));
-  assert.ok(fs.existsSync(path.join(app, 'e2e/fixtures/core/update/0.2.0/register.js')), 'other kits left alone');
+  assert.ok(fs.existsSync(path.join(app, 'e2e/fixtures/core/other/1.0.0/x.js')), 'other kits left alone');
   assert.ok(calls.some(c => c[0] === 'bash' && c[1] === 'tools/refresh-core-fixtures.sh'));
   // --no-install: the folder is renamed, nothing downloaded
   const second = setup().app;

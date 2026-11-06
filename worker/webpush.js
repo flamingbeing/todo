@@ -1,8 +1,8 @@
 // Web Push from a Worker, on Web Crypto only (the Node `web-push` package needs Node's crypto and http): the VAPID
 // header (RFC 8292: an ES256 JWT, the public key) and the message encryption (RFC 8291 over RFC 8188, aes128gcm, one record).
-// The Worker holds the VAPID private key (secret VAPID_PRIVATE_KEY: the raw P-256 private value, base64url); the public key is
-// the page's (app/src/vapid.js). Apple's push service answers 403 to a bad VAPID header, so the header, TTL, Urgency and
-// Content-Encoding below are all required.
+// The push recipe (recipes/push.json). The Worker holds the VAPID private key (secret VAPID_PRIVATE_KEY: the raw P-256 private
+// value, base64url; tools/push-keys.mjs makes the pair); the public key is the page's (app/src/push/vapid.js). Apple's push
+// service answers 403 to a bad VAPID header, so the header, TTL, Urgency and Content-Encoding below are all required.
 //
 //   sendPush({ subscription, payload, vapid, now?, ttl? }) -> the push service's Response (201 = accepted; 404 or 410 = the
 //   subscription is gone), with vapid = { publicKey, privateKey, subject } (base64url strings, subject an https: or mailto: URL).

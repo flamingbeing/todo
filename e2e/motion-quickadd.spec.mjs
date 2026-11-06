@@ -2,6 +2,12 @@
 // add button fades instead of vanishing; the Date sheet can rest at half height; under reduced motion nothing animates.
 import { test, expect, signIn, synced } from './fixtures.mjs';
 
+// No browser here shows a real keyboard, so app-ui's keyboard watch is played as its own test does: the page made shorter
+// (a keyboard up) and tall again (it went). The sheet is marked data-keyboard-close, so the kit closes it.
+const KEYBOARD_H = 344;
+const keyboardUp = async page => { const v = page.viewportSize(); await page.setViewportSize({ width: v.width, height: v.height - KEYBOARD_H }); await expect.poll(() => page.evaluate(() => document.documentElement.classList.contains('ui-keyboard-open'))).toBe(true); };
+const keyboardDown = async page => { const v = page.viewportSize(); await page.setViewportSize({ width: v.width, height: v.height + KEYBOARD_H }); await expect.poll(() => page.evaluate(() => document.documentElement.classList.contains('ui-keyboard-open'))).toBe(false); };
+
 test('quick add opens in about 300ms, decelerating, from the add button', async ({ phone }) => {
   const page = await phone();
   await signIn(page, 'member');
@@ -55,8 +61,9 @@ test('the keyboard going (Back on a phone) takes quick add with it', async ({ ph
   await page.locator('#fab').click();
   await expect(page.locator('#add-sheet')).toHaveJSProperty('open', true);
   await expect(page.locator('#add-sheet .td-add-title')).toBeFocused();
-  // what app-ui's keyboard watch says when the keyboard hides with the caret still in a field
-  await page.evaluate(() => document.documentElement.dispatchEvent(new CustomEvent('ui-keyboard', { detail: { open: false } })));
+  // the keyboard hides with the caret still in the field (Back on a phone)
+  await keyboardUp(page);
+  await keyboardDown(page);
   await expect(page.locator('#add-sheet')).toHaveJSProperty('open', false);
 });
 
@@ -65,21 +72,22 @@ test('quick add closes in ~150ms back toward the button; keyboard hide with the 
   await signIn(page, 'member');
   await synced(page);
   const sheet = page.locator('#add-sheet');
-  const hide = () => page.evaluate(() => document.documentElement.dispatchEvent(new CustomEvent('ui-keyboard', { detail: { open: false } })));
   await page.locator('#fab').click();
   await expect(sheet).toHaveJSProperty('open', true);
   await page.locator('#add-sheet .td-add-title').fill('keep me');
   const css = await page.evaluate(() => { const s = document.getElementById('add-sheet'); s.removeAttribute('open'); const c = getComputedStyle(s); const r = { d: c.transitionDuration, t: c.transform }; s.setAttribute('open', ''); return r; });
   expect(css.d).toMatch(/0\.15s/);
   expect(css.t).toMatch(/matrix/);
-  await page.evaluate(() => document.querySelector('#add-sheet .td-add-title').blur());
-  await hide();
+  await keyboardUp(page);
+  await page.evaluate(() => document.querySelector('#add-sheet .td-add-title').blur());   // (Android blurs the field as the keyboard hides)
   await expect(sheet).toHaveJSProperty('open', false);
+  await keyboardDown(page);
   await page.locator('#fab').click();
   await expect(page.locator('#add-sheet .td-add-title')).toHaveValue('keep me');
   const chip = page.locator('#add-sheet .td-add button').first();
+  await keyboardUp(page);
   await chip.focus();
-  await hide();
+  await keyboardDown(page);
   await expect(sheet).toHaveJSProperty('open', true);
 });
 
